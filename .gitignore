@@ -1,0 +1,68 @@
+# Folders
+Debug/
+Build/
+.vim/
+.vs/
+.cache/
+#x64/
+#Contrib/imgui-master/backends/
+#Contrib/imgui-master/docs/
+#Contrib/imgui-master/examples/
+#Contrib/imgui-master/misc/
+
+# Contrib
+imgui.ini
+#renderdoc saves
+*.cap
+
+tags
+shell.bat
+settings.json
+compile_commands.json
+
+# Prerequisites
+*.d
+
+# Visual Studio files
+*.db
+*.suo
+*.user
+*.sln
+*.slnx
+*.vcxproj*
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+*.ipch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+# *.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+# *.lib
+
+# Executables
+#*.exe
+*.out
+*.app
+#*.bat
+
+# Log Files
+*.dmp
+UserSettings.json
