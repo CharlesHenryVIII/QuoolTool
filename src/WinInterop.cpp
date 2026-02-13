@@ -1,0 +1,884 @@
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <shellapi.h>
+#include <combaseapi.h>
+
+#include "WinInterop.h"
+#include "WinInterop_File.h"
+#include "Math.h"
+//#include "Windows/resource.h"
+#include "Json.hpp"
+
+//#include "SDL_syswm.h"
+#include <format>
+
+
+void DebugPrint(const char* fmt, ...)
+{
+    va_list list;
+    va_start(list, fmt);
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), fmt, list);
+    OutputDebugStringA(buffer);
+    OutputDebugStringA("\n");
+    va_end(list);
+}
+void DebugPrint(const wchar_t* fmt, ...)
+{
+    va_list list;
+    va_start(list, fmt);
+    wchar_t buffer[4096];
+    _vsnwprintf(buffer, sizeof(buffer), fmt, list);
+    OutputDebugStringW(buffer);
+    va_end(list);
+}
+
+std::string ToString(const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    char buffer[4096];
+    i32 i = vsnprintf(buffer, arrsize(buffer), fmt, args);
+    va_end(args);
+    return buffer;
+}
+
+std::wstring ToString(const wchar_t* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    wchar_t buffer[4096];
+    i32 i = vswprintf(buffer, arrsize(buffer), fmt, args);
+    va_end(args);
+    return buffer;
+}
+
+i32 RunProcess(const wchar_t* path, const wchar_t* args, bool async, bool show)
+{
+    //TODO: Allow this to work for ASCII AND Unicode
+    SHELLEXECUTEINFO info = {};
+    info.cbSize = sizeof(SHELLEXECUTEINFO);
+    info.fMask = SEE_MASK_NOASYNC | SEE_MASK_NOCLOSEPROCESS;
+    info.hwnd;
+    //info.lpVerb = "open";
+    info.lpVerb = NULL;
+    info.lpFile = path ? path : L"cmd.exe";
+    info.lpParameters = args;
+    info.lpDirectory = NULL;
+    info.nShow = show ? SW_SHOW : SW_HIDE;
+    info.hInstApp = NULL; //out
+    info.lpIDList;
+    info.lpClass;
+    info.hkeyClass;
+    info.dwHotKey;
+    info.hProcess; //out
+
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    Defer { CloseHandle(info.hProcess); };
+    if (!ShellExecuteEx(&info))
+    {
+        std::wstring errorBoxTitle = ToString(L"ShellExecuteEx Error: %i", GetLastError());
+        std::wstring errorText     = ToString(L"Application Path: %s\n"
+                                             "Command Line Params: %s", info.lpFile, args);
+        ShowErrorWindow(errorBoxTitle, errorText);
+        ASSERT(false);
+        return 2;
+    }
+    if (!async)
+    {
+        DWORD result = WaitForSingleObject(info.hProcess, INFINITE);
+        if (result)
+        {
+            std::wstring errorBoxTitle = ToString(L"WaitForSingleObject Error: %i", GetLastError());
+            std::wstring errorText = ToString(L"Application Path: %s\n"
+                "Command Line Params: %s", info.lpFile, args);
+            ShowErrorWindow(errorBoxTitle, errorText);
+            ASSERT(false);
+            return -1;
+        }
+        DWORD exitCode = {};
+        if (!GetExitCodeProcess(info.hProcess, &exitCode))
+        {
+            std::wstring errorBoxTitle = ToString(L"GetExitCodeProcess Error: %i", GetLastError());
+            std::wstring errorText = ToString(L"Application Path: %s\n"
+                "Command Line Params: %s", info.lpFile, args);
+            ShowErrorWindow(errorBoxTitle, errorText);
+            return -1;
+        }
+        if (exitCode)
+        {
+            std::wstring werrorBoxTitle = ToString(L"Program Exited with Code: %i", exitCode);
+            std::wstring werrorText = ToString(L"Application Path: %s\n"
+                L"Command Line Params: %s", info.lpFile, args);
+            std::string error_box_title;
+            std::string error_text;
+            ConvertWideCharToMultiByte(error_box_title, werrorBoxTitle);
+            ConvertWideCharToMultiByte(error_text, werrorText);
+            return ShowCustomErrorWindow(error_box_title, error_text);
+        }
+    }
+    return 0;
+}
+
+i32 RunProcess(std::string& output, const wchar_t* path, const wchar_t* args)
+{
+#if 1
+    SECURITY_ATTRIBUTES sa{ sizeof(sa) };
+    sa.bInheritHandle = TRUE;
+
+    HANDLE readPipe = nullptr;
+    HANDLE writePipe = nullptr;
+    CreatePipe(&readPipe, &writePipe, &sa, 0);
+
+    // Parent should not inherit read end
+    SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0);
+
+    STARTUPINFOW si{};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = writePipe;
+    si.hStdError  = writePipe;
+    si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
+
+    PROCESS_INFORMATION pi{};
+
+    BOOL r = CreateProcessW(
+        (LPWSTR)path,
+        (LPWSTR)args,
+        nullptr, nullptr,
+        TRUE, // inherit handles
+        CREATE_NO_WINDOW,
+        nullptr, nullptr,
+        &si, &pi
+    );
+
+    CloseHandle(writePipe); // parent reads only
+
+    char buffer[4096];
+    DWORD bytesRead;
+
+    while (ReadFile(readPipe, buffer, sizeof(buffer), &bytesRead, nullptr))
+        output.append(buffer, bytesRead);
+
+    CloseHandle(readPipe);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    return r;
+#else
+    //SECURITY_DESCRIPTOR security_descriptor;
+    //InitializeSecurityDescriptor(&security_descriptor, SECURITY_DESCRIPTOR_REVISION);
+    //FAIL;
+
+    //SECURITY_ATTRIBUTES security_attributes = {
+    //    .nLength = sizeof(SECURITY_ATTRIBUTES),
+    //    .lpSecurityDescriptor = &security_attributes,
+    //    .bInheritHandle = false,
+    //};
+
+    BOOL r = CreateProcess(
+    path,                   //_In_opt_ LPCWSTR lpApplicationName,
+    args,                   //_Inout_opt_ LPWSTR lpCommandLine,
+    NULL,//security_attributes,    //_In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    NULL,//security_attributes,    //_In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    false,//_In_ BOOL bInheritHandles,
+    CREATE_NO_WINDOW,//_In_ DWORD dwCreationFlags,
+    //_In_opt_ LPVOID lpEnvironment,
+    //_In_opt_ LPCWSTR lpCurrentDirectory,
+    //_In_ LPSTARTUPINFOW lpStartupInfo,
+    //_Out_ LPPROCESS_INFORMATION lpProcessInformation
+    );
+#endif
+}
+
+void RunProcessJob::RunJob()
+{
+    const wchar_t* path = applicationPath.size()   ? applicationPath.c_str()   : nullptr;
+    const wchar_t* args = arguments.size()         ? arguments.c_str()         : nullptr;
+    i32 result = RunProcess(path, args);
+    if (result)
+    {
+        Threading::GetInstance().RunAndClearJobs();
+    }
+}
+
+void RunProcessLogJob::RunJob()
+{
+    const wchar_t* path = applicationPath.size()   ? applicationPath.c_str()   : nullptr;
+    const wchar_t* args = arguments.size()         ? arguments.c_str()         : nullptr;
+    i32 result = RunProcess(output, path, args);
+    if (result)
+    {
+        Threading::GetInstance().RunAndClearJobs();
+    }
+}
+
+const wchar_t* valid_file_exts[] = { L".mp4", L".mov", L".wmv", L".avil", L".mkv", L".webm" };
+
+MATH_PREFIX int QuickSortFilenameComparisonFunction(const void* a, const void* b)
+{
+    const std::wstring& aws = *(std::wstring*)a;
+    const std::wstring& bws = *(std::wstring*)b;
+    const size_t max = Min(aws.size(), bws.size());
+    for (size_t i = 0; i < max; i++)
+    {
+        const i32 diff = bws[i] - aws[i];
+        if (diff)
+        {
+            return diff;
+        }
+    }
+    return (i32)(bws.size() - aws.size());
+}
+
+template <typename T>
+void AppendProperty(std::string& out, const nlohmann::json& json, const char* property_name)
+{
+    if (json.contains(property_name))
+    {
+        const T& property = json[property_name];
+        out = std::format("{}[{}]", out.c_str(), property);
+    }
+}
+
+void RunUpdateVideoGroupJob::RunJob()
+{
+    VALIDATE(video_group);
+    std::vector<std::wstring> filenames;
+    ScanDirectoryForFileNames(source_path, filenames, false);
+    if (!filenames.size())
+        return;
+
+    //NOTE(CSH): Windows in thier infinite wisdom does some sort of random sort SOMETIMES so we must always sort
+    QuickSort((u8*)filenames.data(), (i32)filenames.size(), sizeof(filenames[0]), QuickSortFilenameComparisonFunction);
+
+    std::lock_guard<std::mutex> lock(video_group->thread_lock);
+    std::string json_string;
+    for (size_t i = 0; i < filenames.size() && !video_group->stop; i++)
+    {
+        bool found_valid_ext = false;
+        for (i32 j = 0; j < arrsize(valid_file_exts); j++)
+        {
+            if (filenames[i].find(valid_file_exts[j]) != std::wstring::npos)
+            {
+                found_valid_ext = true;
+                break;
+            }
+        }
+        if (!found_valid_ext)
+            continue;
+        json_string.clear();
+        //std::wstring full_path = source_path + filenames[i].c_str();
+        //std::wstring args = ToString(L"-J \"%s\"", full_path.c_str());
+        //std::wstring full = mkv_path + L" " + args;
+        std::wstring full = std::format(L"{} -J \"{}{}\"", mkv_path.c_str(), source_path.c_str(), filenames[i].c_str());
+
+        i32 r = RunProcess(json_string, nullptr, full.c_str());
+        nlohmann::json data;
+        if (r)
+        {
+            data = nlohmann::json::parse(json_string);
+        }
+        if (r && !data["errors"].size())
+        {
+            nlohmann::json data = nlohmann::json::parse(json_string);
+            video_group->video_infos.push_back({});
+            VideoInfo* video_info = &video_group->video_infos[video_group->video_infos.size() - 1];
+            video_info->name = filenames[i];
+            if (data.contains("tracks"))
+            {
+                ASSERT(data["tracks"].is_array());
+                const auto& tracks = data["tracks"];
+                video_group->max_tracks = Max((i32)tracks.size(), video_group->max_tracks);
+                bool already_have_video = false;
+                bool already_have_audio = false;
+                bool already_have_sub = false;
+                for (size_t t = 0; t < tracks.size(); t++)
+                {
+                    video_info->tracks.push_back({});
+                    Track* track = &video_info->tracks[video_info->tracks.size() - 1];
+                    const auto& jt = tracks[t];
+                    if (jt["id"] != t)
+                    {
+                        FAIL;
+                    }
+                    if (!jt.contains("type") || !jt.contains("properties") || !jt.contains("id"))
+                        continue;
+                    const auto& type = jt["type"];
+                    const auto& props = jt["properties"];
+                    track->type = type;
+                    track->id = jt["id"];
+                    if (type == "video")
+                    {
+                        AppendProperty<std::string>(track->details, props, "codec");
+                        AppendProperty<std::string>(track->details, props, "display_dimensions");
+                        if (!already_have_video)
+                        {
+                            track->encode = true;
+                            already_have_video = true;
+                        }
+                    }
+                    else if (type == "audio")
+                    {
+                        track->type = type;
+                        AppendProperty<std::string> (track->details, props, "language");
+                        AppendProperty<int>         (track->details, props, "audio_channels");
+                        AppendProperty<std::string> (track->details, props, "codec");
+
+                        if (!already_have_audio)
+                        {
+                            track->encode = true;
+                            already_have_audio = true;
+                        }
+                    }
+
+                    else if (type == "subtitles")
+                    {
+                        track->type = "sub";
+                        AppendProperty<std::string>(track->details, props, "language");
+                        AppendProperty<std::string>(track->details, props, "track_name");
+                        AppendProperty<std::string>(track->details, props, "codec_id");
+
+                        if (!already_have_sub)
+                        {
+                            track->encode = true;
+                            already_have_sub = true;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            video_group->video_infos.push_back({});
+            VideoInfo* video_info = &video_group->video_infos[video_group->video_infos.size() - 1];
+            video_group->max_tracks = Max(1, video_group->max_tracks);
+            std::string error = "unknown";
+            if (data["errors"].size())
+                error = data["errors"][0];
+            std::wstring werror;
+            ConvertMultibyteToWideChar(werror, error);
+            video_info->name = std::format(L"FAILED {}: {}", i + 1, werror);
+        }
+    }
+}
+
+void RunEncodeJob::RunJob()
+{
+    VALIDATE(video_group);
+    VALIDATE(mkv_path.size());
+    VALIDATE(source_path.size());
+    VALIDATE(video_group->video_infos.size());
+    video_group->in_progress = true;
+    Defer{ video_group->in_progress = false; };
+    std::wstring dest_folder = dest_path;
+    if (!dest_folder.size())
+        dest_folder = ToString(L"%sencoded/", source_path.c_str());
+
+    std::wstring path = mkv_path;
+    for (size_t v = 0; v < video_group->video_infos.size() && !video_group->stop; v++)
+    {
+        const VideoInfo& video = video_group->video_infos[v];
+        if (!video.encode)
+        {
+            video_group->completed++;
+            continue;
+        }
+        const std::wstring full_src = source_path.c_str() + video.name;
+        const std::wstring full_dst = dest_folder.c_str() + video.name;
+
+        std::wstring audio;
+        std::wstring subs;
+        for (size_t i = 0; i < video.tracks.size(); i++)
+        {
+            const Track& track = video.tracks[i];
+            if (!track.encode)
+                continue;
+            if (track.type == "audio")
+            {
+                if (!audio.size())
+                    audio = ToString(L"%i", track.id);
+                else
+                    audio = ToString(L"%s,%i", audio.c_str(), track.id);
+            }
+            else if (track.type == "sub")
+            {
+                if (!subs.size())
+                    subs = ToString(L"%i", track.id);
+                else
+                    subs = ToString(L"%s,%i", subs.c_str(), track.id);
+            }
+        }
+
+        std::wstring args = ToString(L"--audio-tracks \"%s\" --subtitle-tracks \"%s\" -m \"%s\",\"%s\" -o \"%s\" \"%s\"",
+            audio.c_str(), subs.c_str(), audio.c_str(), subs.c_str(), full_dst.c_str(), full_src.c_str());
+        i32 result = RunProcess(path.c_str(), args.c_str(), false, false);
+        if (result > 0)
+        {
+            FAIL;
+        }
+        video_group->completed++;
+    }
+    NotifyWindowBuildFinished();
+    video_group->completed = 0;
+    video_group->in_progress = false;
+}
+
+HICON icon;
+HMODULE instMod;
+HWND windowHandle;
+
+void InitOS(GLFWwindow* window)
+{
+    //instMod = GetModuleHandle(NULL);
+    //ASSERT(instMod != NULL);
+    //
+    //SDL_SysWMinfo wminfo = {};
+    //SDL_VERSION(&wminfo.version);
+    //if (SDL_GetWindowWMInfo(window, &wminfo))
+    //    windowHandle = wminfo.info.win.window;
+    //ASSERT(windowHandle);
+    //icon = LoadIcon(instMod, MAKEINTRESOURCE(IDI_ICON1));
+    //ASSERT(icon != NULL);
+}
+
+i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
+{
+    FAIL;
+    //const SDL_MessageBoxButtonData buttons[] = {
+    //    { 0,                                        MessageBoxResponse_Quit, "Quit Program" },
+    //    { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT,  MessageBoxResponse_Continue, "Continue" },
+    //    { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT,  MessageBoxResponse_OpenLog, "Open Log" },
+    //};
+    //const SDL_MessageBoxColorScheme colorScheme = {
+    //    { /* .colors (.r, .g, .b) */
+    //        /* [SDL_MESSAGEBOX_COLOR_BACKGROUND] */
+    //        { 255,   0,   0 },
+    //        /* [SDL_MESSAGEBOX_COLOR_TEXT] */
+    //        {   0, 255,   0 },
+    //        /* [SDL_MESSAGEBOX_COLOR_BUTTON_BORDER] */
+    //        { 255, 255,   0 },
+    //        /* [SDL_MESSAGEBOX_COLOR_BUTTON_BACKGROUND] */
+    //        {   0,   0, 255 },
+    //        /* [SDL_MESSAGEBOX_COLOR_BUTTON_SELECTED] */
+    //        { 255,   0, 255 }
+    //    }
+    //};
+    //const SDL_MessageBoxData messageboxdata = {
+    //    //SDL_MESSAGEBOX_INFORMATION, /* .flags */
+    //    //SDL_MESSAGEBOX_ERROR,
+    //    SDL_MESSAGEBOX_WARNING,
+    //    NULL, /* .window */
+    //    title.c_str(), /* .title */
+    //    text.c_str(), /* .message */
+    //    SDL_arraysize(buttons), /* .numbuttons */
+    //    buttons, /* .buttons */
+    //    &colorScheme /* .colorScheme */
+    //};
+    //i32 buttonID = -1;
+    //if (SDL_ShowMessageBox(&messageboxdata, &buttonID) < 0) {
+    //    SDL_Log("error displaying message box");
+    //    //Quit Program
+    //    SDL_Event e;
+    //    e.type = SDL_QUIT;
+    //    e.quit.timestamp = 0;
+    //    SDL_PushEvent(&e);
+    //    return 0;
+    //}
+    ////TODO: Add better error handling for this?
+    //ASSERT(buttonID >= 0);
+
+    //if (buttonID == MessageBoxResponse_Quit)
+    //{
+    //    SDL_Event e;
+    //    e.type = SDL_QUIT;
+    //    e.quit.timestamp = 0;
+    //    SDL_PushEvent(&e);
+    //}
+    //return buttonID;
+    return 1;
+}
+
+void ShowErrorWindow(const std::wstring& title, const std::wstring& text)
+{
+#if 1
+    FAIL;
+    //int msgboxID = MessageBox(
+    //    NULL,
+    //    text.c_str(),
+    //    title.c_str(),
+    //    MB_ABORTRETRYIGNORE | MB_ICONSTOP | MB_DEFBUTTON1 | MB_APPLMODAL
+    //);
+
+    //switch (msgboxID)
+    //{
+    //case IDABORT:
+    //    SDL_Event e;
+    //    e.type = SDL_QUIT;
+    //    e.quit.timestamp = 0;
+    //    SDL_PushEvent(&e);
+    //    break;
+    //case IDRETRY:
+    //    break;
+    //case IDIGNORE:
+    //    break;
+    //}
+#else
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoSavedSettings;
+    const ImVec2 min = { 260, 100 };
+    const ImVec2 windowSize = ImGui::GetMainViewport()->WorkSize;
+    const ImVec2 max = {windowSize.x - 200, windowSize.y - 200};
+    ImGui::SetNextWindowSizeConstraints(min, max);
+    ImGui::SetNextWindowPos(ImVec2(windowSize.x / 2, windowSize.y / 2), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::OpenPopup(title.c_str());
+    if (ImGui::BeginPopupModal(title.c_str(), NULL, flags))
+    {
+        ImGui::TextWrapped(text.c_str());
+        if (ImGui::Button("Continue"))
+            ImGui::CloseCurrentPopup();
+        ImGui::SameLine();
+        if (ImGui::Button("Copy to Clipboard"))
+            SDL_SetClipboardText(text.c_str());
+        ImGui::SameLine();
+        if (ImGui::Button("Exit"))
+        {
+            SDL_Event e;
+            e.type = SDL_QUIT;
+            e.quit.timestamp = 0;
+            SDL_PushEvent(&e);
+        }
+        ImGui::EndPopup();
+    }
+#endif
+}
+
+void NotifyWindowBuildFinished()
+{
+    FLASHWINFO info = {};
+    info.hwnd = windowHandle;
+    info.dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG;
+    info.uCount;
+    info.dwTimeout;
+    info.cbSize = sizeof(info);
+
+    FlashWindowEx(&info);
+}
+
+//TODO(CSH): Create filepath helper functions
+void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& dir, std::vector<std::wstring>& out, const bool recursive)
+{
+    std::wstring d = root;
+    if (d.size() < 2)
+    {
+        d = L"*";
+    }
+    else
+    {
+
+        size_t end_index = d.find_first_of(L'\0');
+        if (end_index == std::wstring::npos)
+            end_index = d.size();
+        if (d[end_index - 1] != L'*')
+        {
+            if (d[end_index - 1] != L'/')
+            {
+                d.insert(end_index, L"/*");
+            }
+            else
+            {
+                d.insert(end_index, L"*");
+            }
+        }
+    }
+
+    WIN32_FIND_DATAW find_data;
+    HANDLE handle = FindFirstFileW(d.c_str(), &find_data);
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        DWORD error = GetLastError();
+        std::string mb;
+        ConvertWideCharToMultiByte(mb, d);
+        DebugPrint(ToString("Error finding files: %s", mb.c_str()).c_str());
+        return;
+    }
+    while (handle != INVALID_HANDLE_VALUE)
+    {
+        if (recursive && find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && find_data.cFileName[0] != '.')
+        {
+            std::wstring new_root = d;
+            new_root.pop_back();
+            new_root += find_data.cFileName;
+            std::wstring new_dir = dir;
+            if (dir.size())
+                new_dir = new_dir + L"/" + find_data.cFileName;
+            else
+                new_dir += find_data.cFileName;
+            _ScanDirectoryForFileNames(new_root, new_dir, out, recursive);
+        }
+        else if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        {
+            if (dir.size())
+                out.push_back(dir + L"/" + find_data.cFileName);
+            else
+                out.push_back(find_data.cFileName);
+        }
+        if (FindNextFileW(handle, &find_data) == 0)
+        {
+            //if (GetLastError() == ERROR_NO_MORE_FILES)
+            break;
+        }
+    }
+}
+
+void ScanDirectoryForFileNames(const std::wstring& dir, std::vector<std::wstring>& out, const bool recursive)
+{
+    out.clear();
+    _ScanDirectoryForFileNames(dir, L"", out, recursive);
+}
+
+#include "shlobj_core.h"
+
+static int CALLBACK BrowseFolderCallback(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+{
+    if (uMsg == BFFM_INITIALIZED) {
+        LPCTSTR path = LPCTSTR(lpData);
+        ::SendMessage(hwnd, BFFM_SETSELECTION, true, (LPARAM)path);
+    }
+    return 0;
+}
+
+bool GetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir)
+{
+    std::wstring baseDir = currentDir;
+    if (currentDir.size() == 0)
+    {
+        TCHAR buf[MAX_PATH] = { 0 };
+        GetModuleFileName(NULL, buf, MAX_PATH);
+        std::wstring::size_type pos = std::wstring(buf).find_last_of(L"\\/");
+        baseDir = std::wstring(buf).substr(0, pos);
+    }
+    dir.clear();
+    dir.resize(MAX_PATH);
+    int imageIndex = 0;
+    BROWSEINFO info = {
+        .hwndOwner = windowHandle,
+        .pidlRoot = NULL,
+        .pszDisplayName = NULL,//dir.data(),
+        .lpszTitle = L"Select Config Directory",
+        .ulFlags =  BIF_USENEWUI, //BIF_EDITBOX | BIF_NEWDIALOGSTYLE,
+        .lpfn = BrowseFolderCallback,//NULL,
+        .lParam = (LPARAM)baseDir.c_str(), //NULL,
+        .iImage = imageIndex,
+    };
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    PIDLIST_ABSOLUTE pidl = SHBrowseForFolder(&info);
+    if (pidl == NULL)
+        return false;
+    BOOL result = SHGetPathFromIDList(pidl, dir.data());
+
+    auto pos = dir.find_first_of(L'\0');
+    if (pos != std::wstring::npos)
+        dir.resize(pos);
+
+    if (result)
+    {
+        std::wstring_view dir1 = dir;
+        std::wstring_view dir2 = baseDir;
+        if (dir1.find(dir2) != std::wstring::npos && dir2.find(dir1) != std::wstring::npos)
+        {
+            dir.clear();
+        }
+        return true;
+    }
+    return false;
+}
+
+void ConvertMultibyteToWideChar(std::wstring& out, const std::string& in)
+{
+    //WideCharToMultiByte
+    i32 wide_char_count = MultiByteToWideChar(
+        CP_UTF8,                //[in]            UINT                              CodePage,
+        MB_ERR_INVALID_CHARS,   //[in]            DWORD                             dwFlags,
+        in.c_str(),             //[in]            _In_NLS_string_(cbMultiByte)LPCCH lpMultiByteStr,
+        -1,                     //[in]            int                               cbMultiByte,
+        nullptr,                //[out, optional] LPWSTR                            lpWideCharStr,
+        0                       //[in]            int                               cchWideChar
+    );
+    ASSERT(wide_char_count > 0);
+    out.clear();
+    out.resize(wide_char_count);
+    i32 wide_char_actual = MultiByteToWideChar(
+        CP_UTF8,                //[in]            UINT                              CodePage,
+        MB_ERR_INVALID_CHARS,   //[in]            DWORD                             dwFlags,
+        in.c_str(),             //[in]            _In_NLS_string_(cbMultiByte)LPCCH lpMultiByteStr,
+        -1,                     //[in]            int                               cbMultiByte,
+        out.data(),             //[out, optional] LPWSTR                            lpWideCharStr,
+        wide_char_count         //[in]            int                               cchWideChar
+    );
+    ASSERT(wide_char_actual > 0);
+    ASSERT(wide_char_actual == wide_char_count);
+}
+
+void ConvertWideCharToMultiByte(std::string& out, const std::wstring& in)
+{
+    //WideCharToMultiByte
+    BOOL invalid_string;
+
+    i32 multibyte_char_count = WideCharToMultiByte(
+        CP_UTF8,                //[in]            UINT                               CodePage,
+        0,//MB_ERR_INVALID_CHARS,   //[in]            DWORD                              dwFlags,
+        in.c_str(),             //[in]            _In_NLS_string_(cchWideChar)LPCWCH lpWideCharStr,
+        -1,                     //[in]            int                                cchWideChar,
+        nullptr,                //[out, optional] LPSTR                              lpMultiByteStr,
+        0,                      //[in]            int                                cbMultiByte,
+        "#",                    //[in, optional]  LPCCH                              lpDefaultChar,
+        &invalid_string         //[out, optional] LPBOOL                             lpUsedDefaultChar
+    );
+    ASSERT(multibyte_char_count > 0);
+    out.clear();
+    out.resize(multibyte_char_count);
+    i32 multibyte_char_actual = WideCharToMultiByte(
+        CP_UTF8,                //[in]            UINT                               CodePage,
+        0,//MB_ERR_INVALID_CHARS,   //[in]            DWORD                              dwFlags,
+        in.c_str(),             //[in]            _In_NLS_string_(cchWideChar)LPCWCH lpWideCharStr,
+        -1,                     //[in]            int                                cchWideChar,
+        out.data(),             //[out, optional] LPSTR                              lpMultiByteStr,
+        (i32)out.size(),        //[in]            int                                cbMultiByte,
+        "#",                    //[in, optional]  LPCCH                              lpDefaultChar,
+        &invalid_string         //[out, optional] LPBOOL                             lpUsedDefaultChar
+    );
+    ASSERT(multibyte_char_actual > 0);
+    ASSERT(multibyte_char_actual == multibyte_char_count);
+}
+
+#if FEATURE_CUSTOM_ASSERT
+#pragma comment(lib, "Comctl32.lib")
+#include <commctrl.h>
+#include <signal.h> // raise
+struct AssertRecord
+{
+    // Key
+    const char* file; // Points to what is retrieved from the __FILE__ macro, so it should be stable.
+    int         line;
+
+    int         hit_counter;
+    bool        ignored;
+};
+
+
+struct SRWLock
+{
+    SRWLock() { InitializeSRWLock(&lock); }
+    SRWLOCK lock;
+};
+
+static SRWLock s_assert_mutex;
+static std::vector<AssertRecord> s_assert_records;
+void OsAssert(bool expr, const char* message, const char* file, int line)
+{
+    if (!expr)
+    {
+        AcquireSRWLockExclusive(&s_assert_mutex.lock);
+        Defer { ReleaseSRWLockExclusive(&s_assert_mutex.lock); };
+
+        AssertRecord* record = nullptr;
+        for (AssertRecord& it : s_assert_records)
+        {
+            if (it.file == file && it.line == line)
+            {
+                record = &it;
+                break;
+            }
+        }
+
+        if (!record)
+        {
+            AssertRecord new_record = {
+                .file = file,
+                .line = line,
+            };
+            s_assert_records.push_back(new_record);
+            record = &s_assert_records.back();
+            record->file = file;
+            record->line = line;
+        }
+
+        record->hit_counter++;
+        if (record->ignored)
+        {
+            return;
+        }
+
+
+        WCHAR wmessage[1024];
+        ArrayView<WCHAR> wmessage_view = CreateArrayView(wmessage);
+        wmessage_view.Last() = 0;
+        if (MultiByteToWideChar(CP_UTF8, 0, message, -1, wmessage_view.data, (int)wmessage_view.Bytes()) == 0)
+        {
+            wcscpy_s(wmessage, (size_t)wmessage_view.Bytes(), L"Error");
+        }
+
+
+        const char* s = record->hit_counter == 1 ? "" : "s";
+        char info_buffer[1024];
+        ArrayView<char> info_buffer_view = CreateArrayView(info_buffer);
+        sprintf_s(info_buffer_view.data, (size_t)info_buffer_view.Bytes(), "%s(%d)\n\n"
+                                                     "This has been hit %d time%s.\n\n"
+                                                     "Yes   : Break into debugger\n"
+                                                     "No    : Continue execution\n"
+                                                     "Retry : Ignore this assert in the future\n"
+                                                     "Close : Abort the program",
+                                                     file, line, record->hit_counter, s);
+        WCHAR winfo[1024];
+        auto winfo_view = CreateArrayView(winfo);
+        winfo_view.Last() = 0;
+        if (MultiByteToWideChar(CP_UTF8, 0, info_buffer, -1, winfo_view.data, (int)winfo_view.Bytes()) == 0)
+        {
+            wcscpy_s(winfo, (size_t)winfo_view.Bytes(), L"Error");
+        }
+
+
+        int button = 0;
+        TaskDialog(NULL, NULL,
+                   L"Assertion Failed",
+                   wmessage,
+                   winfo,
+                   TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_RETRY_BUTTON | TDCBF_CLOSE_BUTTON,
+                   TD_WARNING_ICON,
+                   &button);
+
+        switch(button)
+        {
+        default:
+        case IDNO:
+        case IDCANCEL: {
+        } break;
+
+        case IDYES: {
+            __debugbreak();
+        } break;
+
+        case IDRETRY: {
+            if (record)
+            {
+                record->ignored = true;
+            }
+        } break;
+
+        case IDCLOSE: {
+            // NOTE: This is how the CRT assert works when the abort button is pressed:
+            raise(SIGABRT);
+            _exit(3);
+        } break;
+        }
+    }
+}
+#else
+#include <assert.h>
+void os_assert(bool expr, const char*, const char*, int)
+{
+    ASSERT(expr);
+}
+#endif
