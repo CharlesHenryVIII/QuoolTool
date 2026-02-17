@@ -7,7 +7,7 @@ workspace "ScadaBackup"
     runtime "Debug"
 
 project "ScadaBackup"
-    kind "WindowedApp"
+    kind "ConsoleApp"--"WindowedApp"
     language "C++"
     cppdialect "C++20"
     targetdir "build/%{cfg.platform}/%{cfg.buildcfg}"
@@ -75,6 +75,7 @@ project "ScadaBackup"
         "contrib/glfw/src/null_monitor.c",
         "contrib/glfw/src/null_window.c",
         "contrib/glfw/src/null_joystick.c",
+        "contrib/glfw/src/wgl_context.c",
         --"contrib/glfw/src/wlx_context.c",
     }
 

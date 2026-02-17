@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="gbVec2&lt;*&gt;">
+    <DisplayString>{x}, {y}</DisplayString>
+  </Type>
+
+  <Type Name="gbVec3&lt;*&gt;">
+    <DisplayString>{x}, {y}, {z}</DisplayString>
+  </Type>
+
+  <Type Name="gbVec4&lt;*&gt;">
+    <DisplayString>{x}, {y}, {z}, {w}</DisplayString>
+  </Type>
+
+  <Type Name="gbQuat&lt;*&gt;">
+    <DisplayString>{x}, {y}, {z}, {w}</DisplayString>
+  </Type>
+
+  <Type Name="gbMat2&lt;*&gt;">
+    <DisplayString>{col[0].x}, {col[0].y} | {col[1].x}, {col[1].y} | {col[2].x}, {col[2].y} | {col[3].x}, {col[3].y}</DisplayString>
+    <Expand>
+      <Synthetic Name="[Row 0]">
+        <DisplayString>{col[0].e[0]}, {col[0].e[1]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[Row 1]">
+        <DisplayString>{col[1].e[0]}, {col[1].e[1]}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="gbMat3&lt;*&gt;">
+    <DisplayString>{col[0].x}, {col[0].y}, {col[0].z} | {col[1].x}, {col[1].y}, {col[1].z} | {col[2].x}, {col[2].y}, {col[2].z} | {col[3].x}, {col[3].y}, {col[3].z}</DisplayString>
+    <Expand>
+      <Synthetic Name="[Row 0]">
+        <DisplayString>{col[0].e[0]}, {col[0].e[1]}, {col[0].e[2]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[Row 1]">
+        <DisplayString>{col[1].e[0]}, {col[1].e[1]}, {col[1].e[2]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[Row 2]">
+        <DisplayString>{col[2].e[0]}, {col[2].e[1]}, {col[2].e[2]}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="gbMat4x3&lt;*&gt;">
+    <DisplayString>{col[0].x}, {col[0].y}, {col[0].z}, {col[0].w} | {col[1].x}, {col[1].y}, {col[1].z}, {col[1].w} | {col[2].x}, {col[2].y}, {col[2].z}, {col[2].w}</DisplayString>
+    <Expand>
+      <Synthetic Name="[Row 0]">
+        <DisplayString>{col[0].e[0]}, {col[0].e[1]}, {col[0].e[2]}, {col[0].e[3]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[Row 1]">
+        <DisplayString>{col[1].e[0]}, {col[1].e[1]}, {col[1].e[2]}, {col[1].e[3]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[Row 2]">
+        <DisplayString>{col[2].e[0]}, {col[2].e[1]}, {col[2].e[2]}, {col[2].e[3]}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="gbMat4&lt;*&gt;">
+    <DisplayString>{col[0].x}, {col[0].y}, {col[0].z}, {col[0].w} | {col[1].x}, {col[1].y}, {col[1].z}, {col[1].w} | {col[2].x}, {col[2].y}, {col[2].z}, {col[2].w} | {col[3].x}, {col[3].y}, {col[3].z}, {col[3].w}</DisplayString>
+    <Expand>
+      <Synthetic Name="[Row 0]">
+        <DisplayString>{col[0].e[0]}, {col[0].e[1]}, {col[0].e[2]}, {col[0].e[3]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[Row 1]">
+        <DisplayString>{col[1].e[0]}, {col[1].e[1]}, {col[1].e[2]}, {col[1].e[3]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[Row 2]">
+        <DisplayString>{col[2].e[0]}, {col[2].e[1]}, {col[2].e[2]}, {col[2].e[3]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[Row 3]">
+        <DisplayString>{col[3].e[0]}, {col[3].e[1]}, {col[3].e[2]}, {col[3].e[3]}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="IdArray&lt;*&gt;">
+    <DisplayString>{{ size-ish={highest_active + 1} }}</DisplayString>
+    <Expand>
+      <Item Condition="first_inactive != 65535" Name="[first inactive]"> first_inactive</Item>
+      <Item Condition="first_inactive == 65535" Name="[first inactive]"> "Last"</Item>
+      <Item Name="[last]"> highest_active</Item>
+      <Item Name="[committed]"> committed_memory_until_index</Item>
+        <Synthetic Name ="[array]" IncludeView="verbose">
+          <DisplayString> {committed_memory_until_index} committed elements </DisplayString>
+          <Expand>
+            <ArrayItems>
+              <Size>committed_memory_until_index</Size>
+              <ValuePointer>data</ValuePointer>
+            </ArrayItems>
+          </Expand>
+        </Synthetic>
+        <Synthetic Name ="[array]">
+          <DisplayString> highest index={highest_active} </DisplayString>
+          <Expand>
+            <ArrayItems>
+              <Size>highest_active + 1</Size>
+              <ValuePointer>data</ValuePointer>
+            </ArrayItems>
+          </Expand>
+        </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="EntityT">
+    <DisplayString> {type} </DisplayString> 
+    <Expand>
+        <ExpandedItem Condition="type == EntityType_Player">*(Player*)this,nd</ExpandedItem>
+        <ExpandedItem Condition="type == EntityType_Camera">*(Camera*)this,nd</ExpandedItem>
+        <ExpandedItem Condition="type == EntityType_ParticleSystem">*(ParticleSystem*)this,nd</ExpandedItem>
+        <ExpandedItem Condition="type == EntityType_GameObject">*(GameObject*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="ArrayView&lt;*&gt;">
+    <DisplayString> size={count} </DisplayString>
+    <Expand>
+        <ArrayItems>
+          <Size>count</Size>
+          <ValuePointer>data</ValuePointer>
+        </ArrayItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>
+
