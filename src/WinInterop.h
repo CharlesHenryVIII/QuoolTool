@@ -31,6 +31,7 @@ enum MessageBoxResponse : i32 {
 
 void ConvertMultibyteToWideChar(std::wstring& out, const std::string& in);
 void ConvertWideCharToMultiByte(std::string& out, const std::wstring& in);
+int Main(int, char**);
 
 struct RunProcessJob : Job
 {

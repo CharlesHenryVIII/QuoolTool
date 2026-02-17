@@ -7,7 +7,8 @@ workspace "ScadaBackup"
     runtime "Debug"
 
 project "ScadaBackup"
-    kind "ConsoleApp"--"WindowedApp"
+    --kind "ConsoleApp"
+    kind "WindowedApp"
     language "C++"
     cppdialect "C++20"
     targetdir "build/%{cfg.platform}/%{cfg.buildcfg}"
@@ -55,6 +56,7 @@ project "ScadaBackup"
         "contrib/ImGui/backends/imgui_impl_opengl3.*",
         "contrib/ImGui/backends/imgui_impl_glfw.*",
         "contrib/json.hpp",
+        "contrib/stb/**",
         "resources/**",
 
         "contrib/glfw/src/internal.h",

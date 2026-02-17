@@ -16,6 +16,7 @@
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
 #endif
+#include "Wininterop.h"
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
@@ -35,7 +36,8 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 // Main code
-int main(void)
+//int main(void)
+int Main(int, char**)
 {
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
@@ -77,6 +79,7 @@ int main(void)
         return 1;
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
+    InitOS(window);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
