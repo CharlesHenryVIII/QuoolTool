@@ -6,8 +6,12 @@
 #include "WinInterop.h"
 #include "WinInterop_File.h"
 #include "Math.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
 //#include "Windows/resource.h"
 #include "Json.hpp"
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include "glfw/glfw3native.h"
 
 //#include "SDL_syswm.h"
 #include <format>
@@ -424,22 +428,24 @@ void RunEncodeJob::RunJob()
     video_group->in_progress = false;
 }
 
-HICON icon;
 HMODULE instMod;
 HWND windowHandle;
 
 void InitOS(GLFWwindow* window)
 {
-    //instMod = GetModuleHandle(NULL);
-    //ASSERT(instMod != NULL);
-    //
-    //SDL_SysWMinfo wminfo = {};
-    //SDL_VERSION(&wminfo.version);
-    //if (SDL_GetWindowWMInfo(window, &wminfo))
-    //    windowHandle = wminfo.info.win.window;
-    //ASSERT(windowHandle);
-    //icon = LoadIcon(instMod, MAKEINTRESOURCE(IDI_ICON1));
-    //ASSERT(icon != NULL);
+    instMod = GetModuleHandle(NULL);
+    ASSERT(instMod != NULL);
+    
+    windowHandle = glfwGetWin32Window(window);
+    ASSERT(windowHandle);
+    GLFWimage images[1] = {};
+    images[0].pixels = stbi_load("assets/QuantumFullSize.png",  &images[0].width, &images[0].height, 0, 4);
+    //images[1].pixels = stbi_load("assets/QuantumIcon.ico",      &images[1].width, &images[1].height, 0, 4);
+    glfwSetWindowIcon(window, arrsize(images), images);
+    for (i32 i = 0; i < arrsize(images); i++)
+    {
+        stbi_image_free(images[i].pixels);
+    }
 }
 
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
@@ -882,3 +888,8 @@ void os_assert(bool expr, const char*, const char*, int)
     ASSERT(expr);
 }
 #endif
+
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
+{
+    return Main(val, &str);
+}
