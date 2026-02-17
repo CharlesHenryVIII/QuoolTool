@@ -11,11 +11,25 @@ REM )
 REM echo premake5.exe --file=premake5.lua vs2015
 REM premake5.exe --file=premake5.lua vs2015
 
-echo GENERATE PROJECT FILES
+set "ROOTTAB=  "
+set BAR===============================
+
+set "PRJFILESTAB="
+echo %BAR%
+echo %ROOTTAB% %PRJFILESTAB% GENERATE PROJECT FILES:
+echo %BAR%
 call GenerateProjectFiles.bat
-echo GENERATE BUILD COMMANDS
+
+set "COMMANDSTAB="
+echo %BAR%
+echo %ROOTTAB% %COMMANDSTAB% GENERATE BUILD COMMANDS:
+echo %BAR%
 call make\premake5.exe ecc
-echo GENERATE EXE
+
+set "COMPILETAB=    "
+echo %BAR%
+echo %ROOTTAB% %COMPILETAB% GENERATE EXE:
+echo %BAR%
 msbuild /t:ScadaBackup /nologo /verbosity:minimal -p:Configuration=Debug ScadaBackup.slnx
 
 
