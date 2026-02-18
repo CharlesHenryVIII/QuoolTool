@@ -43,10 +43,14 @@ struct VideoGroup {
     }
 };
 
+struct SettingsCitect {
+    std::wstring program_data_path;
+    std::wstring program_files_path;
+    std::wstring deployment_path;
+};
+
 struct Settings {
-    std::wstring source_path;
-    std::wstring dest_path;
-    std::wstring mkv_path;
+    SettingsCitect citect = {};
     ThemeColor color = ThemeColor_Grey2;
     ThemeStyle style = ThemeStyle_SimpleRounding;
 };

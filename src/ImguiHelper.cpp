@@ -134,6 +134,7 @@ void Citect()
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     Threading& threading = Threading::GetInstance();
+    SettingsCitect& citect_settings = g_data.settings.citect;
     ImGuiWindowFlags sectionFlags =
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoSavedSettings |
@@ -149,18 +150,12 @@ void Citect()
         TextCentered("File Paths");
         ImGui::NewLine();
 
-        std::wstring source_path = g_data.settings.source_path;
-        if (ImguiPath("Source", "Path to source video files", source_path, true))
-        {
-            if (source_path != g_data.settings.source_path && g_data.video_group.Clear())
-            {
-                g_data.settings.source_path = source_path;
-                WriteSettings(&g_data.settings, g_settings_filename);
-            }
-        }
-        if (ImguiPath("Destination", "Path to destination folder", g_data.settings.dest_path, true))
+
+        if (ImguiPath("Program Data", "C:/ProgramData/AVEVA/Citect SCADA 2018 R2", citect_settings.program_data_path, true))
             WriteSettings(&g_data.settings, g_settings_filename);
-        if (ImguiPath("mkvmerge", "Path to mkvmerge", g_data.settings.mkv_path, false))
+        if (ImguiPath("Program Files", "C:/Program Files/AVEVA/Citect SCADA 208 R2", citect_settings.program_files_path, true))
+            WriteSettings(&g_data.settings, g_settings_filename);
+        if (ImguiPath("Deployment", "%PROGRAMDATA%/AVEVA Plant SCADA/Deployment", citect_settings.deployment_path, true))
             WriteSettings(&g_data.settings, g_settings_filename);
     }
     ImGui::EndChild();
@@ -290,30 +285,30 @@ void Citect()
             }
 
             float height = 40;
-            if (g_data.settings.source_path.size() && ImGui::Button("SCAN", ImVec2(125, height)))
-            {
-                g_data.video_group.video_infos.clear();
-                g_data.video_group.max_tracks = 0;
-                RunUpdateVideoGroupJob* job = new RunUpdateVideoGroupJob();
-                job->mkv_path = g_data.settings.mkv_path;
-                job->source_path = g_data.settings.source_path;
-                job->dest_path = g_data.settings.dest_path;
-                job->video_group = &g_data.video_group;
-                threading.SubmitJob(job);
-            }
-            if (g_data.video_group.video_infos.size())
-            {
-                ImGui::SameLine();
-                if (ImGui::Button("ENCODE", ImVec2(125, height)))
-                {
-                    RunEncodeJob* job = new RunEncodeJob();
-                    job->mkv_path = g_data.settings.mkv_path;
-                    job->source_path = g_data.settings.source_path;
-                    job->dest_path = g_data.settings.dest_path;
-                    job->video_group = &g_data.video_group;
-                    threading.SubmitJob(job);
-                }
-            }
+            //if (g_data.settings.source_path.size() && ImGui::Button("SCAN", ImVec2(125, height)))
+            //{
+            //    g_data.video_group.video_infos.clear();
+            //    g_data.video_group.max_tracks = 0;
+            //    RunUpdateVideoGroupJob* job = new RunUpdateVideoGroupJob();
+            //    job->mkv_path = g_data.settings.mkv_path;
+            //    job->source_path = g_data.settings.source_path;
+            //    job->dest_path = g_data.settings.dest_path;
+            //    job->video_group = &g_data.video_group;
+            //    threading.SubmitJob(job);
+            //}
+            //if (g_data.video_group.video_infos.size())
+            //{
+            //    ImGui::SameLine();
+            //    if (ImGui::Button("ENCODE", ImVec2(125, height)))
+            //    {
+            //        RunEncodeJob* job = new RunEncodeJob();
+            //        job->mkv_path = g_data.settings.mkv_path;
+            //        job->source_path = g_data.settings.source_path;
+            //        job->dest_path = g_data.settings.dest_path;
+            //        job->video_group = &g_data.video_group;
+            //        threading.SubmitJob(job);
+            //    }
+            //}
             if (g_data.video_group.in_progress)
             {
                 ImGui::SameLine();
