@@ -2,23 +2,20 @@ require "ecc/ecc"
 
 workspace "ScadaBackup"
     configurations { "Debug", "Profile", "Release" }
-    platforms { "x64", "x86" }
+    platforms { "x64" }
     staticruntime "On"
     runtime "Debug"
 
 project "ScadaBackup"
-    --kind "ConsoleApp"
     kind "WindowedApp"
     language "C++"
     cppdialect "C++20"
-    targetdir "build/%{cfg.platform}/%{cfg.buildcfg}"
-    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
-
+    targetdir "build/"
     targetname "ScadaBackup_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     editandcontinue "Off"
-    usefullpaths ("On")
+    usefullpaths "On"
     --usestandardpreprocessor 'On'
     --characterset "ASCII"
 

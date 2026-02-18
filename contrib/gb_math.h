@@ -1292,7 +1292,7 @@ template<typename T> inline gbVec2<T> operator-(gbVec2<T> a, T b) { return gb_ve
 template<typename T> inline gbVec2<T> operator*(gbVec2<T> a, T scalar) { return gb_vec2_mul(a, scalar); }
 template<typename T> inline gbVec2<T> operator*(T scalar, gbVec2<T> a) { return operator*(a, scalar); }
 
-template<typename T> inline gbVec2<T> operator/(gbVec2<T> a, T scalar) { gbVec2<T> r = { a.x / scalar, a.x / scalar }; return r; }
+template<typename T> inline gbVec2<T> operator/(gbVec2<T> a, T scalar) { gbVec2<T> r = { a.x / scalar, a.y / scalar }; return r; }
 template<typename T> inline gbVec2<T> operator/(T scalar, gbVec2<T> a) { gbVec2<T> r = { scalar / a.x, scalar / a.y }; return r; }
 
 /* Hadamard Product */

@@ -88,13 +88,32 @@ int Main(int, char**)
 #endif
 
     // Create window with graphics context
+
+    const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    float normalRatio = 16.0f / 9.0f;
+    Vec2I screen_size = { mode->width, mode->height };
+    float displayRatio = float(mode->width) / float(mode->height);
+    Vec2I window_size = {};
+    float screen_scale = 1.5;
+    if (displayRatio < normalRatio)
+    {
+        window_size.x  = i32(float(mode->width) / screen_scale);
+        window_size.y = i32(float(mode->width) / normalRatio);
+    }
+    else
+    {
+        window_size.y = i32(mode->height / screen_scale);
+        window_size.x  = i32(normalRatio * window_size.y);
+    }
+
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
-    Vec2I monitor_pos;
-    Vec2I monitor_size;
-    glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &monitor_pos.x, &monitor_pos.y, &monitor_size.x, &monitor_size.y);
-    GLFWwindow* window = glfwCreateWindow((int)(monitor_size.x * main_scale), (int)(monitor_size.y * main_scale), "SCADA Backup", nullptr, nullptr);
+    //GLFWwindow* window = glfwCreateWindow((int)(monitor_size.x * main_scale), (int)(monitor_size.y * main_scale), "SCADA Backup", nullptr, nullptr);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    GLFWwindow* window = glfwCreateWindow(window_size.x, window_size.y, "SCADA Backup", nullptr, nullptr);
     if (window == nullptr)
         return 1;
+    const Vec2I win_p = (screen_size - window_size) / 2;
+    glfwSetWindowPos(window, win_p.x, win_p.y);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
 
@@ -124,7 +143,6 @@ int Main(int, char**)
 #endif
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    InitOS(window);
     ThemesInit();
     {
         std::ifstream file(g_settings_filename);
@@ -138,9 +156,6 @@ int Main(int, char**)
         }
         else
         {
-            g_data.settings = {
-                .mkv_path = L"C:/Program Files/MKVToolNix/mkvmerge.exe",
-            };
             WriteSettings(&g_data.settings, g_settings_filename);
         }
 
@@ -178,6 +193,7 @@ int Main(int, char**)
     //while (!glfwWindowShouldClose(window))
 #endif
 
+    glfwShowWindow(window);
     bool done = false;
     while (!(done || glfwWindowShouldClose(window)))
     {
