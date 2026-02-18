@@ -129,9 +129,16 @@ bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& o
     return modified;
 }
 
+#include "libarchive/archive.h"
+void CitectZip()
+{
+    archive* a = archive_write_new();
+    i32 test = 1;
+}
 
 void Citect()
 {
+    CitectZip();
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     Threading& threading = Threading::GetInstance();
     SettingsCitect& citect_settings = g_data.settings.citect;
