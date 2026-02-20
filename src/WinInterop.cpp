@@ -912,9 +912,64 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
     return Main(val, &str);
 }
 
-void AddEntryToZip()
+void AddEntryToZip(archive* a, const std::filesystem::path& source, const ScannedFile& f, std::vector<u8>& file_buffer)
 {
+    std::filesystem::path fullpath = source / f.name;
+    struct stat st;
+    if (stat(fullpath.string().c_str(), &st) != 0)
+    {
+        perror("Problem getting information");
+        int r = errno;
+        switch (r)
+        {
+        case ENOENT:
+            DebugPrint("File %s not found.\n", fullpath.string().c_str());
+            break;
+        case EINVAL:
+            DebugPrint("Invalid parameter to _stat.\n");
+            break;
+        default:
+            /* Should never be reached. */
+            DebugPrint("Unexpected error in _stat.\n");
+        }
+        FAIL;
+        return;
+    }
+    archive_entry* entry = archive_entry_new();
+    if (f.dir)
+    {
 
+        std::vector<ScannedFile> out;
+        ScanDirectoryForFileNames(fullpath, out, ScanDirectoryFlags_IncludeDirs);
+    }
+    else
+    {
+        archive_entry_set_pathname(entry, fullpath.filename().string().c_str());
+        archive_entry_set_filetype(entry, AE_IFREG);
+        archive_entry_copy_stat(entry, &st);
+        archive_write_header(a, entry);
+        //archive_entry_set_size(entry, st.st_size);
+        //archive_entry_set_perm(entry, 0644);
+
+        {
+            std::ifstream file(fullpath, std::ios::binary | std::ios::ate);
+            if (!file)
+            {
+                DebugPrint("Error opening file: %s", fullpath.string().c_str());
+                FAIL;
+                return;
+            }
+            const size_t file_size = file.tellg();
+            if (file_size > file_buffer.size())
+                file_buffer.resize(file_size * 2);
+            file.seekg(0, std::ios::beg);
+            file.read((char*)file_buffer.data(), file_size);
+
+            archive_write_data(a, file_buffer.data(), file_size);
+
+        }
+        archive_entry_free(entry);
+    }
 }
 
 void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup/*, ArrayView<std::wstring> ext_to_exclude*/)
@@ -937,67 +992,12 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
     std::filesystem::path zip_filename = std::filesystem::path(zip_pathw) / L"Backup.zip";
     archive_write_open_filename(a, zip_filename.string().c_str());
 
-    struct stat st;
     std::vector<u8> file_buffer;
     //file_buffer.reserve(64*1000*1000);
+    std::filesystem::path source = source_folder;
     for (i32 i = 0; i < files_to_backup.size(); i++)
     {
-        ScannedFile& f = files_to_backup[i];
-        std::filesystem::path fullpath = std::filesystem::path(source_folder) / f.name;
-        if (stat(fullpath.string().c_str(), &st) != 0)
-        {
-            perror("Problem getting information");
-            int r = errno;
-            switch (r)
-            {
-            case ENOENT:
-                DebugPrint("File %s not found.\n", fullpath.string().c_str());
-                break;
-            case EINVAL:
-                DebugPrint("Invalid parameter to _stat.\n");
-                break;
-            default:
-                /* Should never be reached. */
-                DebugPrint("Unexpected error in _stat.\n");
-            }
-            FAIL;
-            continue;
-        }
-        archive_entry* entry = archive_entry_new();
-        if (f.dir)
-        {
-
-            std::vector<ScannedFile> out;
-            ScanDirectoryForFileNames(fullpath, out, ScanDirectoryFlags_IncludeDirs);
-        }
-        else
-        {
-            archive_entry_set_pathname(entry, fullpath.filename().string().c_str());
-            archive_entry_set_filetype(entry, AE_IFREG);
-            archive_entry_copy_stat(entry, &st);
-            archive_write_header(a, entry);
-            //archive_entry_set_size(entry, st.st_size);
-            //archive_entry_set_perm(entry, 0644);
-
-            {
-                std::ifstream file(fullpath, std::ios::binary | std::ios::ate);
-                if (!file)
-                {
-                    DebugPrint("Error opening file: %s", fullpath.string().c_str());
-                    FAIL;
-                    continue;
-                }
-                const size_t file_size = file.tellg();
-                if (file_size > file_buffer.size())
-                    file_buffer.resize(file_size * 2);
-                file.seekg(0, std::ios::beg);
-                file.read((char*)file_buffer.data(), file_size);
-
-                archive_write_data(a, file_buffer.data(), file_size);
-
-            }
-            archive_entry_free(entry);
-        }
+        AddEntryToZip(a, source, files_to_backup[i], file_buffer);
     }
     int r = archive_write_close(a);
     if (r != 0)
