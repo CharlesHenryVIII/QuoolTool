@@ -6,6 +6,7 @@
 #include "WinInterop.h"
 #include "WinInterop_File.h"
 #include "Math.h"
+#include "String.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 //#include "Windows/resource.h"
@@ -15,7 +16,10 @@
 
 //#include "SDL_syswm.h"
 #include <format>
+#include <fstream>
 
+#include "archive.h"
+#include "archive_entry.h"
 
 void DebugPrint(const char* fmt, ...)
 {
@@ -247,124 +251,124 @@ void AppendProperty(std::string& out, const nlohmann::json& json, const char* pr
 
 void RunUpdateVideoGroupJob::RunJob()
 {
-    VALIDATE(video_group);
-    std::vector<std::wstring> filenames;
-    ScanDirectoryForFileNames(source_path, filenames, false);
-    if (!filenames.size())
-        return;
+    //VALIDATE(video_group);
+    //std::vector<std::wstring> filenames;
+    //ScanDirectoryForFileNames(source_path, filenames, false);
+    //if (!filenames.size())
+    //    return;
 
-    //NOTE(CSH): Windows in thier infinite wisdom does some sort of random sort SOMETIMES so we must always sort
-    QuickSort((u8*)filenames.data(), (i32)filenames.size(), sizeof(filenames[0]), QuickSortFilenameComparisonFunction);
+    ////NOTE(CSH): Windows in thier infinite wisdom does some sort of random sort SOMETIMES so we must always sort
+    //QuickSort((u8*)filenames.data(), (i32)filenames.size(), sizeof(filenames[0]), QuickSortFilenameComparisonFunction);
 
-    std::lock_guard<std::mutex> lock(video_group->thread_lock);
-    std::string json_string;
-    for (size_t i = 0; i < filenames.size() && !video_group->stop; i++)
-    {
-        bool found_valid_ext = false;
-        for (i32 j = 0; j < arrsize(valid_file_exts); j++)
-        {
-            if (filenames[i].find(valid_file_exts[j]) != std::wstring::npos)
-            {
-                found_valid_ext = true;
-                break;
-            }
-        }
-        if (!found_valid_ext)
-            continue;
-        json_string.clear();
-        //std::wstring full_path = source_path + filenames[i].c_str();
-        //std::wstring args = ToString(L"-J \"%s\"", full_path.c_str());
-        //std::wstring full = mkv_path + L" " + args;
-        std::wstring full = std::format(L"{} -J \"{}{}\"", mkv_path.c_str(), source_path.c_str(), filenames[i].c_str());
+    //std::lock_guard<std::mutex> lock(video_group->thread_lock);
+    //std::string json_string;
+    //for (size_t i = 0; i < filenames.size() && !video_group->stop; i++)
+    //{
+    //    bool found_valid_ext = false;
+    //    for (i32 j = 0; j < arrsize(valid_file_exts); j++)
+    //    {
+    //        if (filenames[i].find(valid_file_exts[j]) != std::wstring::npos)
+    //        {
+    //            found_valid_ext = true;
+    //            break;
+    //        }
+    //    }
+    //    if (!found_valid_ext)
+    //        continue;
+    //    json_string.clear();
+    //    //std::wstring full_path = source_path + filenames[i].c_str();
+    //    //std::wstring args = ToString(L"-J \"%s\"", full_path.c_str());
+    //    //std::wstring full = mkv_path + L" " + args;
+    //    std::wstring full = std::format(L"{} -J \"{}{}\"", mkv_path.c_str(), source_path.c_str(), filenames[i].c_str());
 
-        i32 r = RunProcess(json_string, nullptr, full.c_str());
-        nlohmann::json data;
-        if (r)
-        {
-            data = nlohmann::json::parse(json_string);
-        }
-        if (r && !data["errors"].size())
-        {
-            nlohmann::json data = nlohmann::json::parse(json_string);
-            video_group->video_infos.push_back({});
-            VideoInfo* video_info = &video_group->video_infos[video_group->video_infos.size() - 1];
-            video_info->name = filenames[i];
-            if (data.contains("tracks"))
-            {
-                ASSERT(data["tracks"].is_array());
-                const auto& tracks = data["tracks"];
-                video_group->max_tracks = Max((i32)tracks.size(), video_group->max_tracks);
-                bool already_have_video = false;
-                bool already_have_audio = false;
-                bool already_have_sub = false;
-                for (size_t t = 0; t < tracks.size(); t++)
-                {
-                    video_info->tracks.push_back({});
-                    Track* track = &video_info->tracks[video_info->tracks.size() - 1];
-                    const auto& jt = tracks[t];
-                    if (jt["id"] != t)
-                    {
-                        FAIL;
-                    }
-                    if (!jt.contains("type") || !jt.contains("properties") || !jt.contains("id"))
-                        continue;
-                    const auto& type = jt["type"];
-                    const auto& props = jt["properties"];
-                    track->type = type;
-                    track->id = jt["id"];
-                    if (type == "video")
-                    {
-                        AppendProperty<std::string>(track->details, props, "codec");
-                        AppendProperty<std::string>(track->details, props, "display_dimensions");
-                        if (!already_have_video)
-                        {
-                            track->encode = true;
-                            already_have_video = true;
-                        }
-                    }
-                    else if (type == "audio")
-                    {
-                        track->type = type;
-                        AppendProperty<std::string> (track->details, props, "language");
-                        AppendProperty<int>         (track->details, props, "audio_channels");
-                        AppendProperty<std::string> (track->details, props, "codec");
+    //    i32 r = RunProcess(json_string, nullptr, full.c_str());
+    //    nlohmann::json data;
+    //    if (r)
+    //    {
+    //        data = nlohmann::json::parse(json_string);
+    //    }
+    //    if (r && !data["errors"].size())
+    //    {
+    //        nlohmann::json data = nlohmann::json::parse(json_string);
+    //        video_group->video_infos.push_back({});
+    //        VideoInfo* video_info = &video_group->video_infos[video_group->video_infos.size() - 1];
+    //        video_info->name = filenames[i];
+    //        if (data.contains("tracks"))
+    //        {
+    //            ASSERT(data["tracks"].is_array());
+    //            const auto& tracks = data["tracks"];
+    //            video_group->max_tracks = Max((i32)tracks.size(), video_group->max_tracks);
+    //            bool already_have_video = false;
+    //            bool already_have_audio = false;
+    //            bool already_have_sub = false;
+    //            for (size_t t = 0; t < tracks.size(); t++)
+    //            {
+    //                video_info->tracks.push_back({});
+    //                Track* track = &video_info->tracks[video_info->tracks.size() - 1];
+    //                const auto& jt = tracks[t];
+    //                if (jt["id"] != t)
+    //                {
+    //                    FAIL;
+    //                }
+    //                if (!jt.contains("type") || !jt.contains("properties") || !jt.contains("id"))
+    //                    continue;
+    //                const auto& type = jt["type"];
+    //                const auto& props = jt["properties"];
+    //                track->type = type;
+    //                track->id = jt["id"];
+    //                if (type == "video")
+    //                {
+    //                    AppendProperty<std::string>(track->details, props, "codec");
+    //                    AppendProperty<std::string>(track->details, props, "display_dimensions");
+    //                    if (!already_have_video)
+    //                    {
+    //                        track->encode = true;
+    //                        already_have_video = true;
+    //                    }
+    //                }
+    //                else if (type == "audio")
+    //                {
+    //                    track->type = type;
+    //                    AppendProperty<std::string> (track->details, props, "language");
+    //                    AppendProperty<int>         (track->details, props, "audio_channels");
+    //                    AppendProperty<std::string> (track->details, props, "codec");
 
-                        if (!already_have_audio)
-                        {
-                            track->encode = true;
-                            already_have_audio = true;
-                        }
-                    }
+    //                    if (!already_have_audio)
+    //                    {
+    //                        track->encode = true;
+    //                        already_have_audio = true;
+    //                    }
+    //                }
 
-                    else if (type == "subtitles")
-                    {
-                        track->type = "sub";
-                        AppendProperty<std::string>(track->details, props, "language");
-                        AppendProperty<std::string>(track->details, props, "track_name");
-                        AppendProperty<std::string>(track->details, props, "codec_id");
+    //                else if (type == "subtitles")
+    //                {
+    //                    track->type = "sub";
+    //                    AppendProperty<std::string>(track->details, props, "language");
+    //                    AppendProperty<std::string>(track->details, props, "track_name");
+    //                    AppendProperty<std::string>(track->details, props, "codec_id");
 
-                        if (!already_have_sub)
-                        {
-                            track->encode = true;
-                            already_have_sub = true;
-                        }
-                    }
-                }
-            }
-        }
-        else
-        {
-            video_group->video_infos.push_back({});
-            VideoInfo* video_info = &video_group->video_infos[video_group->video_infos.size() - 1];
-            video_group->max_tracks = Max(1, video_group->max_tracks);
-            std::string error = "unknown";
-            if (data["errors"].size())
-                error = data["errors"][0];
-            std::wstring werror;
-            ConvertMultibyteToWideChar(werror, error);
-            video_info->name = std::format(L"FAILED {}: {}", i + 1, werror);
-        }
-    }
+    //                    if (!already_have_sub)
+    //                    {
+    //                        track->encode = true;
+    //                        already_have_sub = true;
+    //                    }
+    //                }
+    //            }
+    //        }
+    //    }
+    //    else
+    //    {
+    //        video_group->video_infos.push_back({});
+    //        VideoInfo* video_info = &video_group->video_infos[video_group->video_infos.size() - 1];
+    //        video_group->max_tracks = Max(1, video_group->max_tracks);
+    //        std::string error = "unknown";
+    //        if (data["errors"].size())
+    //            error = data["errors"][0];
+    //        std::wstring werror;
+    //        ConvertMultibyteToWideChar(werror, error);
+    //        video_info->name = std::format(L"FAILED {}: {}", i + 1, werror);
+    //    }
+    //}
 }
 
 void RunEncodeJob::RunJob()
@@ -573,7 +577,7 @@ void NotifyWindowBuildFinished()
 }
 
 //TODO(CSH): Create filepath helper functions
-void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& dir, std::vector<std::wstring>& out, const bool recursive)
+void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& dir, std::vector<ScannedFile>& out, ScanDirectoryFlags flags)
 {
     std::wstring d = root;
     if (d.size() < 2)
@@ -611,24 +615,35 @@ void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& di
     }
     while (handle != INVALID_HANDLE_VALUE)
     {
-        if (recursive && find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && find_data.cFileName[0] != '.')
+        if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && find_data.cFileName[0] != '.')
         {
-            std::wstring new_root = d;
-            new_root.pop_back();
-            new_root += find_data.cFileName;
-            std::wstring new_dir = dir;
-            if (dir.size())
-                new_dir = new_dir + L"/" + find_data.cFileName;
-            else
-                new_dir += find_data.cFileName;
-            _ScanDirectoryForFileNames(new_root, new_dir, out, recursive);
+            if (flags & ScanDirectoryFlags_IncludeDirs)
+            {
+                if (dir.size())
+                    out.push_back({ dir + L"/" + find_data.cFileName, true });
+                else
+                    out.push_back({ find_data.cFileName, true });
+            }
+
+            if (flags & ScanDirectoryFlags_Recursive)
+            {
+                std::wstring new_root = d;
+                new_root.pop_back();
+                new_root += find_data.cFileName;
+                std::wstring new_dir = dir;
+                if (dir.size())
+                    new_dir = new_dir + L"/" + find_data.cFileName;
+                else
+                    new_dir += find_data.cFileName;
+                _ScanDirectoryForFileNames(new_root, new_dir, out, flags);
+            }
         }
         else if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
         {
-            if (dir.size())
-                out.push_back(dir + L"/" + find_data.cFileName);
-            else
-                out.push_back(find_data.cFileName);
+                if (dir.size())
+                    out.push_back({ dir + L"/" + find_data.cFileName, false });
+                else
+                    out.push_back({ find_data.cFileName, false });
         }
         if (FindNextFileW(handle, &find_data) == 0)
         {
@@ -638,10 +653,10 @@ void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& di
     }
 }
 
-void ScanDirectoryForFileNames(const std::wstring& dir, std::vector<std::wstring>& out, const bool recursive)
+void ScanDirectoryForFileNames(const std::wstring& dir, std::vector<ScannedFile>& out, ScanDirectoryFlags flags)
 {
     out.clear();
-    _ScanDirectoryForFileNames(dir, L"", out, recursive);
+    _ScanDirectoryForFileNames(dir, L"", out, flags);
 }
 
 #include "shlobj_core.h"
@@ -892,4 +907,91 @@ void os_assert(bool expr, const char*, const char*, int)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
 {
     return Main(val, &str);
+}
+
+void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup/*, ArrayView<std::wstring> ext_to_exclude*/)
+{
+    if (zip_pathw.size() < 3)
+    {
+        return;
+    }
+    archive* a = archive_write_new();
+    archive_write_set_format_zip(a);
+    archive_write_zip_set_compression_deflate(a);
+    std::string zip_path;
+    ConvertWideCharToMultiByte(zip_path, zip_pathw);
+    archive_write_open_filename(a, zip_path.c_str());
+
+    struct stat st;
+    for (i32 i = 0; i < files_to_backup.size(); i++)
+    {
+        ScannedFile& f = files_to_backup[i];
+        const std::wstring& filename_and_extw = f.name;
+        std::string filename_and_ext;
+        ConvertWideCharToMultiByte(filename_and_ext, filename_and_extw);
+        const std::wstring  fullpathw = PathConcat(source_folder, filename_and_extw);
+        std::string fullpath;
+        ConvertWideCharToMultiByte(fullpath, fullpathw);
+        if (stat(fullpath.c_str(), &st) != 0)
+        {
+            perror("Problem getting information");
+            int r = errno;
+            switch (r)
+            {
+            case ENOENT:
+                DebugPrint("File %s not found.\n", fullpath);
+                break;
+            case EINVAL:
+                DebugPrint("Invalid parameter to _stat.\n");
+                break;
+            default:
+                /* Should never be reached. */
+                DebugPrint("Unexpected error in _stat.\n");
+            }
+            FAIL;
+            continue;
+        }
+        archive_entry* entry = archive_entry_new();
+        if (f.dir)
+        {
+
+            std::vector<ScannedFile> out;
+            //ScanDirectoryForFileNames(f.name, out, ScanDirectoryFlags_IncludeDirs);
+        }
+        else
+        {
+            std::wstring wname = PathGetFilenameWithExtension(fullpathw);
+            std::string name;
+            ConvertWideCharToMultiByte(name, wname);
+            archive_entry_set_pathname(entry, filename_and_ext.c_str());
+            archive_entry_set_filetype(entry, AE_IFREG);
+            archive_entry_copy_stat(entry, &st);
+            //archive_entry_set_size(entry, st.st_size);
+            //archive_entry_set_perm(entry, 0644);
+            archive_write_header(a, entry);
+
+            {
+                File file(f.name, FileMode::FileMode_Read, false);
+                if (!file.m_handleIsValid)
+                {
+                    DebugPrint("Error opening file: %s", fullpath.c_str());
+                    FAIL;
+                    continue;
+                }
+
+                file.GetData();
+                if (!file.m_binaryDataIsValid)
+                {
+                    DebugPrint("Error getting binary data of file: %s", fullpath.c_str());
+                    FAIL;
+                    continue;
+                }
+
+                archive_write_data(a, file.m_dataBinary.data(), file.m_dataBinary.size());
+            }
+            archive_entry_free(entry);
+        }
+    }
+    archive_write_close(a);
+    archive_write_free(a);
 }

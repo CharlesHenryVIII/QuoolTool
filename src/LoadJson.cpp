@@ -37,8 +37,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Mat3I,  x, y, z   );
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Mat4I,  x, y, z, w);
 
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SettingsCitect, program_data_path, program_files_path, deployment_path)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Settings, citect, color, style)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SettingsCitect, project_path, program_files_path)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Settings, citect, backup_path, color, style)
 
 template <typename T>
 void WriteJson(const T* s, const std::wstring& filename)
