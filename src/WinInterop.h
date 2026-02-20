@@ -19,7 +19,17 @@ static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text);
 void NotifyWindowBuildFinished();
-void ScanDirectoryForFileNames(const std::wstring& dir, std::vector<std::wstring>& out, const bool recursive);
+enum ScanDirectoryFlags : u32 {
+    ScanDirectoryFlags_None = 0,
+    ScanDirectoryFlags_Recursive = BIT(0),
+    ScanDirectoryFlags_IncludeDirs = BIT(1),
+    ScanDirectoryFlags_All,
+};
+struct ScannedFile {
+    std::wstring name;
+    bool dir;
+};
+void ScanDirectoryForFileNames(const std::wstring& dir, std::vector<ScannedFile>& out, ScanDirectoryFlags flags);
 bool GetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir);
 enum MessageBoxResponse : i32 {
     MessageBoxResponse_Invalid,
@@ -32,6 +42,7 @@ enum MessageBoxResponse : i32 {
 void ConvertMultibyteToWideChar(std::wstring& out, const std::string& in);
 void ConvertWideCharToMultiByte(std::string& out, const std::wstring& in);
 int Main(int, char**);
+void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup);
 
 struct RunProcessJob : Job
 {
