@@ -26,20 +26,36 @@ project "ScadaBackup"
 
     links {
         "OpenGL32",
-        "archive_static",
+        "archive",
         --"zlibstatic",
         --"bz2",
         --"lzma",
         --"Crypt32",
         --"Ws2_32",
+        --"bcrypt",
+
+
+        --"archive",
+        "zlib",
+        "lzma",
+        "bz2",
+        "zstd",
+        "lz4",
+        "libcrypto",
+        "libssl",
+        "xmllite",
         "bcrypt",
+        "crypt32",
+        "ws2_32",
+        "advapi32",
     }
 
     libdirs {
         "contrib/SDL2/lib/%{cfg.platform}/",
         "contrib/ImGui",
         "contrib/tracy",
-        "contrib/libarchive/",
+        --"contrib/libarchive/",
+        "C:/Projects/vcpkg/installed/x64-windows-static/lib"
     }
 
     includedirs {
@@ -48,12 +64,13 @@ project "ScadaBackup"
         "contrib/SDL2/include",
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
-        "contrib/libarchive/",
+        --"contrib/libarchive/",
+        "C:/Projects/vcpkg/installed/x64-windows-static/include",
     }
     fatalwarnings { "All" }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
-        "LIBARCHIVE_STATIC",
+        --"LIBARCHIVE_STATIC",
         "NODEFAULTLIB",
     }
     files {
@@ -65,7 +82,7 @@ project "ScadaBackup"
         "contrib/ImGui/backends/imgui_impl_glfw.*",
         "contrib/json.hpp",
         "contrib/stb/**",
-        "contrib/libarchive/*.h",
+        --"contrib/libarchive/*.h",
         "resources/**",
 
         "contrib/glfw/src/internal.h",

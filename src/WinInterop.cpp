@@ -14,7 +14,7 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "glfw/glfw3native.h"
 
-#include <ifstream>
+#include <fstream>
 #include <filesystem>
 
 //#include "SDL_syswm.h"
@@ -912,6 +912,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
     return Main(val, &str);
 }
 
+void AddEntryToZip()
+{
+
+}
+
 void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup/*, ArrayView<std::wstring> ext_to_exclude*/)
 {
     if (zip_pathw.size() < 3)
@@ -920,31 +925,33 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
     }
     archive* a = archive_write_new();
     archive_write_set_format_zip(a);
-    archive_write_zip_set_compression_deflate(a);
-    std::string zip_path;
-    ConvertWideCharToMultiByte(zip_path, zip_pathw);
-    archive_write_open_filename(a, zip_path.c_str());
+    int rr = archive_write_zip_set_compression_deflate(a);
+    rr = archive_write_set_options(a, "compression-level=9");
+    rr = archive_write_set_options(a, "zip:experimental");
+    if (rr != ARCHIVE_OK)
+    {
+        const char* error_rr_string = archive_error_string(a);
+        DebugPrint("failed to set zip compression: %s", error_rr_string);
+        FAIL;
+    }
+    std::filesystem::path zip_filename = std::filesystem::path(zip_pathw) / L"Backup.zip";
+    archive_write_open_filename(a, zip_filename.string().c_str());
 
     struct stat st;
     std::vector<u8> file_buffer;
-    file_buffer.reserve(64*1000*1000);
+    //file_buffer.reserve(64*1000*1000);
     for (i32 i = 0; i < files_to_backup.size(); i++)
     {
         ScannedFile& f = files_to_backup[i];
-        const std::wstring& filename_and_extw = f.name;
-        std::string filename_and_ext;
-        ConvertWideCharToMultiByte(filename_and_ext, filename_and_extw);
-        const std::wstring  fullpathw = PathConcat(source_folder, filename_and_extw);
-        std::string fullpath;
-        ConvertWideCharToMultiByte(fullpath, fullpathw);
-        if (stat(fullpath.c_str(), &st) != 0)
+        std::filesystem::path fullpath = std::filesystem::path(source_folder) / f.name;
+        if (stat(fullpath.string().c_str(), &st) != 0)
         {
             perror("Problem getting information");
             int r = errno;
             switch (r)
             {
             case ENOENT:
-                DebugPrint("File %s not found.\n", fullpath);
+                DebugPrint("File %s not found.\n", fullpath.string().c_str());
                 break;
             case EINVAL:
                 DebugPrint("Invalid parameter to _stat.\n");
@@ -961,61 +968,42 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
         {
 
             std::vector<ScannedFile> out;
-            //ScanDirectoryForFileNames(f.name, out, ScanDirectoryFlags_IncludeDirs);
+            ScanDirectoryForFileNames(fullpath, out, ScanDirectoryFlags_IncludeDirs);
         }
         else
         {
-            std::wstring wname = PathGetFilenameWithExtension(fullpathw);
-            std::string name;
-            ConvertWideCharToMultiByte(name, wname);
-            archive_entry_set_pathname(entry, filename_and_ext.c_str());
+            archive_entry_set_pathname(entry, fullpath.filename().string().c_str());
             archive_entry_set_filetype(entry, AE_IFREG);
             archive_entry_copy_stat(entry, &st);
+            archive_write_header(a, entry);
             //archive_entry_set_size(entry, st.st_size);
             //archive_entry_set_perm(entry, 0644);
-            archive_write_header(a, entry);
 
             {
-#if 1
-                std::filesystem::path path = fullpathw;
-                std::ifstream file(path, std::ios::binary | std::ios::binary);
+                std::ifstream file(fullpath, std::ios::binary | std::ios::ate);
                 if (!file)
                 {
-                    DebugPrint("Error opening file: %s", fullpath.c_str());
+                    DebugPrint("Error opening file: %s", fullpath.string().c_str());
                     FAIL;
                     continue;
                 }
                 const size_t file_size = file.tellg();
-                buffer.reserve(file_size);
+                if (file_size > file_buffer.size())
+                    file_buffer.resize(file_size * 2);
                 file.seekg(0, std::ios::beg);
-                file_bufer.clear();
-                file.read(file_buffer.data(), file_buffer.size());
-                FAIL;//do I need to reserve or resize?
-                archive_write_data(a, file_buffer.data(), file_buffer.size());
+                file.read((char*)file_buffer.data(), file_size);
 
-#else
-                File file(f.name, FileMode::FileMode_Read, false);
-                if (!file.m_handleIsValid)
-                {
-                    DebugPrint("Error opening file: %s", fullpath.c_str());
-                    FAIL;
-                    continue;
-                }
-
-                file.GetData();
-                if (!file.m_binaryDataIsValid)
-                {
-                    DebugPrint("Error getting binary data of file: %s", fullpath.c_str());
-                    FAIL;
-                    continue;
-                }
-                archive_write_data(a, file.m_dataBinary.data(), file.m_dataBinary.size());
-#endif
+                archive_write_data(a, file_buffer.data(), file_size);
 
             }
             archive_entry_free(entry);
         }
     }
-    archive_write_close(a);
+    int r = archive_write_close(a);
+    if (r != 0)
+    {
+        DebugPrint("Error closing archive: %s", zip_filename.string().c_str());
+        FAIL;
+    }
     archive_write_free(a);
 }
