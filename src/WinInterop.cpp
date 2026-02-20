@@ -14,6 +14,9 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "glfw/glfw3native.h"
 
+#include <ifstream>
+#include <filesystem>
+
 //#include "SDL_syswm.h"
 #include <format>
 #include <fstream>
@@ -439,7 +442,7 @@ void InitOS(GLFWwindow* window)
 {
     instMod = GetModuleHandle(NULL);
     ASSERT(instMod != NULL);
-    
+
     windowHandle = glfwGetWin32Window(window);
     ASSERT(windowHandle);
     GLFWimage images[1] = {};
@@ -923,6 +926,8 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
     archive_write_open_filename(a, zip_path.c_str());
 
     struct stat st;
+    std::vector<u8> file_buffer;
+    file_buffer.reserve(64*1000*1000);
     for (i32 i = 0; i < files_to_backup.size(); i++)
     {
         ScannedFile& f = files_to_backup[i];
@@ -971,6 +976,24 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
             archive_write_header(a, entry);
 
             {
+#if 1
+                std::filesystem::path path = fullpathw;
+                std::ifstream file(path, std::ios::binary | std::ios::binary);
+                if (!file)
+                {
+                    DebugPrint("Error opening file: %s", fullpath.c_str());
+                    FAIL;
+                    continue;
+                }
+                const size_t file_size = file.tellg();
+                buffer.reserve(file_size);
+                file.seekg(0, std::ios::beg);
+                file_bufer.clear();
+                file.read(file_buffer.data(), file_buffer.size());
+                FAIL;//do I need to reserve or resize?
+                archive_write_data(a, file_buffer.data(), file_buffer.size());
+
+#else
                 File file(f.name, FileMode::FileMode_Read, false);
                 if (!file.m_handleIsValid)
                 {
@@ -986,8 +1009,9 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
                     FAIL;
                     continue;
                 }
-
                 archive_write_data(a, file.m_dataBinary.data(), file.m_dataBinary.size());
+#endif
+
             }
             archive_entry_free(entry);
         }
