@@ -24,9 +24,12 @@ project "ScadaBackup"
     enablepch "Off"
     fatalwarnings { "All" }
 
+    dependson { "libarchive" }
+
     links {
         "OpenGL32",
-        "archive",
+        "libarchive"
+        --"archive",
         --"zlibstatic",
         --"bz2",
         --"lzma",
@@ -36,18 +39,18 @@ project "ScadaBackup"
 
 
         --"archive",
-        "zlib",
-        "lzma",
-        "bz2",
-        "zstd",
-        "lz4",
-        "libcrypto",
-        "libssl",
-        "xmllite",
-        "bcrypt",
-        "crypt32",
-        "ws2_32",
-        "advapi32",
+        --"zlib",
+        --"lzma",
+        --"bz2",
+        --"zstd",
+        --"lz4",
+        --"libcrypto",
+        --"libssl",
+        --"xmllite",
+        --"bcrypt",
+        --"crypt32",
+        --"ws2_32",
+        --"advapi32",
     }
 
     libdirs {
@@ -55,7 +58,7 @@ project "ScadaBackup"
         "contrib/ImGui",
         "contrib/tracy",
         --"contrib/libarchive/",
-        "C:/Projects/vcpkg/installed/x64-windows-static/lib"
+        --"C:/Projects/vcpkg/installed/x64-windows-static/lib"
     }
 
     includedirs {
@@ -65,7 +68,7 @@ project "ScadaBackup"
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
         --"contrib/libarchive/",
-        "C:/Projects/vcpkg/installed/x64-windows-static/include",
+        --"C:/Projects/vcpkg/installed/x64-windows-static/include",
     }
     fatalwarnings { "All" }
     defines {
@@ -153,3 +156,116 @@ project "ScadaBackup"
 
     filter "files:**.natvis"
         buildaction "Natvis"
+
+
+project "libarchive"
+    kind "StaticLib"
+    language "C"
+    staticruntime "On"
+    --cdialect "C99"
+    targetdir "build/"
+    targetname "libarchive_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
+    editandcontinue "Off"
+    usefullpaths "On"
+
+    multiprocessorcompile "On"
+    enablepch "Off"
+    --fatalwarnings { "None" }
+
+    links {
+        "archive",
+        "zlib",
+        "lzma",
+        "bz2",
+        "zstd",
+        "lz4",
+        "libcrypto",
+        "libssl",
+        "xmllite",
+        "bcrypt",
+        "crypt32",
+        "ws2_32",
+        "advapi32",
+    }
+
+    --warnings ("Default");
+    warnings ("Off");
+
+    libdirs {
+        "contrib/libarchive/contrib/**",
+    }
+
+    includedirs {
+        --"contrib/libarchive/contrib/**",
+        --"contrib/libarchive/libarchive/**",
+        "contrib/libarchive",
+        "contrib/libarchive/libarchive",
+    }
+    defines {
+        --"_CRT_SECURE_NO_WARNINGS",
+        "LIBARCHIVE_STATIC",
+        "LIB_DLL",
+        "USE_BZIP2_DLL",
+        "HAVE_CONFIG_H",
+        "_CRT_SECURE_NO_DEPRECATE",
+        "ARCHIVE_STATIC",
+        --"PLATFORM_CONFIG_H=<contrib/libarchive/libarchive/config.h>"
+        "PLATFORM_CONFIG_H=<config.h>",
+        --"NODEFAULTLIB",
+        "__LIBARCHIVE_BUILD",
+    }
+    files {
+        "contrib/libarchive/libarchive/**",
+        "contrib/libarchive/libarchive/config.h",
+    }
+    removefiles {
+        "contrib/libarchive/contrib/**",
+        "contrib/libarchive/libarchive/*_posix.c",
+        "contrib/libarchive/libarchive/filter_fork_posix.c",
+
+        "**/*_posix.c",
+        "**/*_darwin.c",
+        "**/*_freebsd.c",
+        "**/*_linux.c",
+        "**/*_sunos.c",
+    }
+
+    filter "system:Windows"
+        system "windows"
+        defines { "WIN32" }
+
+
+    filter "system:Unix"
+        system "linux"
+        defines { "LINUX", }
+
+
+    filter "configurations:Debug"
+        defines { "_DEBUG" , "TRACY_ENABLE", "NOMINMAX" }
+        editandcontinue "off"
+        symbols  "Full"
+        optimize "Off"
+
+    filter "configurations:Profile"
+        defines { "NDEBUG" , "TRACY_ENABLE", "NOMINMAX" }
+        editandcontinue "off"
+        runtime "Release"
+        symbols  "Full"
+        --floatingpoint "fast"
+        optimize "Speed"
+
+    filter "configurations:Release"
+        defines { "NDEBUG", "NOMINMAX" }
+        editandcontinue "off"
+        runtime "Release"
+        symbols  "Full"
+        --floatingpoint "fast"
+        optimize "Speed"
+
+    filter("files:**.hlsl")
+        excludefrombuild "On"
+
+    filter "files:**.natvis"
+        buildaction "Natvis"
+
