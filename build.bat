@@ -30,7 +30,12 @@ set "COMPILETAB=    "
 echo %BAR%
 echo %ROOTTAB% %COMPILETAB% GENERATE EXE:
 echo %BAR%
-msbuild /t:ScadaBackup /nologo /verbosity:minimal -p:Configuration=Debug ScadaBackup.slnx
+
+if not exist "ScadaBackup.slnx" (
+    msbuild /t:ScadaBackup /nologo /verbosity:minimal -p:Configuration=Debug ScadaBackup.sln
+) else (
+    msbuild /t:ScadaBackup /nologo /verbosity:minimal -p:Configuration=Debug ScadaBackup.slnx
+)
 
 
 popd
