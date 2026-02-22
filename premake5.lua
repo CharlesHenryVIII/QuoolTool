@@ -201,6 +201,7 @@ project "libarchive"
         --"contrib/libarchive/libarchive/**",
         "contrib/libarchive",
         "contrib/libarchive/libarchive",
+        "contrib/libarchive/contrib",
     }
     defines {
         --"_CRT_SECURE_NO_WARNINGS",
