@@ -21,8 +21,8 @@
 #include <format>
 #include <fstream>
 
-#include "archive.h"
-#include "archive_entry.h"
+#include "libarchive/libarchive/archive.h"
+#include "libarchive/libarchive/archive_entry.h"
 
 void DebugPrint(const char* fmt, ...)
 {
