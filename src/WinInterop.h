@@ -41,6 +41,9 @@ enum MessageBoxResponse : i32 {
 
 void ConvertMultibyteToWideChar(std::wstring& out, const std::string& in);
 void ConvertWideCharToMultiByte(std::string& out, const std::wstring& in);
+void ExpandEnvironemntVariable(std::wstring& out, const std::wstring& in);
+void ToLower(std::wstring& s);
+void ToLower(std::string& s);
 int Main(int, char**);
 void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup);
 ImFont* LoadFontForImgui(int resource_id, float fontSize);

@@ -21,7 +21,7 @@ struct InlineString
 
     template <typename T = char>
     ArrayView<T> ToArrayView() { return CreateArrayView(s, max_len); };
-    StringView      ToStringView()  { return ToArrayView(); };
+    StringView   ToStringView()  { return ToArrayView(); };
 };
 
 std::vector<i32> TextToIntArray(const char* text, const char lineEnd);

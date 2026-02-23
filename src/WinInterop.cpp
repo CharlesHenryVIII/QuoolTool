@@ -16,8 +16,7 @@
 
 #include <fstream>
 #include <filesystem>
-
-//#include "SDL_syswm.h"
+#include <cwctype>
 #include <format>
 #include <fstream>
 
@@ -775,6 +774,32 @@ void ConvertWideCharToMultiByte(std::string& out, const std::wstring& in)
     );
     ASSERT(multibyte_char_actual > 0);
     ASSERT(multibyte_char_actual == multibyte_char_count);
+}
+
+void ExpandEnvironemntVariable(std::wstring& out, const std::wstring& in)
+{
+    DWORD size = ExpandEnvironmentStringsW(in.c_str(), nullptr, 0);
+    if (size == 0)
+        return;
+
+    out.resize(size);
+    ExpandEnvironmentStringsW(in.c_str(), out.data(), size);
+    out.resize(size - 1); //Remove trailing null inserted by API
+}
+
+void ToLower(std::wstring& s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+        [](std::wint_t c) { return std::towlower(c); }
+    );
+    FAIL; //untested
+}
+
+void ToLower(std::string& s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+        [](unsigned char c) { return std::tolower(c); }
+    );
 }
 
 #if FEATURE_CUSTOM_ASSERT
