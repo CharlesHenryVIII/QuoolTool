@@ -62,6 +62,15 @@ IDB_PNG1                PNG                     "..\\assets\\QuantumFullSize.png
 // remains consistent on all systems.
 IDI_ICON1               ICON                    "..\\assets\\QuantumIcon.ico"
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// FONT
+//
+
+IDR_FONT1               RCDATA                  "..\\contrib\\ImGui\\misc\\fonts\\Roboto-Medium.ttf"
+
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

@@ -67,6 +67,7 @@ project "ScadaBackup"
         "contrib/SDL2/include",
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
+        "resources",
         --"contrib/libarchive/",
         --"C:/Projects/vcpkg/installed/x64-windows-static/include",
     }

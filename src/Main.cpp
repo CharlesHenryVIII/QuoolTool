@@ -27,6 +27,7 @@
 #include "VideoData.h"
 #include "LoadJson.h"
 #include "ImguiHelper.h"
+#include "resource.h"
 
 #include <stdio.h>
 #include <string>
@@ -173,7 +174,8 @@ int Main(int, char**)
     //io.Fonts->AddFontDefault();
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
     //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/DroidSans.ttf");
-    io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Roboto-Medium.ttf");
+    LoadFontForImgui(IDR_FONT1, 16.0f);
+    //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Roboto-Medium.ttf");
     //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Cousine-Regular.ttf");
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
     //ASSERT(font != nullptr);
