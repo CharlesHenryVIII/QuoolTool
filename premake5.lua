@@ -73,7 +73,7 @@ project "ScadaBackup"
     fatalwarnings { "All" }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
-        --"LIBARCHIVE_STATIC",
+        "LIBARCHIVE_STATIC",
         "NODEFAULTLIB",
     }
     files {
@@ -157,7 +157,6 @@ project "ScadaBackup"
     filter "files:**.natvis"
         buildaction "Natvis"
 
-
 project "libarchive"
     kind "StaticLib"
     language "C"
@@ -165,6 +164,7 @@ project "libarchive"
     --cdialect "C99"
     targetdir "build/"
     targetname "libarchive_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    --targetname "libarchive"
     objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
     editandcontinue "Off"
     usefullpaths "On"
@@ -194,6 +194,9 @@ project "libarchive"
 
     libdirs {
         "contrib/libarchive/contrib/**",
+        "contrib/libarchive_dep/openssl",
+        "contrib/libarchive_dep/lzma",
+        "contrib/libarchive_dep/lib/",
     }
 
     includedirs {
@@ -202,6 +205,7 @@ project "libarchive"
         "contrib/libarchive",
         "contrib/libarchive/libarchive",
         "contrib/libarchive/contrib",
+        "contrib/libarchive_dep/",
     }
     defines {
         --"_CRT_SECURE_NO_WARNINGS",
@@ -213,15 +217,19 @@ project "libarchive"
         "ARCHIVE_STATIC",
         --"PLATFORM_CONFIG_H=<contrib/libarchive/libarchive/config.h>"
         "PLATFORM_CONFIG_H=<config.h>",
-        --"NODEFAULTLIB",
+        "NODEFAULTLIB",
         "__LIBARCHIVE_BUILD",
     }
     files {
         "contrib/libarchive/libarchive/**",
         "contrib/libarchive/libarchive/config.h",
+        "contrib/libarchive_dep/**",
+        "contrib/libarchive_dep/openssl/**",
+        "contrib/libarchive_dep/lzma/**",
+        "contrib/libarchive_dep/lib/**",
     }
     removefiles {
-        "contrib/libarchive/contrib/**",
+        --"contrib/libarchive/contrib/**",
         "contrib/libarchive/libarchive/*_posix.c",
         "contrib/libarchive/libarchive/filter_fork_posix.c",
 
