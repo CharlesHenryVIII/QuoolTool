@@ -3,7 +3,7 @@
 #include "imgui.h"
 #include "Math.h"
 #include "ArrayView.h"
-#include "VideoData.h"
+#include "Settings.h"
 #include "glfw/glfw3.h"
 
 #include <string>
@@ -57,15 +57,6 @@ struct RunProcessLogJob : Job
     std::wstring applicationPath;
     std::wstring arguments;
     std::string output;
-    virtual void RunJob() override;
-};
-
-struct RunUpdateVideoGroupJob : Job
-{
-    std::wstring mkv_path;
-    std::wstring source_path;
-    std::wstring dest_path;
-    VideoGroup* video_group;
     virtual void RunJob() override;
 };
 

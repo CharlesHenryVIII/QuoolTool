@@ -252,8 +252,8 @@ void AppendProperty(std::string& out, const nlohmann::json& json, const char* pr
     }
 }
 
-void RunUpdateVideoGroupJob::RunJob()
-{
+//void RunUpdateVideoGroupJob::RunJob()
+//{
     //VALIDATE(video_group);
     //std::vector<std::wstring> filenames;
     //ScanDirectoryForFileNames(source_path, filenames, false);
@@ -372,7 +372,7 @@ void RunUpdateVideoGroupJob::RunJob()
     //        video_info->name = std::format(L"FAILED {}: {}", i + 1, werror);
     //    }
     //}
-}
+//}
 
 void RunEncodeJob::RunJob()
 {
@@ -943,6 +943,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& source, const std::f
         archive_entry_set_filetype(entry, AE_IFDIR); //Directory
         archive_entry_copy_stat(entry, &st);
         archive_write_header(a, entry);
+        ++g_data.progress;
 
         std::vector<ScannedFile> out;
         ScanDirectoryForFileNames(fullpath, out, ScanDirectoryFlags_IncludeDirs);
@@ -973,7 +974,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& source, const std::f
             file.read((char*)file_buffer.data(), file_size);
 
             archive_write_data(a, file_buffer.data(), file_size);
-
+            ++g_data.progress;
         }
     }
     archive_entry_free(entry);
@@ -1028,7 +1029,6 @@ ImFont* LoadFontForImgui(int resource_id, float fontSize)
     if (!data || size == 0)
         return nullptr;
 
-    // IMPORTANT: ImGui does NOT copy the font data by default
     ImFontConfig cfg;
     cfg.FontDataOwnedByAtlas = false;
     ImFont* font = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
