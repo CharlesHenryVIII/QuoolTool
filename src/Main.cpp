@@ -24,7 +24,7 @@
 #include "Math.h"
 #include "Threading.h"
 #include "Themes.h"
-#include "VideoData.h"
+#include "Settings.h"
 #include "LoadJson.h"
 #include "ImguiHelper.h"
 #include "resource.h"

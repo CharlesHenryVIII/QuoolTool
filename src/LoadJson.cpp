@@ -1,6 +1,6 @@
 #include "LoadJson.h"
 #include "WinInterop_File.h"
-#include "VideoData.h"
+#include "Settings.h"
 #include "WinInterop.h"
 
 #include "json.hpp"
