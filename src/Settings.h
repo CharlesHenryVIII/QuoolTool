@@ -2,6 +2,7 @@
 #include "Math.h"
 #include "Themes.h"
 
+#include <filesystem>
 #include <mutex>
 
 struct Track {
@@ -50,7 +51,7 @@ struct SettingsCitect {
 
 struct Settings {
     SettingsCitect citect = {};
-    std::wstring backup_path;
+    std::filesystem::path backup_path;
     ThemeColor color = ThemeColor_Grey2;
     ThemeStyle style = ThemeStyle_SimpleRounding;
 };
@@ -58,7 +59,9 @@ struct Settings {
 struct GlobalData
 {
     Settings settings;
-    VideoGroup video_group;
+    std::atomic<bool> backup_in_progress = false;
+    std::atomic<u64> progress;
+    std::atomic<u64> total;
 };
 
 extern GlobalData g_data;
