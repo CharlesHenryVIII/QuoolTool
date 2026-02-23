@@ -21,8 +21,8 @@
 #include <format>
 #include <fstream>
 
-#include "archive.h"
-#include "archive_entry.h"
+#include "libarchive/libarchive/archive.h"
+#include "libarchive/libarchive/archive_entry.h"
 
 void DebugPrint(const char* fmt, ...)
 {
@@ -912,9 +912,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
     return Main(val, &str);
 }
 
-void AddEntryToZip(archive* a, const std::filesystem::path& source, const ScannedFile& f, std::vector<u8>& file_buffer)
+void AddEntryToZip(archive* a, const std::filesystem::path& source, const std::filesystem::path& relative_path_to_file, const ScannedFile& f, std::vector<u8>& file_buffer)
 {
-    std::filesystem::path fullpath = source / f.name;
+    const std::filesystem::path relative = relative_path_to_file / f.name;
+    const std::filesystem::path fullpath = source / relative;
     struct stat st;
     if (stat(fullpath.string().c_str(), &st) != 0)
     {
@@ -938,18 +939,24 @@ void AddEntryToZip(archive* a, const std::filesystem::path& source, const Scanne
     archive_entry* entry = archive_entry_new();
     if (f.dir)
     {
+        archive_entry_set_pathname(entry,  relative.string().c_str());
+        archive_entry_set_filetype(entry, AE_IFDIR); //Directory
+        archive_entry_copy_stat(entry, &st);
+        archive_write_header(a, entry);
 
         std::vector<ScannedFile> out;
         ScanDirectoryForFileNames(fullpath, out, ScanDirectoryFlags_IncludeDirs);
+        for (i32 i = 0; i < out.size(); i++)
+        {
+            AddEntryToZip(a, source, relative, out[i], file_buffer);
+        }
     }
     else
     {
-        archive_entry_set_pathname(entry, fullpath.filename().string().c_str());
-        archive_entry_set_filetype(entry, AE_IFREG);
+        archive_entry_set_pathname(entry, relative.string().c_str());
+        archive_entry_set_filetype(entry, AE_IFREG); //Regular file
         archive_entry_copy_stat(entry, &st);
         archive_write_header(a, entry);
-        //archive_entry_set_size(entry, st.st_size);
-        //archive_entry_set_perm(entry, 0644);
 
         {
             std::ifstream file(fullpath, std::ios::binary | std::ios::ate);
@@ -968,8 +975,8 @@ void AddEntryToZip(archive* a, const std::filesystem::path& source, const Scanne
             archive_write_data(a, file_buffer.data(), file_size);
 
         }
-        archive_entry_free(entry);
     }
+    archive_entry_free(entry);
 }
 
 void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup/*, ArrayView<std::wstring> ext_to_exclude*/)
@@ -982,7 +989,6 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
     archive_write_set_format_zip(a);
     int rr = archive_write_zip_set_compression_deflate(a);
     rr = archive_write_set_options(a, "compression-level=9");
-    rr = archive_write_set_options(a, "zip:experimental");
     if (rr != ARCHIVE_OK)
     {
         const char* error_rr_string = archive_error_string(a);
@@ -997,7 +1003,7 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
     std::filesystem::path source = source_folder;
     for (i32 i = 0; i < files_to_backup.size(); i++)
     {
-        AddEntryToZip(a, source, files_to_backup[i], file_buffer);
+        AddEntryToZip(a, source, std::filesystem::path(), files_to_backup[i], file_buffer);
     }
     int r = archive_write_close(a);
     if (r != 0)

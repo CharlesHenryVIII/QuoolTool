@@ -169,14 +169,14 @@ int Main(int, char**)
     // - Read 'docs/FONTS.md' for more instructions and details. If you like the default font but want it to scale better, consider using the 'ProggyVector' from the same author!
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
     // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
-    //style.FontSizeBase = 20.0f;
+    style.FontSizeBase = 16.0f;
     //io.Fonts->AddFontDefault();
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf");
+    //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/DroidSans.ttf");
+    io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Roboto-Medium.ttf");
+    //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Cousine-Regular.ttf");
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
-    //IM_ASSERT(font != nullptr);
+    //ASSERT(font != nullptr);
 
     // Our state
     bool keepProcessWindowAlive = true;
