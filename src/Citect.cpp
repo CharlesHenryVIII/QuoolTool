@@ -7,6 +7,9 @@
 #include "Settings.h"
 #include "LoadJson.h"
 #include "ImguiHelper.h"
+#include "String.h"
+
+#include <filesystem>
 
 #include "Tracy.hpp"
 //#include "archive.h"
@@ -50,15 +53,16 @@ void CitectImGui()
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoMove;
 
-    const ImVec2 switchesScale = { 0, 0.17f };
-    const ImVec2 switchesSize =  HadamardProduct(viewport->WorkSize, switchesScale);
-    if (ImGui::BeginChild("File Paths", switchesSize, true, sectionFlags))
+    const ImVec2 paths_scale = { 0, 0.2f };
+    const ImVec2 paths_size =  HadamardProduct(viewport->WorkSize, paths_scale);
+    if (ImGui::BeginChild("File Paths", paths_size, true, sectionFlags))
     {
         ZoneScopedN("File Paths");
         TextCentered("File Paths");
         ImGui::NewLine();
 
 
+        ImGui::BeginGroup();
         std::wstring p = g_data.settings.backup_path;
         if (ImguiPath("Backup Folder", "Please select removable media folder to backup to", p, true))
         {
@@ -69,6 +73,48 @@ void CitectImGui()
             WriteSettings(&g_data.settings, g_settings_filename);
         if (ImguiPath("Project Folder", "%PROGRAMDATA%/AVEVA Plant SCADA/User/<project>", citect_settings.project_path, true))
             WriteSettings(&g_data.settings, g_settings_filename);
+        ImGui::EndGroup();
+
+        ImVec2 size = ImGui::GetItemRectSize();
+        ImGui::SameLine();
+        if (ImGui::Button("Auto Search Paths", ImVec2(150, size.y)))
+        {
+            std::wstring program_data;
+            ExpandEnvironemntVariable(program_data, L"%PROGRAMDATA%");
+            std::filesystem::path path = program_data;
+            std::vector<ScannedFile> folders;
+            ScanDirectoryForFileNames(path, folders, ScanDirectoryFlags_IncludeDirs);
+            std::wstring found;
+            for (i32 i = 0; i < folders.size(); i++)
+            {
+                if (!folders[i].dir)
+                {
+                    FAIL;
+                    continue;
+                }
+                std::string folder;
+                ConvertWideCharToMultiByte(folder, folders[i].name);
+                ToLower(folder);
+                if (folder.contains("aveva"))
+                {
+                    found = folders[i].name;
+                    break;
+                }
+                else if (folder.contains("citect"))
+                {
+                    found = folders[i].name;
+                    break;
+                }
+            }
+            if (found.size())
+            {
+                citect_settings.program_files_path = (std::filesystem::path(program_data) / found).wstring();
+                citect_settings.project_path = (std::filesystem::path(citect_settings.program_files_path) / L"User").wstring();
+                WriteSettings(&g_data.settings, g_settings_filename);
+            }
+        }
+
+
     }
     ImGui::EndChild();
 
@@ -81,7 +127,10 @@ void CitectImGui()
         TextCentered(TITLE_NAME);
         ImGui::NewLine();
 
-        ImGui::BeginDisabled(g_data.backup_in_progress);
+        ImGui::BeginDisabled(g_data.backup_in_progress ||
+            g_data.settings.backup_path.string().size() < 3 ||
+            g_data.settings.citect.project_path.size() < 3 ||
+            g_data.settings.citect.program_files_path.size() < 3);
         float height = 40;
         if (ImGui::Button("Create Zip", ImVec2(125, height)) && !g_data.backup_in_progress)
         {

@@ -52,7 +52,7 @@ struct SettingsCitect {
 struct Settings {
     SettingsCitect citect = {};
     std::filesystem::path backup_path;
-    ThemeColor color = ThemeColor_Grey2;
+    ThemeColor color = ThemeColor_Grey;
     ThemeStyle style = ThemeStyle_SimpleRounding;
 };
 

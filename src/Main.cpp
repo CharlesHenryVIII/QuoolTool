@@ -158,6 +158,8 @@ int Main(int, char**)
         else
         {
             WriteSettings(&g_data.settings, g_settings_filename);
+            ThemeSetColor(g_data.settings.color);
+            ThemeSetStyle(g_data.settings.style);
         }
 
     }
