@@ -1013,3 +1013,31 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
     }
     archive_write_free(a);
 }
+
+ImFont* LoadFontForImgui(int resource_id, float fontSize)
+{
+    HRSRC r = FindResource( nullptr, MAKEINTRESOURCE(resource_id), RT_RCDATA);
+    if (!r)
+        return nullptr;
+
+    HGLOBAL handle = LoadResource(nullptr, r);
+    if (!handle)
+        return nullptr;
+    DWORD size = SizeofResource(nullptr, r);
+    void* data = LockResource(handle);
+    if (!data || size == 0)
+        return nullptr;
+
+    // IMPORTANT: ImGui does NOT copy the font data by default
+    ImFontConfig cfg;
+    cfg.FontDataOwnedByAtlas = false;
+    ImFont* font = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
+        data,
+        size,
+        fontSize,
+        &cfg
+    );
+    if (!font)
+        return nullptr;
+    return font;
+}
