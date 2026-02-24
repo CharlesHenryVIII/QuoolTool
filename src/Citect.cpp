@@ -62,7 +62,7 @@ void RunCitectJob::RunJob()
     CopyFolderRelative(program_files_path, g_data.settings.backup_path, Path(L"Deployment"));
 
     //6. Backup alarm database
-    Path project_name = Path(g_data.settings.citect.project_path).filename();
+    const Path project_name = Path(g_data.settings.citect.project_path).filename();
     CopyFolderRelative(program_files_path, g_data.settings.backup_path, Path(L"Data") / project_name);
 
     //7. Backup Trend files
@@ -70,8 +70,11 @@ void RunCitectJob::RunJob()
     Path data_path = program_files_path / L"Data";
     std::vector<ScannedFile> data_files;
     ScanDirectoryForFileNames(data_path, data_files, ScanDirectoryFlags_None);
+    g_data.total = data_files.size();
+    g_data.progress = 0;
     for (auto sf : data_files)
     {
+        ++g_data.progress;
         if (sf.dir)
             continue;
 
@@ -87,6 +90,8 @@ void RunCitectJob::RunJob()
             CopyFileRelative(program_files_path, g_data.settings.backup_path, Path(L"Data") / sf.name);
         }
     }
+    g_data.total = 0;
+    g_data.progress = u64(-1);
 #else
     CopyFolderRelative(program_files_path, g_data.settings.backup_path, Path(L"Data"));
 #endif
@@ -104,6 +109,9 @@ void RunCitectJob::RunJob()
 
     //11. Communication drivers
     //no idea where these are: "located in the product ‘bin’ directory as the existing specialty drivers may be required for the new version."
+    Path bin_driver = L"Bin/DriverBackup";
+    if (fs::exists(g_data.settings.citect.program_files_86 / bin_driver))
+        CopyFolderRelative(g_data.settings.citect.program_files_86, g_data.settings.backup_path, bin_driver);
 
     //12. Device Logs
     CopyFolderRelative(program_files_path, g_data.settings.backup_path, L"Logs");
@@ -112,7 +120,7 @@ void RunCitectJob::RunJob()
     //not sure about these should supposedly be in the [PATH] section of the citect.ini (which one? lmao)
 
     //14. Citect.frm
-    CopyFileRelative(program_files_path, g_data.settings.citect.program_files_86, L"Bin/citect.frm");
+    CopyFileRelative(g_data.settings.citect.program_files_86, g_data.settings.backup_path, L"Bin/citect.frm");
 
 
     g_data.backup_in_progress = false;
@@ -144,9 +152,9 @@ void CitectImGui()
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoMove;
 
-    const ImVec2 paths_scale = { 0, 0.2f };
+    //const ImVec2 paths_scale = { 0, 0.2f };
     //const ImVec2 paths_size =  HadamardProduct(viewport->WorkSize, paths_scale);
-    const ImVec2 paths_size = { 0, 150 };
+    const ImVec2 paths_size = { 0, 175 };
     if (ImGui::BeginChild("File Paths", paths_size, true, sectionFlags))
     {
         ZoneScopedN("File Paths");
@@ -227,6 +235,13 @@ void CitectImGui()
             {
                 DebugPrint("Failed to find aveva directories");
             }
+
+            //3. search ProgramData for AVEVA folders
+            //C:\Program Files (x86)\AVEVA Plant SCADA\
+
+            std::wstring program_files_86;
+            ExpandEnvironemntVariable(program_files_86, L"%programfiles(x86)%");
+            Path pfx = program_files_86;
         }
 
 
@@ -245,12 +260,12 @@ void CitectImGui()
 
         std::error_code ec;
         ImGui::BeginDisabled(g_data.backup_in_progress ||
-            fs::exists(g_data.settings.backup_path, ec) ||
+            !fs::exists(g_data.settings.backup_path, ec) ||
             g_data.settings.citect.project_path.size() < 3 ||
             g_data.settings.citect.program_files_path.size() < 3 ||
-            fs::exists(g_data.settings.citect.program_files_86, ec));
+            !fs::exists(g_data.settings.citect.program_files_86, ec));
         float height = 40;
-        if (ImGui::Button("Create Zip", ImVec2(125, height)) && !g_data.backup_in_progress)
+        if (ImGui::Button("Backup Citect", ImVec2(125, height)) && !g_data.backup_in_progress)
         {
             RunCitectJob* job = new RunCitectJob();
             job->settings = g_data.settings.citect;
