@@ -310,6 +310,88 @@ bool ContainsString(const std::wstring& source, const std::wstring& find, String
     return false;
 }
 
+bool CopyFile(const Path& source, const Path& dest)
+{
+    if (source.empty() || dest.empty())
+    {
+        DebugPrint("Failed to copy file EMPTY: src: \"%s\" dest: \"%s\"", source.string().c_str(), dest.string().c_str());
+        FAIL;
+        return false;
+    }
+    std::error_code ec;
+    fs::create_directories(dest, ec);
+    if (ec)
+    {
+        DebugPrint("Failed to create directories for dest: \"%s\"", dest.string().c_str());
+        FAIL;
+        return false;
+    }
+
+    bool result = std::filesystem::copy_file(source, dest, std::filesystem::copy_options::overwrite_existing, ec);
+    if (ec)
+    {
+        DebugPrint("Failed to copy file src: \"%s\" dest: \"%s\"", source.string().c_str(), dest.string().c_str());
+        FAIL;
+        return false;
+    }
+    return result;
+}
+
+bool CopyFileRelative(const Path& source, const Path& dest, const Path& relative)
+{
+    if (source.empty() || dest.empty() || relative.empty())
+    {
+        DebugPrint("Failed to copy file EMPTY: src: \"%s\" dest: \"%s\" relative: \"%s\"", source.string().c_str(), dest.string().c_str(), relative.string().c_str());
+        FAIL;
+        return false;
+    }
+
+    std::error_code ec;
+    fs::create_directories(dest / relative, ec);
+    if (ec)
+    {
+        DebugPrint("Failed to create directories for dest: \"%s\"", (dest / relative).string().c_str());
+        FAIL;
+        return false;
+    }
+
+    bool result = fs::copy_file(source / relative, dest / relative, fs::copy_options::overwrite_existing, ec);
+    if (ec)
+    {
+        DebugPrint("Failed to copy file src: \"%s\" dest: \"%s\" relative: \"%s\"", source.string().c_str(), dest.string().c_str(), relative.string().c_str());
+        FAIL;
+        return false;
+    }
+    return result;
+}
+
+bool CopyFolderRelative(const Path& source, const Path& dest, const Path& relative)
+{
+    if (source.empty() || dest.empty() || relative.empty())
+    {
+        DebugPrint("Failed to copy folder EMPTY: src: \"%s\" dest: \"%s\" relative: \"%s\"", source.string().c_str(), dest.string().c_str(), relative.string().c_str());
+        FAIL;
+        return false;
+    }
+
+    std::error_code ec;
+    fs::create_directories(dest / relative, ec);
+    if (ec)
+    {
+        DebugPrint("Failed to create directories for dest: \"%s\"", (dest / relative).string().c_str());
+        FAIL;
+        return false;
+    }
+
+    fs::copy(source / relative, dest / relative, fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
+    if (ec)
+    {
+        DebugPrint("Failed to copy folder src: \"%s\" dest: \"%s\" relative: \"%s\"", source.string().c_str(), dest.string().c_str(), relative.string().c_str());
+        FAIL;
+        return false;
+    }
+    return true;
+}
 
 void CopyString(char** dest, const char* source, const u64 max_length)
 {
