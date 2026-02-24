@@ -23,7 +23,7 @@ enum ScanDirectoryFlags : u32 {
     ScanDirectoryFlags_None = 0,
     ScanDirectoryFlags_Recursive = BIT(0),
     ScanDirectoryFlags_IncludeDirs = BIT(1),
-    ScanDirectoryFlags_All,
+    ScanDirectoryFlags_All = ScanDirectoryFlags_Recursive | ScanDirectoryFlags_IncludeDirs,
 };
 struct ScannedFile {
     std::wstring name;
@@ -45,7 +45,7 @@ void ExpandEnvironemntVariable(std::wstring& out, const std::wstring& in);
 void ToLower(std::wstring& s);
 void ToLower(std::string& s);
 int Main(int, char**);
-void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup);
+void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root/*, ArrayView<std::wstring> ext_to_exclude*/);
 ImFont* LoadFontForImgui(int resource_id, float fontSize);
 
 struct RunProcessJob : Job

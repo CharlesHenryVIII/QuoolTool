@@ -39,6 +39,7 @@ std::vector<std::string> FileToStringArray(const char* fileName, const char* lin
 i32 NumberLengthInString(const std::string& string, i32& i);
 i32 StringToInt(const std::string& string, i32 i, i32 length);
 i32 StringToInt(const std::string& string, i32 i);
+bool ContainsString(const std::wstring& source, const std::wstring& find, StringCase case_insensitive);
 bool StringCompare(StringCase case_sensitivity, const std::string& a, const std::string& b);
 void CopyString(char** dest, const char* source, const u64 max_length);
 template <const u64 len>
