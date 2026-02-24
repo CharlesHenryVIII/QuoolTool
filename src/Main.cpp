@@ -95,6 +95,10 @@ int Main(int, char**)
     Vec2I screen_size = { mode->width, mode->height };
     float displayRatio = float(mode->width) / float(mode->height);
     Vec2I window_size = {};
+#if 1
+    //window_size = Vec2I(1280, 720);
+    window_size = Vec2I(1024, 600);
+#else
     float screen_scale = 1.5;
     if (displayRatio < normalRatio)
     {
@@ -106,6 +110,7 @@ int Main(int, char**)
         window_size.y = i32(mode->height / screen_scale);
         window_size.x  = i32(normalRatio * window_size.y);
     }
+#endif
 
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
     //GLFWwindow* window = glfwCreateWindow((int)(monitor_size.x * main_scale), (int)(monitor_size.y * main_scale), "SCADA Backup", nullptr, nullptr);

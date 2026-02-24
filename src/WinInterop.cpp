@@ -7,6 +7,7 @@
 #include "WinInterop_File.h"
 #include "Math.h"
 #include "String.h"
+#include "resource.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 //#include "Windows/resource.h"
@@ -32,6 +33,20 @@ void DebugPrint(const char* fmt, ...)
     OutputDebugStringA(buffer);
     OutputDebugStringA("\n");
     va_end(list);
+
+    //If we have a console, print there too
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (console != NULL && console != INVALID_HANDLE_VALUE)
+    {
+        DWORD mode;
+        if (GetConsoleMode(console, &mode)) // succeeds only if console attached
+        {
+            DWORD written;
+            WriteConsoleA(console, buffer, (DWORD)strlen(buffer), &written, NULL);
+            const char* new_line = "\n";
+            WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
+        }
+    }
 }
 void DebugPrint(const wchar_t* fmt, ...)
 {
@@ -41,6 +56,20 @@ void DebugPrint(const wchar_t* fmt, ...)
     _vsnwprintf(buffer, sizeof(buffer), fmt, list);
     OutputDebugStringW(buffer);
     va_end(list);
+
+    //If we have a console, print there too
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (console != NULL && console != INVALID_HANDLE_VALUE)
+    {
+        DWORD mode;
+        if (GetConsoleMode(console, &mode)) // succeeds only if console attached
+        {
+            DWORD written;
+            WriteConsoleW(console, buffer, (DWORD)wcslen(buffer), &written, NULL);
+            const char* new_line = "\n";
+            WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
+        }
+    }
 }
 
 std::string ToString(const char* fmt, ...)
@@ -434,16 +463,41 @@ void RunEncodeJob::RunJob()
     video_group->in_progress = false;
 }
 
-HMODULE instMod;
-HWND windowHandle;
+HMODULE modh;
+HWND window_handle;
 
 void InitOS(GLFWwindow* window)
 {
-    instMod = GetModuleHandle(NULL);
-    ASSERT(instMod != NULL);
+    modh = GetModuleHandle(NULL);
+    VALIDATE(modh != NULL);
 
-    windowHandle = glfwGetWin32Window(window);
-    ASSERT(windowHandle);
+    window_handle = glfwGetWin32Window(window);
+    VALIDATE(window_handle);
+#if 1
+    HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(IDB_PNG1), RT_RCDATA);
+    DWORD error = GetLastError();
+    VALIDATE(res);
+    HGLOBAL resh = LoadResource(nullptr, res);
+    VALIDATE(resh);
+    DWORD size = SizeofResource(nullptr, res);
+    void* data = LockResource(resh);
+    VALIDATE(data);
+
+    // ---- Decode PNG from memory ----
+    GLFWimage image{};
+    image.pixels = stbi_load_from_memory(
+        (const stbi_uc*)data,
+        size,
+        &image.width,
+        &image.height,
+        nullptr,
+        4
+    );
+    VALIDATE(image.pixels);
+
+    glfwSetWindowIcon(window, 1, &image);
+    stbi_image_free(image.pixels);
+#else
     GLFWimage images[1] = {};
     images[0].pixels = stbi_load("assets/QuantumFullSize.png",  &images[0].width, &images[0].height, 0, 4);
     //images[1].pixels = stbi_load("assets/QuantumIcon.ico",      &images[1].width, &images[1].height, 0, 4);
@@ -452,6 +506,7 @@ void InitOS(GLFWwindow* window)
     {
         stbi_image_free(images[i].pixels);
     }
+#endif
 }
 
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
@@ -569,7 +624,7 @@ void ShowErrorWindow(const std::wstring& title, const std::wstring& text)
 void NotifyWindowBuildFinished()
 {
     FLASHWINFO info = {};
-    info.hwnd = windowHandle;
+    info.hwnd = window_handle;
     info.dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG;
     info.uCount;
     info.dwTimeout;
@@ -686,7 +741,7 @@ bool GetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir)
     dir.resize(MAX_PATH);
     int imageIndex = 0;
     BROWSEINFO info = {
-        .hwndOwner = windowHandle,
+        .hwndOwner = window_handle,
         .pidlRoot = NULL,
         .pszDisplayName = NULL,//dir.data(),
         .lpszTitle = L"Select Config Directory",
@@ -780,7 +835,12 @@ void ExpandEnvironemntVariable(std::wstring& out, const std::wstring& in)
 {
     DWORD size = ExpandEnvironmentStringsW(in.c_str(), nullptr, 0);
     if (size == 0)
+    {
+        std::string var;
+        ConvertWideCharToMultiByte(var, in);
+        DebugPrint("Failed to expand string: \"%s\" error: %i", var.c_str(), GetLastError());
         return;
+    }
 
     out.resize(size);
     ExpandEnvironmentStringsW(in.c_str(), out.data(), size);
@@ -932,24 +992,43 @@ void os_assert(bool expr, const char*, const char*, int)
 }
 #endif
 
+#ifdef _WIN32
+#ifdef _CONSOLE
+int main(int argc, char** argv)
+{
+    return Main(argc, argv);
+}
+#else
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
 {
     return Main(val, &str);
 }
+#endif
+#endif
 
-void AddEntryToZip(archive* a, const std::filesystem::path& source, const std::filesystem::path& relative_path_to_file, const ScannedFile& f, std::vector<u8>& file_buffer)
+void ArchiveErrorCheck(archive* a, int e)
 {
-    const std::filesystem::path relative = relative_path_to_file / f.name;
-    const std::filesystem::path fullpath = source / relative;
+    if (e != ARCHIVE_OK)
+    {
+        const char* error_rr_string = archive_error_string(a);
+        DebugPrint("Archive Failure: %s", error_rr_string);
+        FAIL;
+    }
+}
+
+void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std::filesystem::path& relative_path, bool is_dir, std::vector<u8>& file_buffer)
+{
+    //const std::filesystem::path relative = relative_path_to_file / f.name;
+    //const std::filesystem::path fullpath = source / relative;
     struct stat st;
-    if (stat(fullpath.string().c_str(), &st) != 0)
+    if (stat(full_path.string().c_str(), &st) != 0)
     {
         perror("Problem getting information");
         int r = errno;
         switch (r)
         {
         case ENOENT:
-            DebugPrint("File %s not found.\n", fullpath.string().c_str());
+            DebugPrint("File %s not found.\n", full_path.string().c_str());
             break;
         case EINVAL:
             DebugPrint("Invalid parameter to _stat.\n");
@@ -961,34 +1040,36 @@ void AddEntryToZip(archive* a, const std::filesystem::path& source, const std::f
         FAIL;
         return;
     }
-    archive_entry* entry = archive_entry_new();
-    if (f.dir)
+    if (is_dir)
     {
-        archive_entry_set_pathname(entry,  relative.string().c_str());
-        archive_entry_set_filetype(entry, AE_IFDIR); //Directory
-        archive_entry_copy_stat(entry, &st);
-        archive_write_header(a, entry);
-        ++g_data.progress;
+        //archive_entry_set_pathname(entry,  relative_path.string().c_str());
+        //archive_entry_set_filetype(entry, AE_IFDIR); //Directory
+        //archive_entry_copy_stat(entry, &st);
+        //int error = archive_write_header(a, entry);
+        //ArchiveErrorCheck(a, error);
+        //++g_data.progress;
 
         std::vector<ScannedFile> out;
-        ScanDirectoryForFileNames(fullpath, out, ScanDirectoryFlags_IncludeDirs);
+        ScanDirectoryForFileNames(full_path, out, ScanDirectoryFlags_IncludeDirs);
         for (i32 i = 0; i < out.size(); i++)
         {
-            AddEntryToZip(a, source, relative, out[i], file_buffer);
+            AddEntryToZip(a, full_path / out[i].name, relative_path / out[i].name, out[i].dir, file_buffer);
         }
     }
     else
     {
-        archive_entry_set_pathname(entry, relative.string().c_str());
+        archive_entry* entry = archive_entry_new();
+        archive_entry_set_pathname(entry, relative_path.string().c_str());
         archive_entry_set_filetype(entry, AE_IFREG); //Regular file
         archive_entry_copy_stat(entry, &st);
-        archive_write_header(a, entry);
+        int error = archive_write_header(a, entry);
+        ArchiveErrorCheck(a, error);
 
         {
-            std::ifstream file(fullpath, std::ios::binary | std::ios::ate);
+            std::ifstream file(full_path, std::ios::binary | std::ios::ate);
             if (!file)
             {
-                DebugPrint("Error opening file: %s", fullpath.string().c_str());
+                DebugPrint("Error opening file: %s", full_path.string().c_str());
                 FAIL;
                 return;
             }
@@ -998,14 +1079,16 @@ void AddEntryToZip(archive* a, const std::filesystem::path& source, const std::f
             file.seekg(0, std::ios::beg);
             file.read((char*)file_buffer.data(), file_size);
 
-            archive_write_data(a, file_buffer.data(), file_size);
+            error = (int)archive_write_data(a, file_buffer.data(), file_size);
+            if (error < 0)
+                ArchiveErrorCheck(a, error);
             ++g_data.progress;
         }
+        archive_entry_free(entry);
     }
-    archive_entry_free(entry);
 }
 
-void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup/*, ArrayView<std::wstring> ext_to_exclude*/)
+void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root/*, ArrayView<std::wstring> ext_to_exclude*/)
 {
     if (zip_pathw.size() < 3)
     {
@@ -1013,31 +1096,33 @@ void CreateZip(const std::wstring& zip_pathw, const std::wstring& source_folder,
     }
     archive* a = archive_write_new();
     archive_write_set_format_zip(a);
-    int rr = archive_write_zip_set_compression_deflate(a);
-    rr = archive_write_set_options(a, "compression-level=9");
-    if (rr != ARCHIVE_OK)
-    {
-        const char* error_rr_string = archive_error_string(a);
-        DebugPrint("failed to set zip compression: %s", error_rr_string);
-        FAIL;
-    }
-    std::filesystem::path zip_filename = std::filesystem::path(zip_pathw) / L"Backup.zip";
-    archive_write_open_filename(a, zip_filename.string().c_str());
+    int error = archive_write_zip_set_compression_deflate(a);
+    ArchiveErrorCheck(a, error);
+    error = archive_write_set_options(a, "compression-level=9");
+    ArchiveErrorCheck(a, error);
+    std::filesystem::path zip_filename = std::filesystem::path(zip_pathw) / zip_name;
+    error = archive_write_open_filename(a, zip_filename.string().c_str());
+    ArchiveErrorCheck(a, error);
 
     std::vector<u8> file_buffer;
     //file_buffer.reserve(64*1000*1000);
     std::filesystem::path source = source_folder;
     for (i32 i = 0; i < files_to_backup.size(); i++)
     {
-        AddEntryToZip(a, source, std::filesystem::path(), files_to_backup[i], file_buffer);
+        std::filesystem::path full = source / files_to_backup[i].name;
+        AddEntryToZip(a, full, files_to_backup[i].name, files_to_backup[i].dir, file_buffer);
     }
-    int r = archive_write_close(a);
-    if (r != 0)
+    for (i32 i = 0; i < files_to_add_to_root.size(); i++)
     {
-        DebugPrint("Error closing archive: %s", zip_filename.string().c_str());
-        FAIL;
+        if (files_to_add_to_root[i].extension() != ".ini")
+            continue;
+        AddEntryToZip(a, files_to_add_to_root[i], files_to_add_to_root[i].filename(), false, file_buffer);
     }
-    archive_write_free(a);
+
+    error = archive_write_close(a);
+    ArchiveErrorCheck(a, error);
+    error = archive_write_free(a);
+    ArchiveErrorCheck(a, error);
 }
 
 ImFont* LoadFontForImgui(int resource_id, float fontSize)

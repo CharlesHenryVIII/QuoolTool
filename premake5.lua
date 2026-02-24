@@ -8,6 +8,7 @@ workspace "ScadaBackup"
 
 project "ScadaBackup"
     kind "WindowedApp"
+    --kind "ConsoleApp"
     language "C++"
     cppdialect "C++23"
     targetdir "build/"
