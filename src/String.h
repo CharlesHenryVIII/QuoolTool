@@ -5,6 +5,10 @@
 #include "ArrayView.h"
 
 #include <string>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+using Path = fs::path;
 
 enum StringCase {
     StringCase_Sensitive,
@@ -41,6 +45,9 @@ i32 StringToInt(const std::string& string, i32 i, i32 length);
 i32 StringToInt(const std::string& string, i32 i);
 bool ContainsString(const std::wstring& source, const std::wstring& find, StringCase case_insensitive);
 bool StringCompare(StringCase case_sensitivity, const std::string& a, const std::string& b);
+bool CopyFile(const Path& source, const Path& dest);
+bool CopyFileRelative(const Path& source, const Path& dest, const Path& relative);
+bool CopyFolderRelative(const Path& source, const Path& dest, const Path& relative);
 void CopyString(char** dest, const char* source, const u64 max_length);
 template <const u64 len>
 void CopyString(char (*dest)[len], const char* source, const u64 max_length)
