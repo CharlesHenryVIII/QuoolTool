@@ -1,8 +1,8 @@
 #pragma once
 #include "Math.h"
 #include "Themes.h"
+#include "String.h"
 
-#include <filesystem>
 #include <mutex>
 
 struct Track {
@@ -47,6 +47,7 @@ struct VideoGroup {
 struct SettingsCitect {
     std::wstring project_path;
     std::wstring program_files_path;
+    Path program_files_86;
 };
 
 struct Settings {
