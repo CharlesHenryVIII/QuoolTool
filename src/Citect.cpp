@@ -28,17 +28,42 @@ void RunCitectJob::RunJob()
     }
     filenames.clear();
     ScanDirectoryForFileNames(g_data.settings.citect.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
-    CreateZip(g_data.settings.backup_path, g_data.settings.citect.project_path, CreateArrayView(filenames));
-    g_data.backup_in_progress = false;
+     
+
+    std::filesystem::path config_path = std::filesystem::path(g_data.settings.citect.program_files_path) / L"Config";
+    std::vector<ScannedFile> config_files;
+    ScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
+
+    std::vector<std::filesystem::path> ini_files;
+    for (auto f : config_files)
+    {
+        if (f.name.find_last_of(L".ini") != std::wstring::npos)
+        {
+            ini_files.push_back(config_path / f.name);
+        }
+    }
+
+    CreateZip(L"Backup.ctz", g_data.settings.backup_path, g_data.settings.citect.project_path, CreateArrayView(filenames), CreateArrayView(ini_files));
     g_data.total = 0;
-    g_data.progress = 0;
+    g_data.progress = u64(-1);
+
+
+    
+    g_data.backup_in_progress = false;
 }
 
-void CitectZip()
+bool GetScadaDir(std::filesystem::path& out, ArrayView<ScannedFile> files)
 {
-    std::vector<ScannedFile> filenames;
-    ScanDirectoryForFileNames(g_data.settings.citect.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
-    CreateZip(g_data.settings.backup_path, g_data.settings.citect.project_path, CreateArrayView(filenames));
+    for (auto file : files)
+    {
+        if (ContainsString(file.name, L"AVEVA Plant SCADA", StringCase_Insensitive) ||
+            ContainsString(file.name, L"Citect SCADA", StringCase_Insensitive))
+        {
+            out = std::filesystem::path(file.name);
+            return true;
+        }
+    }
+    return false;
 }
 
 void CitectImGui()
@@ -54,13 +79,13 @@ void CitectImGui()
         ImGuiWindowFlags_NoMove;
 
     const ImVec2 paths_scale = { 0, 0.2f };
-    const ImVec2 paths_size =  HadamardProduct(viewport->WorkSize, paths_scale);
+    //const ImVec2 paths_size =  HadamardProduct(viewport->WorkSize, paths_scale);
+    const ImVec2 paths_size = { 0, 150 };
     if (ImGui::BeginChild("File Paths", paths_size, true, sectionFlags))
     {
         ZoneScopedN("File Paths");
         TextCentered("File Paths");
         ImGui::NewLine();
-
 
         ImGui::BeginGroup();
         std::wstring p = g_data.settings.backup_path;
@@ -81,36 +106,53 @@ void CitectImGui()
         {
             std::wstring program_data;
             ExpandEnvironemntVariable(program_data, L"%PROGRAMDATA%");
-            std::filesystem::path path = program_data;
-            std::vector<ScannedFile> folders;
-            ScanDirectoryForFileNames(path, folders, ScanDirectoryFlags_IncludeDirs);
-            std::wstring found;
-            for (i32 i = 0; i < folders.size(); i++)
+            const std::filesystem::path program_data_path = program_data;
+            std::vector<ScannedFile> program_data_folders;
+            ScanDirectoryForFileNames(program_data_path, program_data_folders, ScanDirectoryFlags_IncludeDirs);
+            std::filesystem::path found_path;
+
+            //1. search for final scada dir first in ProgramData
+            bool found = GetScadaDir(found_path, CreateArrayView(program_data_folders));
+            if (found)
             {
-                if (!folders[i].dir)
+                found_path = program_data_path / found_path;
+            }
+
+            //2. search ProgramData for AVEVA folders
+            if (!found)
+            {
+                for (const auto pd_folder : program_data_folders)
                 {
-                    FAIL;
-                    continue;
-                }
-                std::string folder;
-                ConvertWideCharToMultiByte(folder, folders[i].name);
-                ToLower(folder);
-                if (folder.contains("aveva"))
-                {
-                    found = folders[i].name;
-                    break;
-                }
-                else if (folder.contains("citect"))
-                {
-                    found = folders[i].name;
-                    break;
+                    if (!pd_folder.dir)
+                        continue;
+
+                    if (ContainsString(pd_folder.name, L"AVEVA", StringCase_Insensitive) ||
+                        ContainsString(pd_folder.name, L"Citect", StringCase_Insensitive))
+                    {
+                        const std::filesystem::path aveva_folder_path = (program_data_path / pd_folder.name).wstring();
+                        std::vector<ScannedFile> aveva_folder_files;
+                        ScanDirectoryForFileNames(aveva_folder_path, aveva_folder_files, ScanDirectoryFlags_IncludeDirs);
+                        std::filesystem::path scada_folder;
+                        found = GetScadaDir(scada_folder, CreateArrayView(aveva_folder_files));
+                        if (found)
+                        {
+                            found_path = aveva_folder_path / scada_folder;
+                            DebugPrint("aveva_folder_path: %s", aveva_folder_path.string().c_str());
+                            DebugPrint("scada_folder: %s", scada_folder.string().c_str());
+                            break;
+                        }
+                    }
                 }
             }
-            if (found.size())
+            if (found)
             {
-                citect_settings.program_files_path = (std::filesystem::path(program_data) / found).wstring();
-                citect_settings.project_path = (std::filesystem::path(citect_settings.program_files_path) / L"User").wstring();
+                citect_settings.program_files_path = found_path.wstring();
+                citect_settings.project_path = (std::filesystem::path(citect_settings.program_files_path) / L"User" / L"UNKNOWN").wstring();
                 WriteSettings(&g_data.settings, g_settings_filename);
+            }
+            else
+            {
+                DebugPrint("Failed to find aveva directories");
             }
         }
 
@@ -119,8 +161,9 @@ void CitectImGui()
     ImGui::EndChild();
 
     #define TITLE_NAME "Citect / AVEVA"
-    ImVec2 videos_scale = { 0, 0.76f };
-    ImVec2 videos_size = HadamardProduct(viewport->WorkSize, videos_scale);
+    //const ImVec2 videos_scale = { 0, 0.76f };
+    const ImVec2 videos_scale = { 0, 0 };
+    const ImVec2 videos_size = HadamardProduct(viewport->WorkSize, videos_scale);
     if (ImGui::BeginChild(TITLE_NAME, videos_size, true, sectionFlags))
     {
         ZoneScopedN(TITLE_NAME);
@@ -141,10 +184,18 @@ void CitectImGui()
             Threading::GetInstance().SubmitJob(job);
         }
         ImGui::EndDisabled();
+
         if (g_data.backup_in_progress)
         {
             ImGui::SameLine();
-            ImGui::ProgressBar(float(g_data.progress) / g_data.total, ImVec2(-FLT_MIN, height));
+            if (g_data.progress == u64(-1))
+            {
+                ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, height), "Backing up misc files...");
+            }
+            else
+            {
+                ImGui::ProgressBar(float(g_data.progress) / g_data.total, ImVec2(-FLT_MIN, height));
+            }
         }
 
         //if (g_data.video_group.thread_lock.try_lock())

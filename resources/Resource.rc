@@ -50,7 +50,7 @@ END
 // PNG
 //
 
-IDB_PNG1                PNG                     "..\\assets\\QuantumFullSize.png"
+IDB_PNG1                RCDATA                  "..\\assets\\QuantumFullSize.png"
 
 
 /////////////////////////////////////////////////////////////////////////////
