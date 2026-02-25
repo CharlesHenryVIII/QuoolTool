@@ -84,7 +84,7 @@ void RunCitectJob::RunJob()
         i32 value = 0;
         auto result = std::from_chars(ext.data() + 1, ext.data() + (ext.size() - 1), value);
 
-        if (ext.contains(".HST") ||
+        if (ext.find_last_of(".HST") ||
             result.ec == std::errc())
         {
             CopyFileRelative(program_files_path, g_data.settings.backup_path, Path(L"Data") / sf.name);

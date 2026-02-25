@@ -305,7 +305,7 @@ bool ContainsString(const std::wstring& source, const std::wstring& find, String
         ToLower(s);
         ToLower(f);
     }
-    if (s.contains(f.c_str()))
+    if (s.find(f.c_str()))
         return true;
     return false;
 }
