@@ -68,6 +68,5 @@ struct RunEncodeJob : Job
     std::wstring mkv_path;
     std::wstring source_path;
     std::wstring dest_path;
-    VideoGroup* video_group;
     virtual void RunJob() override;
 };

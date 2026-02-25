@@ -404,63 +404,63 @@ void AppendProperty(std::string& out, const nlohmann::json& json, const char* pr
 
 void RunEncodeJob::RunJob()
 {
-    VALIDATE(video_group);
-    VALIDATE(mkv_path.size());
-    VALIDATE(source_path.size());
-    VALIDATE(video_group->video_infos.size());
-    video_group->in_progress = true;
-    Defer{ video_group->in_progress = false; };
-    std::wstring dest_folder = dest_path;
-    if (!dest_folder.size())
-        dest_folder = ToString(L"%sencoded/", source_path.c_str());
+    //VALIDATE(video_group);
+    //VALIDATE(mkv_path.size());
+    //VALIDATE(source_path.size());
+    //VALIDATE(video_group->video_infos.size());
+    //video_group->in_progress = true;
+    //Defer{ video_group->in_progress = false; };
+    //std::wstring dest_folder = dest_path;
+    //if (!dest_folder.size())
+    //    dest_folder = ToString(L"%sencoded/", source_path.c_str());
 
-    std::wstring path = mkv_path;
-    for (size_t v = 0; v < video_group->video_infos.size() && !video_group->stop; v++)
-    {
-        const VideoInfo& video = video_group->video_infos[v];
-        if (!video.encode)
-        {
-            video_group->completed++;
-            continue;
-        }
-        const std::wstring full_src = source_path.c_str() + video.name;
-        const std::wstring full_dst = dest_folder.c_str() + video.name;
+    //std::wstring path = mkv_path;
+    //for (size_t v = 0; v < video_group->video_infos.size() && !video_group->stop; v++)
+    //{
+    //    const VideoInfo& video = video_group->video_infos[v];
+    //    if (!video.encode)
+    //    {
+    //        video_group->completed++;
+    //        continue;
+    //    }
+    //    const std::wstring full_src = source_path.c_str() + video.name;
+    //    const std::wstring full_dst = dest_folder.c_str() + video.name;
 
-        std::wstring audio;
-        std::wstring subs;
-        for (size_t i = 0; i < video.tracks.size(); i++)
-        {
-            const Track& track = video.tracks[i];
-            if (!track.encode)
-                continue;
-            if (track.type == "audio")
-            {
-                if (!audio.size())
-                    audio = ToString(L"%i", track.id);
-                else
-                    audio = ToString(L"%s,%i", audio.c_str(), track.id);
-            }
-            else if (track.type == "sub")
-            {
-                if (!subs.size())
-                    subs = ToString(L"%i", track.id);
-                else
-                    subs = ToString(L"%s,%i", subs.c_str(), track.id);
-            }
-        }
+    //    std::wstring audio;
+    //    std::wstring subs;
+    //    for (size_t i = 0; i < video.tracks.size(); i++)
+    //    {
+    //        const Track& track = video.tracks[i];
+    //        if (!track.encode)
+    //            continue;
+    //        if (track.type == "audio")
+    //        {
+    //            if (!audio.size())
+    //                audio = ToString(L"%i", track.id);
+    //            else
+    //                audio = ToString(L"%s,%i", audio.c_str(), track.id);
+    //        }
+    //        else if (track.type == "sub")
+    //        {
+    //            if (!subs.size())
+    //                subs = ToString(L"%i", track.id);
+    //            else
+    //                subs = ToString(L"%s,%i", subs.c_str(), track.id);
+    //        }
+    //    }
 
-        std::wstring args = ToString(L"--audio-tracks \"%s\" --subtitle-tracks \"%s\" -m \"%s\",\"%s\" -o \"%s\" \"%s\"",
-            audio.c_str(), subs.c_str(), audio.c_str(), subs.c_str(), full_dst.c_str(), full_src.c_str());
-        i32 result = RunProcess(path.c_str(), args.c_str(), false, false);
-        if (result > 0)
-        {
-            FAIL;
-        }
-        video_group->completed++;
-    }
-    NotifyWindowBuildFinished();
-    video_group->completed = 0;
-    video_group->in_progress = false;
+    //    std::wstring args = ToString(L"--audio-tracks \"%s\" --subtitle-tracks \"%s\" -m \"%s\",\"%s\" -o \"%s\" \"%s\"",
+    //        audio.c_str(), subs.c_str(), audio.c_str(), subs.c_str(), full_dst.c_str(), full_src.c_str());
+    //    i32 result = RunProcess(path.c_str(), args.c_str(), false, false);
+    //    if (result > 0)
+    //    {
+    //        FAIL;
+    //    }
+    //    video_group->completed++;
+    //}
+    //NotifyWindowBuildFinished();
+    //video_group->completed = 0;
+    //video_group->in_progress = false;
 }
 
 HMODULE modh;

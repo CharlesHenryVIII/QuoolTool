@@ -150,6 +150,10 @@ int Main(int, char**)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     ThemesInit();
+    ThemeSetColor(g_data.settings.color);
+    ThemeSetStyle(g_data.settings.style);
+
+#if 0  //Enable Settings
     {
         std::ifstream file(g_settings_filename);
         bool file_exists = file.good();
@@ -166,8 +170,26 @@ int Main(int, char**)
             ThemeSetColor(g_data.settings.color);
             ThemeSetStyle(g_data.settings.style);
         }
-
     }
+#elif _DEBUG
+    {
+        std::ifstream file(g_settings_filename);
+        bool file_exists = file.good();
+        file.close();
+        if (file_exists)
+        {
+            ReadSettings(&g_data.settings, g_settings_filename);
+            ThemeSetColor(g_data.settings.color);
+            ThemeSetStyle(g_data.settings.style);
+        }
+        else
+        {
+            WriteSettings(&g_data.settings, g_settings_filename);
+            ThemeSetColor(g_data.settings.color);
+            ThemeSetStyle(g_data.settings.style);
+        }
+    }
+#endif
 
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
