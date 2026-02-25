@@ -53,6 +53,14 @@ bool InputTextMultilineDynamicSize(const std::string& title, std::string& s, ImG
 {
     return ImGui::InputTextMultiline(title.c_str(), const_cast<char*>(title.data()), s.capacity(), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 2), flags | ImGuiInputTextFlags_CallbackResize, DynamicTextCallback, &s);
 }
+bool InputTextDynamicSize(const std::string& title, Path& path, ImGuiInputTextFlags flags = ImGuiInputTextFlags_None)
+{
+    std::string s;
+    ConvertWideCharToMultiByte(s, path.wstring());
+    bool r = ImGui::InputText(title.c_str(), s.data(), s.capacity(), flags | ImGuiInputTextFlags_CallbackResize, DynamicTextCallback, &s);
+    path = s;
+    return r;
+}
 
 void TextCentered(std::string text)
 {
@@ -115,6 +123,26 @@ bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& o
     bool modified = InputTextDynamicSize("##" + hint, out_path);
     //ImGui::PopItemWidth();
     CleanPathString(out_path, add_final_slash);
+    //TODO:
+    //ImGui::SameLine();
+    //if (ImGui::Button("..."))
+    {
+        //not setup
+    }
+    ImGui::PopID();
+    return modified;
+}
+
+bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path)
+{
+    ImGui::PushID(name.c_str());
+    ImGui::Text(name.c_str());
+    ImGui::SameLine();
+    HelpMarker(hint.c_str());
+    ImGui::SameLine();
+    //ImGui::PushItemWidth(-FLT_MIN);
+    bool modified = InputTextDynamicSize("##" + hint, out_path);
+    //ImGui::PopItemWidth();
     //TODO:
     //ImGui::SameLine();
     //if (ImGui::Button("..."))

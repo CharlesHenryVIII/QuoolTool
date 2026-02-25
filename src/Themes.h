@@ -16,6 +16,7 @@ enum ThemeColor : i32 {
     ThemeColor_Grey,
     ThemeColor_Grey2,
     ThemeColor_WildCard,
+    ThemeColor_Quantum,
     ThemeColor_Count,
 };
 

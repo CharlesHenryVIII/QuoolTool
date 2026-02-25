@@ -7,6 +7,12 @@
 #include <thread>
 #include <vector>
 
+using Mutex = std::mutex;
+template<std::ptrdiff_t N>
+using Semaphore = std::counting_semaphore<N>;
+template<class N>
+using Atomic = std::atomic<N>;
+
 struct Job
 {
     virtual void RunJob() = 0;
@@ -14,12 +20,12 @@ struct Job
 
 struct Threading {
 private:
-    std::mutex                              m_jobVectorMutex;
-    std::counting_semaphore<PTRDIFF_MAX>    m_semaphore;
-    std::atomic<i32>                        m_jobsInFlight = {};
-    std::atomic<bool>                       m_running;
-    std::vector<Job*>                       m_jobs;
-    std::vector<std::thread>                m_threads;
+    Mutex                       m_jobVectorMutex;
+    Semaphore<PTRDIFF_MAX>      m_semaphore;
+    Atomic<i32>                 m_jobsInFlight = {};
+    Atomic<bool>                m_running;
+    std::vector<Job*>           m_jobs;
+    std::vector<std::thread>    m_threads;
 
     static i32 ThreadFunction(void* data);
     Threading();
