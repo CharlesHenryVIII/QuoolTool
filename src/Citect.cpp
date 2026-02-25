@@ -15,23 +15,22 @@
 //#include "archive.h"
 //#include "archive_entry.h"
 
-void GetConfigFolder(std::wstring& out, const SettingsCitect& sc) { out = sc.program_files_path + L"/Config"; }
-void GetDataFolder(std::wstring& out, const SettingsCitect& sc) { out = sc.program_files_path + L"/Data"; }
-void GetLogFolder(std::wstring& out, const SettingsCitect& sc) { out = sc.program_files_path + L"/Logs"; }
-
 void RunCitectJob::RunJob()
 {
+    CitectData& cs = g_data.citect;
+    std::lock_guard<std::mutex> lock(cs.lock);
+
     //1. Backup project as Backup.ctz
     std::vector<ScannedFile> filenames;
     {
-        ScanDirectoryForFileNames(g_data.settings.citect.project_path, filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
+        ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
         g_data.total = filenames.size();
     }
     filenames.clear();
-    ScanDirectoryForFileNames(g_data.settings.citect.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
+    ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
      
 
-    std::filesystem::path config_path = std::filesystem::path(g_data.settings.citect.program_files_path) / L"Config";
+    std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / L"Config";
     std::vector<ScannedFile> config_files;
     ScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
 
@@ -44,26 +43,26 @@ void RunCitectJob::RunJob()
         }
     }
 
-    CreateZip(L"Backup.ctz", g_data.settings.backup_path, g_data.settings.citect.project_path, CreateArrayView(filenames), CreateArrayView(ini_files));
+    CreateZip(L"Backup.ctz", cs.backup_path, cs.project_path, CreateArrayView(filenames), CreateArrayView(ini_files));
     g_data.total = 0;
     g_data.progress = u64(-1);
 
     //2. Backup citect.ini file in config
-    const Path program_files_path = g_data.settings.citect.program_files_path;
-    CopyFileRelative(program_files_path, g_data.settings.backup_path, Path(L"Config") / L"citect.ini");
+    const Path program_files_path = cs.program_files_path;
+    CopyFileRelative(program_files_path, cs.backup_path, Path(L"Config") / L"citect.ini");
 
     //3. Backup SE.Asb.Deployment.Server.WindowsService.exe.config
-    CopyFileRelative(program_files_path, g_data.settings.backup_path, Path(L"Config") / L"SE.Asb.Deployment.Server.WindowsService.exe.config");
+    CopyFileRelative(program_files_path, cs.backup_path, Path(L"Config") / L"SE.Asb.Deployment.Server.WindowsService.exe.config");
 
     //4. Backup SE.Asb.Deployment.Server.WindowsService.exe.config
-    CopyFileRelative(program_files_path, g_data.settings.backup_path, Path(L"Config") / L"SE.Asb.Deployment.Node.WindowsService.exe.config");
+    CopyFileRelative(program_files_path, cs.backup_path, Path(L"Config") / L"SE.Asb.Deployment.Node.WindowsService.exe.config");
 
     //5. Backup Deployment database
-    CopyFolderRelative(program_files_path, g_data.settings.backup_path, Path(L"Deployment"));
+    CopyFolderRelative(program_files_path, cs.backup_path, Path(L"Deployment"));
 
     //6. Backup alarm database
-    const Path project_name = Path(g_data.settings.citect.project_path).filename();
-    CopyFolderRelative(program_files_path, g_data.settings.backup_path, Path(L"Data") / project_name);
+    const Path project_name = Path(cs.project_path).filename();
+    CopyFolderRelative(program_files_path, cs.backup_path, Path(L"Data") / project_name);
 
     //7. Backup Trend files
 #if 1
@@ -87,13 +86,13 @@ void RunCitectJob::RunJob()
         if (ext.find_last_of(".HST") ||
             result.ec == std::errc())
         {
-            CopyFileRelative(program_files_path, g_data.settings.backup_path, Path(L"Data") / sf.name);
+            CopyFileRelative(program_files_path, cs.backup_path, Path(L"Data") / sf.name);
         }
     }
     g_data.total = 0;
     g_data.progress = u64(-1);
 #else
-    CopyFolderRelative(program_files_path, g_data.settings.backup_path, Path(L"Data"));
+    CopyFolderRelative(program_files_path, cs.backup_path, Path(L"Data"));
 #endif
 
     //8.Report files
@@ -102,7 +101,7 @@ void RunCitectJob::RunJob()
     //9. Custom ActiveX Controls
     //TODO: THIS
     //Will need to find a custom ActiveX.dbf file to compare against and learn the internal structure
-    CopyFile(Path(g_data.settings.citect.project_path) / L"activex.DBF", g_data.settings.backup_path / L"activex.DBF");
+    CopyFile(Path(cs.project_path) / L"activex.DBF", cs.backup_path / L"activex.DBF");
 
     //10. Process Analyst Files
     //inside the project folder we don't need to reget them as we get them as part of the full project copy
@@ -110,17 +109,17 @@ void RunCitectJob::RunJob()
     //11. Communication drivers
     //no idea where these are: "located in the product ‘bin’ directory as the existing specialty drivers may be required for the new version."
     Path bin_driver = L"Bin/DriverBackup";
-    if (fs::exists(g_data.settings.citect.program_files_86 / bin_driver))
-        CopyFolderRelative(g_data.settings.citect.program_files_86, g_data.settings.backup_path, bin_driver);
+    if (fs::exists(cs.program_files_86 / bin_driver))
+        CopyFolderRelative(cs.program_files_86, cs.backup_path, bin_driver);
 
     //12. Device Logs
-    CopyFolderRelative(program_files_path, g_data.settings.backup_path, L"Logs");
+    CopyFolderRelative(program_files_path, cs.backup_path, L"Logs");
     
     //13. Additional files
     //not sure about these should supposedly be in the [PATH] section of the citect.ini (which one? lmao)
 
     //14. Citect.frm
-    CopyFileRelative(g_data.settings.citect.program_files_86, g_data.settings.backup_path, L"Bin/citect.frm");
+    CopyFileRelative(cs.program_files_86, cs.backup_path, L"Bin/citect.frm");
 
 
     g_data.backup_in_progress = false;
@@ -144,7 +143,7 @@ void CitectImGui()
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     Threading& threading = Threading::GetInstance();
-    SettingsCitect& citect_settings = g_data.settings.citect;
+    CitectData& cd = g_data.citect;
     ImGuiWindowFlags sectionFlags =
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoSavedSettings |
@@ -161,87 +160,84 @@ void CitectImGui()
         TextCentered("File Paths");
         ImGui::NewLine();
 
-        ImGui::BeginGroup();
-        std::wstring p = g_data.settings.backup_path;
-        if (ImguiPath("Backup Folder", "Please select removable media folder to backup to", p, true))
         {
-            g_data.settings.backup_path = p;
-            WriteSettings(&g_data.settings, g_settings_filename);
-        }
-        if (ImguiPath("Program Folder", "%PROGRAMDATA%/AVEVA/Citect SCADA 2018 R2", citect_settings.program_files_path, true))
-            WriteSettings(&g_data.settings, g_settings_filename);
-        if (ImguiPath("Project Folder", "%PROGRAMDATA%/AVEVA Plant SCADA/User/<project>", citect_settings.project_path, true))
-            WriteSettings(&g_data.settings, g_settings_filename);
+            bool locked = cd.lock.try_lock();
+            ImGui::BeginDisabled(locked);
+            ImGui::BeginGroup();
+            if (ImguiPath("Backup Folder", "Please select removable media folder to backup to", cd.backup_path))
+                WriteSettings(&g_data.settings, g_settings_filename);
+            if (ImguiPath("Program Folder", "%PROGRAMDATA%/AVEVA/Citect SCADA 2018 R2", cd.program_files_path))
+                WriteSettings(&g_data.settings, g_settings_filename);
+            if (ImguiPath("Project Folder", "%PROGRAMDATA%/AVEVA Plant SCADA/User/<project>", cd.project_path))
+                WriteSettings(&g_data.settings, g_settings_filename);
+            if (ImguiPath("Program Files (x86)", "%PROGRAMDATA%/AVEVA/Citect SCADA", cd.program_files_86))
+                WriteSettings(&g_data.settings, g_settings_filename);
+            ImGui::EndGroup();
 
-        p = g_data.settings.citect.program_files_86;
-        if (ImguiPath("Program Files (x86)", "%PROGRAMDATA%/AVEVA/Citect SCADA", p, true))
-        {
-            g_data.settings.citect.program_files_86 = p;
-            WriteSettings(&g_data.settings, g_settings_filename);
-        }
-        ImGui::EndGroup();
-
-        ImVec2 size = ImGui::GetItemRectSize();
-        ImGui::SameLine();
-        if (ImGui::Button("Auto Search Paths", ImVec2(150, size.y)))
-        {
-            std::wstring program_data;
-            ExpandEnvironemntVariable(program_data, L"%PROGRAMDATA%");
-            const std::filesystem::path program_data_path = program_data;
-            std::vector<ScannedFile> program_data_folders;
-            ScanDirectoryForFileNames(program_data_path, program_data_folders, ScanDirectoryFlags_IncludeDirs);
-            std::filesystem::path found_path;
-
-            //1. search for final scada dir first in ProgramData
-            bool found = GetScadaDir(found_path, CreateArrayView(program_data_folders));
-            if (found)
+            ImVec2 size = ImGui::GetItemRectSize();
+            ImGui::SameLine();
+            if (ImGui::Button("Auto Search Paths", ImVec2(150, size.y)))
             {
-                found_path = program_data_path / found_path;
-            }
+                std::wstring program_data;
+                ExpandEnvironemntVariable(program_data, L"%PROGRAMDATA%");
+                const std::filesystem::path program_data_path = program_data;
+                std::vector<ScannedFile> program_data_folders;
+                ScanDirectoryForFileNames(program_data_path, program_data_folders, ScanDirectoryFlags_IncludeDirs);
+                std::filesystem::path found_path;
 
-            //2. search ProgramData for AVEVA folders
-            if (!found)
-            {
-                for (const auto pd_folder : program_data_folders)
+                //1. search for final scada dir first in ProgramData
+                bool found = GetScadaDir(found_path, CreateArrayView(program_data_folders));
+                if (found)
                 {
-                    if (!pd_folder.dir)
-                        continue;
+                    found_path = program_data_path / found_path;
+                }
 
-                    if (ContainsString(pd_folder.name, L"AVEVA", StringCase_Insensitive) ||
-                        ContainsString(pd_folder.name, L"Citect", StringCase_Insensitive))
+                //2. search ProgramData for AVEVA folders
+                if (!found)
+                {
+                    for (const auto pd_folder : program_data_folders)
                     {
-                        const std::filesystem::path aveva_folder_path = (program_data_path / pd_folder.name).wstring();
-                        std::vector<ScannedFile> aveva_folder_files;
-                        ScanDirectoryForFileNames(aveva_folder_path, aveva_folder_files, ScanDirectoryFlags_IncludeDirs);
-                        std::filesystem::path scada_folder;
-                        found = GetScadaDir(scada_folder, CreateArrayView(aveva_folder_files));
-                        if (found)
+                        if (!pd_folder.dir)
+                            continue;
+
+                        if (ContainsString(pd_folder.name, L"AVEVA", StringCase_Insensitive) ||
+                            ContainsString(pd_folder.name, L"Citect", StringCase_Insensitive))
                         {
-                            found_path = aveva_folder_path / scada_folder;
-                            DebugPrint("aveva_folder_path: %s", aveva_folder_path.string().c_str());
-                            DebugPrint("scada_folder: %s", scada_folder.string().c_str());
-                            break;
+                            const std::filesystem::path aveva_folder_path = (program_data_path / pd_folder.name).wstring();
+                            std::vector<ScannedFile> aveva_folder_files;
+                            ScanDirectoryForFileNames(aveva_folder_path, aveva_folder_files, ScanDirectoryFlags_IncludeDirs);
+                            std::filesystem::path scada_folder;
+                            found = GetScadaDir(scada_folder, CreateArrayView(aveva_folder_files));
+                            if (found)
+                            {
+                                found_path = aveva_folder_path / scada_folder;
+                                DebugPrint("aveva_folder_path: %s", aveva_folder_path.string().c_str());
+                                DebugPrint("scada_folder: %s", scada_folder.string().c_str());
+                                break;
+                            }
                         }
                     }
                 }
-            }
-            if (found)
-            {
-                citect_settings.program_files_path = found_path.wstring();
-                citect_settings.project_path = (std::filesystem::path(citect_settings.program_files_path) / L"User" / L"UNKNOWN").wstring();
-                WriteSettings(&g_data.settings, g_settings_filename);
-            }
-            else
-            {
-                DebugPrint("Failed to find aveva directories");
+                if (found)
+                {
+                    g_data.citect.program_files_path = found_path.wstring();
+                    g_data.citect.project_path = g_data.citect.program_files_path / L"User" / L"UNKNOWN";
+                    WriteSettings(&g_data.settings, g_settings_filename);
+                }
+                else
+                {
+                    DebugPrint("Failed to find aveva directories");
+                }
+
+                //3. search ProgramData for AVEVA folders
+                //C:\Program Files (x86)\AVEVA Plant SCADA\
+
+                std::wstring program_files_86;
+                ExpandEnvironemntVariable(program_files_86, L"%programfiles(x86)%");
+                Path pfx = program_files_86;
             }
 
-            //3. search ProgramData for AVEVA folders
-            //C:\Program Files (x86)\AVEVA Plant SCADA\
-
-            std::wstring program_files_86;
-            ExpandEnvironemntVariable(program_files_86, L"%programfiles(x86)%");
-            Path pfx = program_files_86;
+            ImGui::EndDisabled();
         }
 
 
@@ -260,16 +256,14 @@ void CitectImGui()
 
         std::error_code ec;
         ImGui::BeginDisabled(g_data.backup_in_progress ||
-            !fs::exists(g_data.settings.backup_path, ec) ||
-            g_data.settings.citect.project_path.size() < 3 ||
-            g_data.settings.citect.program_files_path.size() < 3 ||
-            !fs::exists(g_data.settings.citect.program_files_86, ec));
+          !(fs::exists(cd.backup_path, ec)         &&
+            fs::exists(cd.project_path, ec)        &&
+            fs::exists(cd.program_files_path, ec)  &&
+            fs::exists(cd.program_files_86, ec)));
         float height = 40;
         if (ImGui::Button("Backup Citect", ImVec2(125, height)) && !g_data.backup_in_progress)
         {
             RunCitectJob* job = new RunCitectJob();
-            job->settings = g_data.settings.citect;
-            job->backup_path = g_data.settings.backup_path;
             g_data.backup_in_progress = true;
             Threading::GetInstance().SubmitJob(job);
         }
