@@ -17,7 +17,7 @@
 
 void RunCitectJob::RunJob()
 {
-    CitectData& cs = g_data.citect;
+    CitectData& cs = *m_citect_data;
     std::lock_guard<std::mutex> lock(cs.lock);
 
     //1. Backup project as Backup.ctz
@@ -139,11 +139,10 @@ bool GetScadaDir(std::filesystem::path& out, ArrayView<ScannedFile> files)
     return false;
 }
 
-void CitectImGui()
+void CitectImGui(CitectData& cd)
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     Threading& threading = Threading::GetInstance();
-    CitectData& cd = g_data.citect;
     ImGuiWindowFlags sectionFlags =
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoSavedSettings |
@@ -162,6 +161,7 @@ void CitectImGui()
 
         {
             bool locked = cd.lock.try_lock();
+            Defer{ cd.lock.unlock(); };
             ImGui::BeginDisabled(locked);
             ImGui::BeginGroup();
             if (ImguiPath("Backup Folder", "Please select removable media folder to backup to", cd.backup_path))
@@ -220,8 +220,8 @@ void CitectImGui()
                 }
                 if (found)
                 {
-                    g_data.citect.program_files_path = found_path.wstring();
-                    g_data.citect.project_path = g_data.citect.program_files_path / L"User" / L"UNKNOWN";
+                    cd.program_files_path = found_path.wstring();
+                    cd.project_path = cd.program_files_path / L"User" / L"UNKNOWN";
                     WriteSettings(&g_data.settings, g_settings_filename);
                 }
                 else
@@ -264,6 +264,7 @@ void CitectImGui()
         if (ImGui::Button("Backup Citect", ImVec2(125, height)) && !g_data.backup_in_progress)
         {
             RunCitectJob* job = new RunCitectJob();
+            job->m_citect_data = &cd;
             g_data.backup_in_progress = true;
             Threading::GetInstance().SubmitJob(job);
         }

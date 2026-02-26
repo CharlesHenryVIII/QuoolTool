@@ -153,7 +153,7 @@ bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path)
     return modified;
 }
 
-void ImguiMain()
+void ImguiMain(CitectData& data)
 {
     Threading& threading = Threading::GetInstance();
 
@@ -222,7 +222,7 @@ void ImguiMain()
 
 
 
-        CitectImGui();
+        CitectImGui(data);
 
 
         ImGui::End();
