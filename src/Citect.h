@@ -5,8 +5,9 @@
 
 struct RunCitectJob : Job
 {
+    CitectData* m_citect_data;
     virtual void RunJob() override;
 };
 
-void CitectImGui();
+void CitectImGui(CitectData& citect_data);
 

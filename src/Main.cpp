@@ -52,7 +52,6 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-
 int Main(int, char**)
 {
     glfwSetErrorCallback(glfw_error_callback);
@@ -224,6 +223,8 @@ int Main(int, char**)
     //while (!glfwWindowShouldClose(window))
 #endif
 
+    CitectData citect_data;
+
     glfwShowWindow(window);
     bool done = false;
     while (!(done || glfwWindowShouldClose(window)))
@@ -236,11 +237,12 @@ int Main(int, char**)
             // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
             // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
             glfwPollEvents();
-            if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
-            {
-                ImGui_ImplGlfw_Sleep(10);
-                continue;
-            }
+
+            //if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
+            //{
+            //    ImGui_ImplGlfw_Sleep(10);
+            //    continue;
+            //}
 
 #if _DEBUG
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -269,7 +271,7 @@ int Main(int, char**)
 //                buildRunning = false;
 //#endif
 
-            ImguiMain();
+            ImguiMain(citect_data);
 
 
             {

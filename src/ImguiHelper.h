@@ -2,7 +2,8 @@
 #include "String.h"
 #include "Imgui.h"
 
-void ImguiMain();
+struct CitectData;
+void ImguiMain(CitectData& data);
 void TextCentered(std::string text);
 bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& out_path, const bool add_final_slash);
 bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path);

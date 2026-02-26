@@ -20,7 +20,6 @@ struct Settings {
 
 struct GlobalData
 {
-    CitectData citect = {};
     Settings settings;
     std::atomic<bool> backup_in_progress = false;
     std::atomic<u64> progress;
