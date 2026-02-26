@@ -14,6 +14,13 @@ std::string ToString(const char* fmt, ...);
 std::wstring ToString(const wchar_t* fmt, ...);
 i32 RunProcess(const wchar_t* path, const wchar_t* args, bool async = false, bool show = true);
 void InitOS(GLFWwindow* window);
+int Main(int, char**);
+bool ConsoleAttached();
+bool DebuggerAttached();
+void EnableOutputToDebugger();
+void HideConsole();
+void ShowConsole();
+bool IsConsoleVisible();
 
 static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);
@@ -44,7 +51,6 @@ void ConvertWideCharToMultiByte(std::string& out, const std::wstring& in);
 void ExpandEnvironemntVariable(std::wstring& out, const std::wstring& in);
 void ToLower(std::wstring& s);
 void ToLower(std::string& s);
-int Main(int, char**);
 void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root/*, ArrayView<std::wstring> ext_to_exclude*/);
 ImFont* LoadFontForImgui(int resource_id, float fontSize);
 
