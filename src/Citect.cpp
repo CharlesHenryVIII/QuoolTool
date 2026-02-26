@@ -152,7 +152,7 @@ void CitectImGui(CitectData& cd)
 
     //const ImVec2 paths_scale = { 0, 0.2f };
     //const ImVec2 paths_size =  HadamardProduct(viewport->WorkSize, paths_scale);
-    const ImVec2 paths_size = { 0, 175 };
+    const ImVec2 paths_size = { 0, 200 };
     if (ImGui::BeginChild("File Paths", paths_size, true, sectionFlags))
     {
         ZoneScopedN("File Paths");
@@ -162,7 +162,7 @@ void CitectImGui(CitectData& cd)
         {
             bool locked = cd.lock.try_lock();
             Defer{ cd.lock.unlock(); };
-            ImGui::BeginDisabled(locked);
+            ImGui::BeginDisabled(!locked);
             ImGui::BeginGroup();
             if (ImguiPath("Backup Folder", "Please select removable media folder to backup to", cd.backup_path))
                 WriteSettings(&g_data.settings, g_settings_filename);

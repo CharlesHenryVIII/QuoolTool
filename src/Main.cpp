@@ -18,6 +18,7 @@
 #endif
 
 #include "Tracy.hpp"
+#include "cmdline.h"
 
 #include "WinInterop.h"
 #include "WinInterop_File.h"
@@ -52,8 +53,40 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-int Main(int, char**)
+int Main(int argc, char** argv)
 {
+    //argc will always be 1 in console mode
+    if (**argv != 0 && (argc == -1 || argc > 1))
+    {
+        cmdline::parser p;
+        const char* backup_name = "backup-path";
+        const char* citect_zip_name = "citect-zip";
+        p.add<std::string>(backup_name, 'b', "path to backup folder", false, "");
+        p.add<std::string>(citect_zip_name, 'c', "output path for citect zip file", false, "");
+        if (argc == -1)
+            p.parse_check(*argv);
+        else
+            p.parse_check(argc, argv);
+
+        const std::string backup_path = p.get<std::string>(backup_name);
+        const std::string citect_zip_path = p.get<std::string>(citect_zip_name);
+        if (citect_zip_path.size())
+        {
+            Path czp = citect_zip_path;
+            if (fs::exists(czp))
+            {
+                //TODO: Do Backup
+            }
+            else
+            {
+                std::cerr << "folder does not exist for citect-zip: " << citect_zip_path;
+            }
+        }
+        return 0;
+    }
+    HideConsole();
+
+
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
         return 1;

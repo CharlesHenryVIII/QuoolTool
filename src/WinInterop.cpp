@@ -20,6 +20,7 @@
 #include <cwctype>
 #include <format>
 #include <fstream>
+#include <iostream>
 
 #include "libarchive/libarchive/archive.h"
 #include "libarchive/libarchive/archive_entry.h"
@@ -509,6 +510,49 @@ void InitOS(GLFWwindow* window)
 #endif
 }
 
+bool ConsoleAttached()
+{
+    return AttachConsole(ATTACH_PARENT_PROCESS);
+}
+bool DebuggerAttached()
+{
+    return IsDebuggerPresent();
+}
+
+class DebugStreamBuffer final : public std::streambuf
+{
+protected:
+    int overflow(int c) override
+    {
+        if (c != EOF)
+        {
+            OutputDebugStringA((char*)&c);
+        }
+        return c;
+    }
+};
+static DebugStreamBuffer g_debug_stream_buffer;
+void EnableOutputToDebugger()
+{
+    std::cerr.rdbuf(&g_debug_stream_buffer);
+    std::cout.rdbuf(&g_debug_stream_buffer);
+}
+
+void HideConsole()
+{
+    ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
+}
+
+void ShowConsole()
+{
+    ::ShowWindow(::GetConsoleWindow(), SW_SHOW);
+}
+
+bool IsConsoleVisible()
+{
+    return ::IsWindowVisible(::GetConsoleWindow()) != FALSE;
+}
+
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
 {
     FAIL;
@@ -992,19 +1036,14 @@ void os_assert(bool expr, const char*, const char*, int)
 }
 #endif
 
-#ifdef _WIN32
-#ifdef _CONSOLE
 int main(int argc, char** argv)
 {
     return Main(argc, argv);
 }
-#else
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
 {
-    return Main(val, &str);
+    return Main(-1, &str);
 }
-#endif
-#endif
 
 void ArchiveErrorCheck(archive* a, int e)
 {
