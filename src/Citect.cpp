@@ -15,9 +15,8 @@
 //#include "archive.h"
 //#include "archive_entry.h"
 
-void RunCitectJob::RunJob()
+void CitectCreateZip(CitectData& cs)
 {
-    CitectData& cs = *m_citect_data;
     std::lock_guard<std::mutex> lock(cs.lock);
 
     //1. Backup project as Backup.ctz
@@ -30,22 +29,37 @@ void RunCitectJob::RunJob()
     ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
      
 
-    std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / L"Config";
-    std::vector<ScannedFile> config_files;
-    ScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
-
     std::vector<std::filesystem::path> ini_files;
-    for (auto f : config_files)
+    if (fs::exists(cs.program_files_path))
     {
-        if (f.name.find_last_of(L".ini") != std::wstring::npos)
+        std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / L"Config";
+        std::vector<ScannedFile> config_files;
+        ScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
+
+        for (auto f : config_files)
         {
-            ini_files.push_back(config_path / f.name);
+            if (f.name.find_last_of(L".ini") != std::wstring::npos)
+            {
+                ini_files.push_back(config_path / f.name);
+            }
         }
     }
 
     CreateZip(L"Backup.ctz", cs.backup_path, cs.project_path, CreateArrayView(filenames), CreateArrayView(ini_files));
     g_data.total = 0;
     g_data.progress = u64(-1);
+}
+
+void RunCitectCreateZipJob::RunJob()
+{
+    CitectData& cs = *m_citect_data;
+    CitectCreateZip(cs);
+}
+
+void RunCitectFullBackupJob::RunJob()
+{
+    CitectData& cs = *m_citect_data;
+    CitectCreateZip(cs);
 
     //2. Backup citect.ini file in config
     const Path program_files_path = cs.program_files_path;
@@ -263,7 +277,7 @@ void CitectImGui(CitectData& cd)
         float height = 40;
         if (ImGui::Button("Backup Citect", ImVec2(125, height)) && !g_data.backup_in_progress)
         {
-            RunCitectJob* job = new RunCitectJob();
+            RunCitectFullBackupJob* job = new RunCitectFullBackupJob();
             job->m_citect_data = &cd;
             g_data.backup_in_progress = true;
             Threading::GetInstance().SubmitJob(job);

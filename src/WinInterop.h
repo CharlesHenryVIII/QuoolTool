@@ -21,6 +21,7 @@ void EnableOutputToDebugger();
 void HideConsole();
 void ShowConsole();
 bool IsConsoleVisible();
+void Sleep(u64 ms);
 
 static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);
