@@ -1141,7 +1141,9 @@ void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, cons
     ArchiveErrorCheck(a, error);
     error = archive_write_set_options(a, "compression-level=9");
     ArchiveErrorCheck(a, error);
-    std::filesystem::path zip_filename = std::filesystem::path(zip_pathw) / zip_name;
+    Path zip_filename = std::filesystem::path(zip_pathw) / zip_name;
+    std::error_code ec;
+    fs::create_directories(zip_filename.parent_path(), ec);
     error = archive_write_open_filename(a, zip_filename.string().c_str());
     ArchiveErrorCheck(a, error);
 
