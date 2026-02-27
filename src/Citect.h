@@ -3,7 +3,13 @@
 #include "Settings.h"
 #include "String.h"
 
-struct RunCitectJob : Job
+struct RunCitectFullBackupJob : Job
+{
+    CitectData* m_citect_data;
+    virtual void RunJob() override;
+};
+
+struct RunCitectCreateZipJob : Job
 {
     CitectData* m_citect_data;
     virtual void RunJob() override;

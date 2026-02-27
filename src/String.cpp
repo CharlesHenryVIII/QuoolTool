@@ -513,3 +513,24 @@ std::wstring PathConcat(const std::wstring& a, const std::wstring& b)
     }
     return a + L"/" + b;
 }
+
+void TuiProgressBar(u64 count, u64 max)
+{
+    const i32 bar_width = 50;
+
+    float progress = (float)count / max;
+    i32 bar_length = i32(progress * (float)bar_width);
+
+    printf("\rProgress: [");
+    for (i32 i = 0; i < bar_length; ++i)
+    {
+        printf("#");
+    }
+    for (i32 i = bar_length; i < bar_width; ++i)
+    {
+        printf(" ");
+    }
+    printf("] %.2f%%", progress * 100);
+
+    fflush(stdout);
+}
