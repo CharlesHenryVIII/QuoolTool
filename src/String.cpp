@@ -37,7 +37,7 @@ std::vector<i32> TextToIntArray(const char* text, const char lineEnd)
         else if (text[i] == lineEnd)
         {
             i32 value = 0;
-            for (i32 j = 0; j < workingNums.size(); j++)
+            for (size_t j = 0; j < workingNums.size(); j++)
             {
                 value += (workingNums[j] * (int)pow(10, workingNums.size() - 1 - j));
             }
@@ -95,7 +95,7 @@ void TextRemoval(std::string& string, const std::string& removalRef)
         if (sv.substr(i, removalRef.size()) == removalRef)
         {
             begin = end;
-            for (i32 j = 0; j < removalRef.size(); j++)
+            for (size_t j = 0; j < removalRef.size(); j++)
                 end++;
             string.erase(begin, end);
             end = string.begin();
@@ -136,9 +136,9 @@ void TextRemoveAfter(std::string& string, const std::string& removalRef)
 void TextAddition(std::string& string, const std::string& additionalText, const std::string& after)
 {
     std::string_view sv = string;
-    for (i32 i = 0; i < string.size() - after.size(); i++)
+    for (size_t i = 0; i < string.size() - after.size(); i++)
     {
-        if (sv.substr(i, (after.size())) == after && !(sv.substr(i, (after.size() + additionalText.size())) == (after + additionalText)))
+        if (sv.substr(i, (after.size())) == after && !(sv.substr((size_t)i, (after.size() + additionalText.size())) == (after + additionalText)))
         {
             string.insert(i + after.size(), additionalText);
         }
@@ -405,7 +405,7 @@ bool CopyFolderRelative(const Path& source, const Path& dest, const Path& relati
 
 void CopyString(char** dest, const char* source, const u64 max_length)
 {
-    memmove(*dest, source, Min<size_t>(max_length, strnlen_s(source, max_length)));
+    memmove(*dest, source, (size_t)Min<u64>(max_length, strnlen_s(source, (size_t)max_length)));
 }
 
 void PathRemoveExtension(std::wstring& path)
