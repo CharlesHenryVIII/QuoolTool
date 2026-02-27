@@ -99,6 +99,7 @@ int Main(int argc, char** argv)
                     TuiProgressBar(g_data.progress, g_data.total);
                     Sleep(100);
                 } while (g_data.total != 0);
+                TuiProgressBar(100, 100);
             }
             else
             {
