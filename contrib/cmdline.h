@@ -399,6 +399,7 @@ public:
         continue;
       }
 
+#if 0
       if (arg[i]=='\\'){
         i++;
         if (i>=arg.length()){
@@ -406,6 +407,17 @@ public:
           return false;
         }
       }
+#else
+      if (arg[i] == '\\')
+      {
+          if (i >= arg.length()) {
+              args.push_back(buf);
+              buf = "";
+              int test = 1;
+              continue;
+          }
+      }
+#endif
 
       buf+=arg[i];
     }
