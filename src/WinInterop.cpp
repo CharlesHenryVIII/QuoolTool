@@ -21,6 +21,7 @@
 #include <format>
 #include <fstream>
 #include <iostream>
+#include <chrono>
 
 #include "libarchive/libarchive/archive.h"
 #include "libarchive/libarchive/archive_entry.h"
@@ -551,6 +552,11 @@ void ShowConsole()
 bool IsConsoleVisible()
 {
     return ::IsWindowVisible(::GetConsoleWindow()) != FALSE;
+}
+
+void Sleep(u64 _ms)
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(_ms));
 }
 
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
@@ -1129,10 +1135,6 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
 
 void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root/*, ArrayView<std::wstring> ext_to_exclude*/)
 {
-    if (zip_pathw.size() < 3)
-    {
-        return;
-    }
     archive* a = archive_write_new();
     archive_write_set_format_zip(a);
     int error = archive_write_zip_set_compression_deflate(a);

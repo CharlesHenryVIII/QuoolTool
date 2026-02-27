@@ -29,6 +29,7 @@
 #include "LoadJson.h"
 #include "ImguiHelper.h"
 #include "resource.h"
+#include "Citect.h"
 
 #include <stdio.h>
 #include <string>
@@ -60,26 +61,48 @@ int Main(int argc, char** argv)
     {
         cmdline::parser p;
         const char* backup_name = "backup-path";
-        const char* citect_zip_name = "citect-zip";
+        const char* citect_project_path_name = "citect-project-path";
+        const char* citect_program_files_name = "citect-program-files";
         p.add<std::string>(backup_name, 'b', "path to backup folder", false, "");
-        p.add<std::string>(citect_zip_name, 'c', "output path for citect zip file", false, "");
+        p.add<std::string>(citect_project_path_name, 'c', "path to citect project to zip, please also provide citect-program-files path if available", false, "");
+        p.add<std::string>(citect_program_files_name, 'p', "path to citect program files to zip, must provide citect-project-path as well", false, "");
         if (argc == -1)
             p.parse_check(*argv);
         else
             p.parse_check(argc, argv);
 
-        const std::string backup_path = p.get<std::string>(backup_name);
-        const std::string citect_zip_path = p.get<std::string>(citect_zip_name);
-        if (citect_zip_path.size())
+        const std::string& backup_path = p.get<std::string>(backup_name);
+        const std::string& citect_project_folder_string = p.get<std::string>(citect_project_path_name);
+        const std::string& citect_program_files_string = p.get<std::string>(citect_program_files_name);
+        if (citect_project_folder_string.size())
         {
-            Path czp = citect_zip_path;
-            if (fs::exists(czp))
+            Path project = citect_project_folder_string;
+            Path program_files = citect_program_files_string;
+            if (fs::exists(project))
             {
                 //TODO: Do Backup
+
+                CitectData cd = {
+                    .project_path = project,
+                    .program_files_path = fs::exists(program_files) ? program_files : Path(),
+                    .backup_path = backup_path,
+                };
+                RunCitectCreateZipJob* job = new RunCitectCreateZipJob();
+                job->m_citect_data = &cd;
+                Threading::GetInstance().SubmitJob(job);
+                while (g_data.total == 0)
+                {
+                    Sleep(200);
+                }
+
+                do {
+                    TuiProgressBar(g_data.progress, g_data.total);
+                    Sleep(100);
+                } while (g_data.total != 0);
             }
             else
             {
-                std::cerr << "folder does not exist for citect-zip: " << citect_zip_path;
+                std::cerr << "folder does not exist for citect-zip: " << citect_project_folder_string;
             }
         }
         return 0;
