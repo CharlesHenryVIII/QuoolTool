@@ -1063,8 +1063,6 @@ void ArchiveErrorCheck(archive* a, int e)
 
 void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std::filesystem::path& relative_path, bool is_dir, std::vector<u8>& file_buffer)
 {
-    //const std::filesystem::path relative = relative_path_to_file / f.name;
-    //const std::filesystem::path fullpath = source / relative;
     struct stat st;
     if (stat(full_path.string().c_str(), &st) != 0)
     {
@@ -1079,7 +1077,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
             DebugPrint("Invalid parameter to _stat.\n");
             break;
         default:
-            /* Should never be reached. */
+            //Should never be reached.
             DebugPrint("Unexpected error in _stat.\n");
         }
         FAIL;
@@ -1087,16 +1085,9 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
     }
     if (is_dir)
     {
-        //archive_entry_set_pathname(entry,  relative_path.string().c_str());
-        //archive_entry_set_filetype(entry, AE_IFDIR); //Directory
-        //archive_entry_copy_stat(entry, &st);
-        //int error = archive_write_header(a, entry);
-        //ArchiveErrorCheck(a, error);
-        //++g_data.progress;
-
         std::vector<ScannedFile> out;
         ScanDirectoryForFileNames(full_path, out, ScanDirectoryFlags_IncludeDirs);
-        for (i32 i = 0; i < out.size(); i++)
+        for (i32 i = 0; i < (i32)out.size(); i++)
         {
             AddEntryToZip(a, full_path / out[i].name, relative_path / out[i].name, out[i].dir, file_buffer);
         }
@@ -1105,7 +1096,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
     {
         archive_entry* entry = archive_entry_new();
         archive_entry_set_pathname(entry, relative_path.string().c_str());
-        archive_entry_set_filetype(entry, AE_IFREG); //Regular file
+        archive_entry_set_filetype(entry, AE_IFREG);
         archive_entry_copy_stat(entry, &st);
         int error = archive_write_header(a, entry);
         ArchiveErrorCheck(a, error);
@@ -1118,7 +1109,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
                 FAIL;
                 return;
             }
-            const size_t file_size = file.tellg();
+            const size_t file_size = (size_t)file.tellg();
             if (file_size > file_buffer.size())
                 file_buffer.resize(file_size * 2);
             file.seekg(0, std::ios::beg);
