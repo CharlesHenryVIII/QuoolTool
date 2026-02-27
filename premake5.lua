@@ -3,6 +3,7 @@ require "ecc/ecc"
 workspace "ScadaBackup"
     configurations { "Debug", "Profile", "Release" }
     platforms { "x64" }
+    --platforms { "x64", "Win32" }
     staticruntime "On"
     runtime "Debug"
 
@@ -198,7 +199,7 @@ project "libarchive"
         "contrib/libarchive/contrib/**",
         "contrib/libarchive_dep/openssl",
         "contrib/libarchive_dep/lzma",
-        "contrib/libarchive_dep/lib/",
+        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static",
     }
 
     includedirs {
@@ -225,10 +226,11 @@ project "libarchive"
     files {
         "contrib/libarchive/libarchive/**",
         "contrib/libarchive/libarchive/config.h",
-        "contrib/libarchive_dep/**",
+        --"contrib/libarchive_dep/**",
         "contrib/libarchive_dep/openssl/**",
         "contrib/libarchive_dep/lzma/**",
-        "contrib/libarchive_dep/lib/**",
+        --"contrib/libarchive_dep/lib/**",
+        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static/**",
     }
     removefiles {
         --"contrib/libarchive/contrib/**",
