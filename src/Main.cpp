@@ -104,8 +104,8 @@ int Main(int argc, char** argv)
             {
                 std::cerr << "folder does not exist for citect-zip: " << citect_project_folder_string;
             }
+            return 0;
         }
-        return 0;
     }
     HideConsole();
 

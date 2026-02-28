@@ -1066,6 +1066,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
         argv.push_back(argv_utf8[i].data());
     }
 
+    AttachConsole(ATTACH_PARENT_PROCESS);
+    HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+    HANDLE error = GetStdHandle(STD_ERROR_HANDLE);
+    std::wstring test_input = L"\nTest Input\n";
+    DWORD written1;
+    BOOL result1 = WriteConsole(input, test_input.c_str(), (DWORD)test_input.size(), &written1, NULL);
+
+    std::wstring test_output = L"\nTest Output\n";
+    DWORD written2;
+    BOOL result2 = WriteConsole(output, test_output.c_str(), (DWORD)test_output.size(), &written2, NULL);
+
+    std::wstring test_error = L"\nTest Error\n";
+    DWORD written3;
+    BOOL result3 = WriteConsole(error, test_error.c_str(), (DWORD)test_error.size(), &written3, NULL);
+
     return Main((int)argv.size(), argv.data());
 }
 
