@@ -26,42 +26,17 @@ project "ScadaBackup"
     enablepch "Off"
     fatalwarnings { "All" }
 
-    dependson { "libarchive" }
+    dependson {
+        "libarchive",
+        "contrib",
+    }
 
     links {
-        "OpenGL32",
-        "libarchive"
-        --"archive",
-        --"zlibstatic",
-        --"bz2",
-        --"lzma",
-        --"Crypt32",
-        --"Ws2_32",
-        --"bcrypt",
-
-
-        --"archive",
-        --"zlib",
-        --"lzma",
-        --"bz2",
-        --"zstd",
-        --"lz4",
-        --"libcrypto",
-        --"libssl",
-        --"xmllite",
-        --"bcrypt",
-        --"crypt32",
-        --"ws2_32",
-        --"advapi32",
+        "libarchive",
+        "contrib",
     }
 
-    libdirs {
-        "contrib/SDL2/lib/%{cfg.platform}/",
-        "contrib/ImGui",
-        "contrib/tracy",
-        --"contrib/libarchive/",
-        --"C:/Projects/vcpkg/installed/x64-windows-static/lib"
-    }
+    --libdirs { }
 
     includedirs {
         "contrib",
@@ -70,47 +45,26 @@ project "ScadaBackup"
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
         "resources",
-        --"contrib/libarchive/",
-        --"C:/Projects/vcpkg/installed/x64-windows-static/include",
     }
-    fatalwarnings { "All" }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
         "LIBARCHIVE_STATIC",
-        "NODEFAULTLIB",
     }
     files {
         "src/**",
-        "contrib/tracy/public/TracyClient.cpp",
-        "contrib/ImGui/*.cpp",
         "contrib/ImGui/*.h",
-        "contrib/ImGui/backends/imgui_impl_opengl3.*",
-        "contrib/ImGui/backends/imgui_impl_glfw.*",
+        "contrib/ImGui/backends/imgui_impl_opengl3.*h",
+        "contrib/ImGui/backends/imgui_impl_glfw.*h",
         "contrib/json.hpp",
-        "contrib/stb/**",
-        --"contrib/libarchive/*.h",
+        "contrib/stb/**.h",
+        "contrib/libarchive/*.h",
         "resources/**",
 
         "contrib/glfw/src/internal.h",
         "contrib/glfw/src/platform.h",
         "contrib/glfw/src/mappings.h",
-        "contrib/glfw/src/context.c",
-        "contrib/glfw/src/init.c",
-        "contrib/glfw/src/input.c",
-        "contrib/glfw/src/monitor.c",
-        "contrib/glfw/src/platform.c",
-        "contrib/glfw/src/vulkan.c",
-        "contrib/glfw/src/window.c",
-        "contrib/glfw/src/egl_context.c",
-        "contrib/glfw/src/osmesa_context.c",
         "contrib/glfw/src/null_platform.h",
         "contrib/glfw/src/null_joystick.h",
-        "contrib/glfw/src/null_init.c",
-        "contrib/glfw/src/null_monitor.c",
-        "contrib/glfw/src/null_window.c",
-        "contrib/glfw/src/null_joystick.c",
-        "contrib/glfw/src/wgl_context.c",
-        --"contrib/glfw/src/wlx_context.c",
     }
 
     filter "system:Windows"
@@ -119,10 +73,7 @@ project "ScadaBackup"
         "WIN32",
         "_GLFW_WIN32",}
 
-        files {
-        "contrib/glfw/src/win32*",
-        --"contrib/glfw/src/wlx_context.c",
-    }
+        files { }
 
     filter "system:Unix"
         system "linux"
@@ -159,6 +110,124 @@ project "ScadaBackup"
 
     filter "files:**.natvis"
         buildaction "Natvis"
+
+
+project "contrib"
+    kind "StaticLib"
+    language "C++"
+    staticruntime "On"
+    --cdialect "C99"
+    targetdir "build/"
+    targetname "contrib_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    --targetname "libarchive"
+    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
+    editandcontinue "Off"
+    usefullpaths "On"
+
+    multiprocessorcompile "On"
+    enablepch "Off"
+    fatalwarnings { "All" }
+
+    links {
+        "OpenGL32",
+        "libarchive"
+    }
+
+    warnings ("Default");
+
+    libdirs {
+        "contrib/SDL2/lib/%{cfg.platform}/",
+        "contrib/ImGui",
+        "contrib/tracy",
+    }
+
+    includedirs {
+        "contrib",
+        "contrib/ImGui",
+        "contrib/SDL2/include",
+        "contrib/tracy/public/tracy",
+        "contrib/glfw/include",
+    }
+    defines {
+        "_CRT_SECURE_NO_WARNINGS",
+    }
+    files {
+        "contrib/tracy/public/TracyClient.cpp",
+        "contrib/ImGui/*.cpp",
+        "contrib/ImGui/*.h",
+        "contrib/ImGui/backends/imgui_impl_opengl3.*",
+        "contrib/ImGui/backends/imgui_impl_glfw.*",
+        "contrib/json.hpp",
+        "contrib/stb/**",
+        "contrib/glfw/src/internal.h",
+        "contrib/glfw/src/platform.h",
+        "contrib/glfw/src/mappings.h",
+        "contrib/glfw/src/context.c",
+        "contrib/glfw/src/init.c",
+        "contrib/glfw/src/input.c",
+        "contrib/glfw/src/monitor.c",
+        "contrib/glfw/src/platform.c",
+        "contrib/glfw/src/vulkan.c",
+        "contrib/glfw/src/window.c",
+        "contrib/glfw/src/egl_context.c",
+        "contrib/glfw/src/osmesa_context.c",
+        "contrib/glfw/src/null_platform.h",
+        "contrib/glfw/src/null_joystick.h",
+        "contrib/glfw/src/null_init.c",
+        "contrib/glfw/src/null_monitor.c",
+        "contrib/glfw/src/null_window.c",
+        "contrib/glfw/src/null_joystick.c",
+        "contrib/glfw/src/wgl_context.c",
+    }
+
+    filter "system:Windows"
+        system "windows"
+        defines {
+        "WIN32",
+        "_GLFW_WIN32",}
+
+        files {
+        "contrib/glfw/src/win32*",
+        --"contrib/glfw/src/wlx_context.c",
+    }
+
+
+    filter "system:Unix"
+        system "linux"
+        defines {
+        "LINUX",
+        "_GLFW_WAYLAND",
+        "_GLFW_X11",}
+
+
+    filter "configurations:Debug"
+        defines { "_DEBUG" , "TRACY_ENABLE", "NOMINMAX" }
+        editandcontinue "off"
+        symbols  "Full"
+        optimize "Off"
+
+    filter "configurations:Profile"
+        defines { "NDEBUG" , "TRACY_ENABLE", "NOMINMAX" }
+        editandcontinue "off"
+        runtime "Release"
+        symbols  "Full"
+        --floatingpoint "fast"
+        optimize "Speed"
+
+    filter "configurations:Release"
+        defines { "NDEBUG", "NOMINMAX" }
+        editandcontinue "off"
+        runtime "Release"
+        symbols  "Full"
+        --floatingpoint "fast"
+        optimize "Speed"
+
+    filter("files:**.hlsl")
+        excludefrombuild "On"
+
+    filter "files:**.natvis"
+        buildaction "Natvis"
+
 
 project "libarchive"
     kind "StaticLib"
