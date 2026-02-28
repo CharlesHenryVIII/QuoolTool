@@ -1049,40 +1049,22 @@ int main(int argc, char** argv)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
 {
     int argc = 0;
-
     LPWSTR* argv_w = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (!argv_w)
         return -1;
 
-    // Convert to UTF-8 if your Main expects char**
     std::vector<std::string> argv_utf8;
-    std::vector<char*> argv;
-
-    char exe_path[MAX_PATH];
-    GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
-    argv.push_back(exe_path);
-
-    for (int i = 0; i < argc; ++i)
+    for (i32 i = 0; i < argc; ++i)
     {
-        int size = WideCharToMultiByte(
-            CP_UTF8, 0,
-            argv_w[i], -1,
-            nullptr, 0,
-            nullptr, nullptr
-        );
-
-        argv_utf8.emplace_back(size, '\0');
-        WideCharToMultiByte(
-            CP_UTF8, 0,
-            argv_w[i], -1,
-            argv_utf8.back().data(), size,
-            nullptr, nullptr
-        );
-
-        argv.push_back(argv_utf8.back().data());
+        argv_utf8.push_back({});
+        ConvertWideCharToMultiByte(argv_utf8[i], argv_w[i]);
     }
-
     LocalFree(argv_w);
+    std::vector<char*> argv;
+    for (i32 i = 0; i < argv_utf8.size(); ++i)
+    {
+        argv.push_back(argv_utf8[i].data());
+    }
 
     return Main((int)argv.size(), argv.data());
 }
