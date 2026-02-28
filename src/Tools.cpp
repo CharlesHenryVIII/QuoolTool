@@ -12,9 +12,9 @@ struct ScriptInfo {
 };
 
 ScriptInfo s_scripts[] = {
-    { .name = "netstat",    .selected = false, },
-    { .name = "sysinfo",    .selected = false, },
-    { .name = "ipconfig",   .selected = false, },
+    { .name = "NETSTAT",    .selected = true, },
+    { .name = "SYSINFO",    .selected = true, },
+    { .name = "IPCONFIG",   .selected = true, },
 };
 
 void ToolsImGui(ToolsData& td)
@@ -61,57 +61,63 @@ void ToolsImGui(ToolsData& td)
         std::error_code ec;
         ImGui::BeginDisabled(td.running);
         float height = 40;
+        ImVec2 button_size(150.0f, 75.0f);
+        ImGui::SetCursorPosX(Max((ImGui::GetContentRegionAvail().x - (arrsize(s_scripts) * button_size.x)) * 0.5f, ImGui::GetStyle().ItemSpacing.x));
+        const float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
         for (i32 i = 0; i < arrsize(s_scripts); i++)
         {
             ScriptInfo& s = s_scripts[i];
             ImGui::PushID(i);
             ImGui::BeginGroup();
 
-            ImVec2 size(200.0f, 100.0f);
-            if (ImGui::InvisibleButton("bigbutton", size))
-            {
-                s.selected = !s.selected;
-            }
-
+            bool pressed = ImGui::InvisibleButton("##btn", button_size);
             bool hovered = ImGui::IsItemHovered();
-            bool clicked = ImGui::IsItemClicked();
+            bool active = ImGui::IsItemActive();
+            if (pressed)
+                s.selected = !s.selected;
+
+            ImVec2 p_min = ImGui::GetItemRectMin();
+            ImVec2 p_max = ImGui::GetItemRectMax();
 
             ImDrawList* draw = ImGui::GetWindowDrawList();
-            ImVec2 min = ImGui::GetItemRectMin();
-            ImVec2 max = ImGui::GetItemRectMax();
+            ImU32 background_color = ImGui::GetColorU32(ImGuiCol_Button);
+            if (active)
+                background_color = ImGui::GetColorU32(ImGuiCol_ButtonActive);
+            if (hovered)
+                background_color = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
+            draw->AddRectFilled(p_min, p_max, background_color, 6.0f);
+            draw->AddRect(p_min, p_max, ImGui::GetColorU32(ImGuiCol_Border), 6.0f);
 
-            ImU32 color = ImGui::GetColorU32(ImGuiCol_FrameBg);
-            if (clicked)
-                color = ImGui::GetColorU32(ImGuiCol_FrameBgActive);
-            else if (hovered)
-                color = ImGui::GetColorU32(ImGuiCol_FrameBgHovered);
+            ImVec2 title_size = ImGui::CalcTextSize(s.name.c_str());
+            ImVec2 title_pos = {
+                p_min.x + (button_size.x - title_size.x) * 0.5f,
+                p_min.y + 6.0f
+            };
+            draw->AddText(title_pos, ImGui::GetColorU32(ImGuiCol_Text), s.name.c_str());
 
-            draw->AddRectFilled(min, max, color, 6.0f);
-
-            // Move cursor inside button area
-            ImGui::SetCursorScreenPos(ImVec2(min.x + 10, min.y + 10));
-
-            ImGui::Text(s.name.c_str());
-            std::string selected_text = "enabled";
-            ImVec4 selected_color = ImVec4(0, 1, 0, 1);
+            std::string selected_text = "Enabled";
+            ImU32 selected_color = IM_COL32(0, 255, 0, 255);
             if (!s.selected)
             {
-                selected_text = "disabled";
-                selected_color = ImVec4(1, 0, 0, 1);
+                selected_text = "Disabled";
+                selected_color = IM_COL32(255, 0, 0, 255);
             }
-            ImGui::TextColored(selected_color, selected_text.c_str());
-            ImGui::Button("Inner Button");
+            ImVec2 value_size = ImGui::CalcTextSize(selected_text.c_str());
+            ImVec2 value_pos = {
+                p_min.x + (button_size.x - value_size.x) * 0.5f,
+                p_min.y + (button_size.y - value_size.y) * 0.5f + 6.0f
+            };
+            draw->AddText(value_pos, selected_color, selected_text.c_str());
 
-            if (clicked)
-            {
-                // Handle big button click
-            }
-
-            //ImGui::Text(s.name.c_str());
-            //ImGui::Checkbox("##checkbox", &s.selected);
-            //ImGui::ImageButton();
             ImGui::EndGroup();
             ImGui::PopID();
+
+            float last_button_x2 = ImGui::GetItemRectMax().x;
+            float next_button_x2 = last_button_x2 + ImGui::GetStyle().ItemSpacing.x + button_size.x; // Expected position if next button was on same line
+
+            float text_start = ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x / 2;
+            if (i + 1 < arrsize(s_scripts) && next_button_x2 < window_visible_x2)
+                ImGui::SameLine();
         }
         ImGui::EndDisabled();
 
