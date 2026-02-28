@@ -23,7 +23,7 @@ void CitectCreateZip(CitectData& cs)
     std::vector<ScannedFile> filenames;
     {
         ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
-        g_data.total = filenames.size();
+        cs.total = filenames.size();
     }
     filenames.clear();
     ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
@@ -45,9 +45,9 @@ void CitectCreateZip(CitectData& cs)
         }
     }
 
-    CreateZip(L"Backup.ctz", cs.backup_path, cs.project_path, CreateArrayView(filenames), CreateArrayView(ini_files));
-    g_data.total = 0;
-    g_data.progress = u64(-1);
+    CreateZip(L"Backup.ctz", cs.backup_path, cs.project_path, CreateArrayView(filenames), CreateArrayView(ini_files), cs.progress);
+    cs.total = 0;
+    cs.progress = u64(-1);
 }
 
 void RunCitectCreateZipJob::RunJob()
@@ -83,11 +83,11 @@ void RunCitectFullBackupJob::RunJob()
     Path data_path = program_files_path / L"Data";
     std::vector<ScannedFile> data_files;
     ScanDirectoryForFileNames(data_path, data_files, ScanDirectoryFlags_None);
-    g_data.total = data_files.size();
-    g_data.progress = 0;
+    cs.total = data_files.size();
+    cs.progress = 0;
     for (auto sf : data_files)
     {
-        ++g_data.progress;
+        ++cs.progress;
         if (sf.dir)
             continue;
 
@@ -103,8 +103,8 @@ void RunCitectFullBackupJob::RunJob()
             CopyFileRelative(program_files_path, cs.backup_path, Path(L"Data") / sf.name);
         }
     }
-    g_data.total = 0;
-    g_data.progress = u64(-1);
+    cs.total = 0;
+    cs.progress = u64(-1);
 #else
     CopyFolderRelative(program_files_path, cs.backup_path, Path(L"Data"));
 #endif
@@ -136,7 +136,7 @@ void RunCitectFullBackupJob::RunJob()
     CopyFileRelative(cs.program_files_86, cs.backup_path, L"Bin/citect.frm");
 
 
-    g_data.backup_in_progress = false;
+    cs.backup_in_progress = false;
 }
 
 bool GetScadaDir(std::filesystem::path& out, ArrayView<ScannedFile> files)
@@ -269,31 +269,31 @@ void CitectImGui(CitectData& cd)
         ImGui::NewLine();
 
         std::error_code ec;
-        ImGui::BeginDisabled(g_data.backup_in_progress ||
+        ImGui::BeginDisabled(cd.backup_in_progress ||
           !(fs::exists(cd.backup_path, ec)         &&
             fs::exists(cd.project_path, ec)        &&
             fs::exists(cd.program_files_path, ec)  &&
             fs::exists(cd.program_files_86, ec)));
         float height = 40;
-        if (ImGui::Button("Backup Citect", ImVec2(125, height)) && !g_data.backup_in_progress)
+        if (ImGui::Button("Backup Citect", ImVec2(125, height)) && !cd.backup_in_progress)
         {
             RunCitectFullBackupJob* job = new RunCitectFullBackupJob();
             job->m_citect_data = &cd;
-            g_data.backup_in_progress = true;
+            cd.backup_in_progress = true;
             Threading::GetInstance().SubmitJob(job);
         }
         ImGui::EndDisabled();
 
-        if (g_data.backup_in_progress)
+        if (cd.backup_in_progress)
         {
             ImGui::SameLine();
-            if (g_data.progress == u64(-1))
+            if (cd.progress == u64(-1))
             {
                 ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, height), "Backing up misc files...");
             }
             else
             {
-                ImGui::ProgressBar(float(g_data.progress) / g_data.total, ImVec2(-FLT_MIN, height));
+                ImGui::ProgressBar(float(cd.progress) / cd.total, ImVec2(-FLT_MIN, height));
             }
         }
     }

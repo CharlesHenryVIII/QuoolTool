@@ -1061,7 +1061,7 @@ void ArchiveErrorCheck(archive* a, int e)
     }
 }
 
-void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std::filesystem::path& relative_path, bool is_dir, std::vector<u8>& file_buffer)
+void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std::filesystem::path& relative_path, bool is_dir, std::vector<u8>& file_buffer, std::atomic<u64>& progress)
 {
     struct stat st;
     if (stat(full_path.string().c_str(), &st) != 0)
@@ -1089,7 +1089,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
         ScanDirectoryForFileNames(full_path, out, ScanDirectoryFlags_IncludeDirs);
         for (i32 i = 0; i < (i32)out.size(); i++)
         {
-            AddEntryToZip(a, full_path / out[i].name, relative_path / out[i].name, out[i].dir, file_buffer);
+            AddEntryToZip(a, full_path / out[i].name, relative_path / out[i].name, out[i].dir, file_buffer, progress);
         }
     }
     else
@@ -1118,13 +1118,13 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
             error = (int)archive_write_data(a, file_buffer.data(), file_size);
             if (error < 0)
                 ArchiveErrorCheck(a, error);
-            ++g_data.progress;
+            ++progress;
         }
         archive_entry_free(entry);
     }
 }
 
-void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root/*, ArrayView<std::wstring> ext_to_exclude*/)
+void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root, std::atomic<u64>& progress/*, ArrayView<std::wstring> ext_to_exclude*/)
 {
     archive* a = archive_write_new();
     archive_write_set_format_zip(a);
@@ -1144,13 +1144,13 @@ void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, cons
     for (i32 i = 0; i < files_to_backup.size(); i++)
     {
         std::filesystem::path full = source / files_to_backup[i].name;
-        AddEntryToZip(a, full, files_to_backup[i].name, files_to_backup[i].dir, file_buffer);
+        AddEntryToZip(a, full, files_to_backup[i].name, files_to_backup[i].dir, file_buffer, progress);
     }
     for (i32 i = 0; i < files_to_add_to_root.size(); i++)
     {
         if (files_to_add_to_root[i].extension() != ".ini")
             continue;
-        AddEntryToZip(a, files_to_add_to_root[i], files_to_add_to_root[i].filename(), false, file_buffer);
+        AddEntryToZip(a, files_to_add_to_root[i], files_to_add_to_root[i].filename(), false, file_buffer, progress);
     }
 
     error = archive_write_close(a);
