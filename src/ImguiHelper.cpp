@@ -9,6 +9,7 @@
 #include "Settings.h"
 #include "LoadJson.h"
 #include "Citect.h"
+#include "Tools.h"
 
 #include <stdio.h>
 #include <string>
@@ -153,7 +154,7 @@ bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path)
     return modified;
 }
 
-void ImguiMain(CitectData& data)
+void ImguiMain(AppData& data)
 {
     Threading& threading = Threading::GetInstance();
 
@@ -221,8 +222,24 @@ void ImguiMain(CitectData& data)
         }
 
 
+        ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_NoCloseWithMiddleMouseButton | ImGuiTabBarFlags_FittingPolicyScroll | ImGuiTabBarFlags_DrawSelectedOverline;
+        if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
+        {
+            if (ImGui::BeginTabItem("Tools"))
+            {
+                ToolsImGui(data.tools_data);
+                ImGui::Text("This is the Avocado tab!\nblah blah blah blah blah");
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Citect/AVEVA"))
+            {
+                CitectImGui(data.citect_data);
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
 
-        CitectImGui(data);
+
 
 
         ImGui::End();

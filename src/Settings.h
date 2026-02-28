@@ -4,6 +4,13 @@
 #include "String.h"
 #include "Threading.h"
 
+struct ToolsData {
+    Path output_path;
+    std::atomic<bool> running = false;
+    std::atomic<u64> progress = 0;
+    std::atomic<u64> total = 0;
+    Mutex lock;
+};
 
 struct CitectData {
     Path project_path;
@@ -11,6 +18,14 @@ struct CitectData {
     Path program_files_86;
     Path backup_path;
     Mutex lock;
+    std::atomic<bool> backup_in_progress = false;
+    std::atomic<u64> progress;
+    std::atomic<u64> total;
+};
+
+struct AppData {
+    ToolsData tools_data;
+    CitectData citect_data;
 };
 
 struct Settings {
@@ -21,9 +36,6 @@ struct Settings {
 struct GlobalData
 {
     Settings settings;
-    std::atomic<bool> backup_in_progress = false;
-    std::atomic<u64> progress;
-    std::atomic<u64> total;
 };
 
 extern GlobalData g_data;

@@ -90,15 +90,15 @@ int Main(int argc, char** argv)
                 RunCitectCreateZipJob* job = new RunCitectCreateZipJob();
                 job->m_citect_data = &cd;
                 Threading::GetInstance().SubmitJob(job);
-                while (g_data.total == 0)
+                while (cd.total == 0)
                 {
                     Sleep(200);
                 }
 
                 do {
-                    TuiProgressBar(g_data.progress, g_data.total);
+                    TuiProgressBar(cd.progress, cd.total);
                     Sleep(100);
-                } while (g_data.total != 0);
+                } while (cd.total != 0);
                 TuiProgressBar(100, 100);
             }
             else
@@ -280,7 +280,7 @@ int Main(int argc, char** argv)
     //while (!glfwWindowShouldClose(window))
 #endif
 
-    CitectData citect_data;
+    AppData app_data;
 
     glfwShowWindow(window);
     bool done = false;
@@ -328,7 +328,7 @@ int Main(int argc, char** argv)
 //                buildRunning = false;
 //#endif
 
-            ImguiMain(citect_data);
+            ImguiMain(app_data);
 
 
             {

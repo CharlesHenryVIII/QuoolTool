@@ -1,9 +1,10 @@
 #pragma once
 #include "String.h"
 #include "Imgui.h"
+#include "Settings.h"
 
 struct CitectData;
-void ImguiMain(CitectData& data);
+void ImguiMain(AppData& data);
 void TextCentered(std::string text);
 bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& out_path, const bool add_final_slash);
 bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path);
