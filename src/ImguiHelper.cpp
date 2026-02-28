@@ -249,4 +249,32 @@ void ImguiMain(AppData& data)
         ImGui::ShowDemoWindow(&s_show_demo_window);
 }
 
+void ImguiCenterWrappedText(const char* text, float start_position, float wrap_width)
+{
+    ImFont* font = ImGui::GetFont();
+    float font_size = ImGui::GetFontSize();
 
+    const char* line_start = text;
+    while (*line_start)
+    {
+        const char* line_end = font->CalcWordWrapPosition(font_size, line_start, text + strlen(text), wrap_width);
+        std::string line(line_start, line_end);
+        ImGui::SetCursorPosX(start_position);
+        ImGui::TextAligned(0.5f, wrap_width, line.c_str());
+
+        if (line_end == line_start)
+            break;
+        line_start = line_end;
+        while (*line_start == ' ')
+            line_start++;
+    }
+}
+
+void ImguiAlignForWidth(float width, float alignment)
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+    float avail = ImGui::GetContentRegionAvail().x;
+    float off = (avail - width) * alignment;
+    if (off > 0.0f)
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+}
