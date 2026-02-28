@@ -66,8 +66,50 @@ void ToolsImGui(ToolsData& td)
             ScriptInfo& s = s_scripts[i];
             ImGui::PushID(i);
             ImGui::BeginGroup();
+
+            ImVec2 size(200.0f, 100.0f);
+            if (ImGui::InvisibleButton("bigbutton", size))
+            {
+                s.selected = !s.selected;
+            }
+
+            bool hovered = ImGui::IsItemHovered();
+            bool clicked = ImGui::IsItemClicked();
+
+            ImDrawList* draw = ImGui::GetWindowDrawList();
+            ImVec2 min = ImGui::GetItemRectMin();
+            ImVec2 max = ImGui::GetItemRectMax();
+
+            ImU32 color = ImGui::GetColorU32(ImGuiCol_FrameBg);
+            if (clicked)
+                color = ImGui::GetColorU32(ImGuiCol_FrameBgActive);
+            else if (hovered)
+                color = ImGui::GetColorU32(ImGuiCol_FrameBgHovered);
+
+            draw->AddRectFilled(min, max, color, 6.0f);
+
+            // Move cursor inside button area
+            ImGui::SetCursorScreenPos(ImVec2(min.x + 10, min.y + 10));
+
             ImGui::Text(s.name.c_str());
-            ImGui::Checkbox("##checkbox", &s.selected);
+            std::string selected_text = "enabled";
+            ImVec4 selected_color = ImVec4(0, 1, 0, 1);
+            if (!s.selected)
+            {
+                selected_text = "disabled";
+                selected_color = ImVec4(1, 0, 0, 1);
+            }
+            ImGui::TextColored(selected_color, selected_text.c_str());
+            ImGui::Button("Inner Button");
+
+            if (clicked)
+            {
+                // Handle big button click
+            }
+
+            //ImGui::Text(s.name.c_str());
+            //ImGui::Checkbox("##checkbox", &s.selected);
+            //ImGui::ImageButton();
             ImGui::EndGroup();
             ImGui::PopID();
         }
