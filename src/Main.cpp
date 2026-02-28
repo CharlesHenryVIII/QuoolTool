@@ -259,7 +259,8 @@ int Main(int argc, char** argv)
     //io.Fonts->AddFontDefault();
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
     //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/DroidSans.ttf");
-    LoadFontForImgui(IDR_FONT1, 16.0f);
+    g_data.fonts[FontIndex_Default] = LoadFontForImgui(IDR_FONT1, 16.0f);
+    g_data.fonts[FontIndex_Monospace] = LoadFontForImgui(IDR_FONT2, 16.0f);
     //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Roboto-Medium.ttf");
     //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Cousine-Regular.ttf");
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
