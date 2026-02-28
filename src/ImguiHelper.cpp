@@ -228,7 +228,6 @@ void ImguiMain(AppData& data)
             if (ImGui::BeginTabItem("Tools"))
             {
                 ToolsImGui(data.tools_data);
-                ImGui::Text("This is the Avocado tab!\nblah blah blah blah blah");
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Citect/AVEVA"))

@@ -33,9 +33,17 @@ struct Settings {
     ThemeStyle style = ThemeStyle_SimpleRounding;
 };
 
+enum FontIndex : u32 {
+    FontIndex_Default,
+    FontIndex_Monospace,
+    FontIndex_Count,
+};
+
+struct ImFont;
 struct GlobalData
 {
     Settings settings;
+    ImFont* fonts[FontIndex_Count] = {};
 };
 
 extern GlobalData g_data;

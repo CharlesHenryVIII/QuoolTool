@@ -69,6 +69,7 @@ IDI_ICON1               ICON                    "..\\assets\\QuantumIcon.ico"
 //
 
 IDR_FONT1               RCDATA                  "..\\contrib\\ImGui\\misc\\fonts\\Roboto-Medium.ttf"
+IDR_FONT2               RCDATA                  "..\\assets\\JetBrainsMonoNL-Medium.ttf"
 
 
 #endif    // English (United States) resources

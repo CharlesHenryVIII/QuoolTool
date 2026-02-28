@@ -165,9 +165,25 @@ void ToolsImGui(ToolsData& td)
     {
         ZoneScopedN(LOG_TITLE);
         TextCentered(LOG_TITLE);
-        ImGui::NewLine();
+        ImGui::Separator();
 
-        
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        //Screen-space position of the content area
+        ImVec2 area_min = ImGui::GetCursorScreenPos();
+        ImVec2 area_size = ImGui::GetContentRegionAvail();
+        ImVec2 area_max = ImVec2(area_min.x + area_size.x, area_min.y + area_size.y);
+
+        //Clip to child window and add black console background
+        draw->PushClipRect(area_min, area_max, true);
+        draw->AddRectFilled(area_min, area_max, IM_COL32(0, 0, 0, 255), 6.0f, ImDrawFlags_RoundCornersNone);
+        draw->PopClipRect();
+
+        //Padding inside the log area
+        ImGui::SetCursorScreenPos(area_min + ImVec2(8, 6));
+        ImGui::PushFont(g_data.fonts[FontIndex_Monospace]);
+        ImGui::TextUnformatted("This is a test of the monospace font");
+        ImGui::PopFont();
+
     }
     ImGui::EndChild();
 }
