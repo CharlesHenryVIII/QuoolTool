@@ -49,6 +49,7 @@ project "ScadaBackup"
     defines {
         "_CRT_SECURE_NO_WARNINGS",
         "LIBARCHIVE_STATIC",
+        "IMGUI_DEFINE_MATH_OPERATORS",
     }
     files {
         "src/**",
