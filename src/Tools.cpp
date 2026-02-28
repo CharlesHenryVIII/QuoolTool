@@ -21,14 +21,14 @@ void ToolsImGui(ToolsData& td)
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     Threading& threading = Threading::GetInstance();
-    ImGuiWindowFlags sectionFlags =
+    ImGuiWindowFlags section_flags =
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoSavedSettings |
         ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoMove;
     
-    if (ImGui::BeginChild("File Paths", { 0, 90 }, true, sectionFlags))
+    if (ImGui::BeginChild("File Paths", { 0, 90 }, true, section_flags))
     {
         ZoneScopedN("File Paths");
         TextCentered("File Paths");
@@ -49,19 +49,17 @@ void ToolsImGui(ToolsData& td)
     }
     ImGui::EndChild();
 
-    #define TITLE_NAME "Scripts"
-    const ImVec2 main_scale = { 0, 0 };
-    const ImVec2 main_size = HadamardProduct(viewport->WorkSize, main_scale);
-    if (ImGui::BeginChild(TITLE_NAME, main_size, true, sectionFlags))
+    #define SCRIPTS_TITLE "Scripts"
+    if (ImGui::BeginChild(SCRIPTS_TITLE, { 0, 125 }, true, section_flags))
     {
-        ZoneScopedN(TITLE_NAME);
-        TextCentered(TITLE_NAME);
+        ZoneScopedN(SCRIPTS_TITLE);
+        TextCentered(SCRIPTS_TITLE);
         ImGui::NewLine();
 
         std::error_code ec;
         ImGui::BeginDisabled(td.running);
         float height = 40;
-        ImVec2 button_size(150.0f, 75.0f);
+        const ImVec2 button_size(125.0f, 60.0f);
         ImGui::SetCursorPosX(Max((ImGui::GetContentRegionAvail().x - (arrsize(s_scripts) * button_size.x)) * 0.5f, ImGui::GetStyle().ItemSpacing.x));
         const float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
         for (i32 i = 0; i < arrsize(s_scripts); i++)
@@ -133,6 +131,43 @@ void ToolsImGui(ToolsData& td)
                 ImGui::ProgressBar(float(td.progress) / td.total, ImVec2(-FLT_MIN, height));
             }
         }
+    }
+    ImGui::EndChild();
+
+
+
+    #define ACTION_TITLE "Action"
+    const ImVec2 action_scale = { 0.15f, 0 };
+    const ImVec2 action_size = HadamardProduct(viewport->WorkSize, action_scale);
+    if (ImGui::BeginChild(ACTION_TITLE, action_size, true, section_flags))
+    {
+        ZoneScopedN(ACTION_TITLE);
+        //TextCentered(ACTION_TITLE);
+        //ImGui::NewLine();
+
+        ImGui::BeginDisabled(false);
+        const ImVec2 avail = ImGui::GetContentRegionAvail();
+        if (ImGui::Button("Run Scripts", avail))
+        {
+
+        }
+        ImGui::EndDisabled();
+        
+    }
+    ImGui::EndChild();
+
+
+    ImGui::SameLine();
+    #define LOG_TITLE "Log"
+    const ImVec2 log_scale = { 0, 0 };
+    ImVec2 log_size = HadamardProduct(viewport->WorkSize, log_scale);
+    if (ImGui::BeginChild(LOG_TITLE, log_size, ImGuiChildFlags_Borders, section_flags))
+    {
+        ZoneScopedN(LOG_TITLE);
+        TextCentered(LOG_TITLE);
+        ImGui::NewLine();
+
+        
     }
     ImGui::EndChild();
 }
