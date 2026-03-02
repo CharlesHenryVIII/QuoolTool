@@ -7,18 +7,18 @@
 
 struct ScriptInfo {
     std::string name;
-    bool enabled;
+    Atomic<ScriptInfoFlags> flags;
     std::wstring cmdline; //function
     //break
     Atomic<bool> completed = false;
 };
 
 ScriptInfo s_scripts[] = {
-    { .name = "SYSINFO",    .enabled = true,   .cmdline = L"systeminfo" },
-    { .name = "NETSTAT",    .enabled = true,   .cmdline = L"netstat -ano" },
-    { .name = "IPCONFIG",   .enabled = true,   .cmdline = L"ipconfig" },
-    { .name = "PROGRAMS",   .enabled = true,   .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\"" },
-    { .name = "PROCESSOR",  .enabled = true,   .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\"" },
+    { .name = "SYSINFO",    .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"systeminfo"},
+    { .name = "NETSTAT",    .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"netstat -ano" },
+    { .name = "IPCONFIG",   .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"ipconfig" },
+    { .name = "PROGRAMS",   .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\"" },
+    { .name = "PROCESSOR",  .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\"" },
 
 };
 
@@ -92,7 +92,7 @@ void ToolsImGui(ToolsData& td)
             bool hovered = ImGui::IsItemHovered();
             bool active = ImGui::IsItemActive();
             if (pressed)
-                s.enabled = !s.enabled;
+                FlagToggle(s.flags, ScriptInfoFlags_Enabled);
 
             ImVec2 p_min = ImGui::GetItemRectMin();
             ImVec2 p_max = ImGui::GetItemRectMax();
@@ -115,7 +115,7 @@ void ToolsImGui(ToolsData& td)
 
             std::string selected_text = "Enabled";
             ImU32 selected_color = IM_COL32(0, 255, 0, 255);
-            if (!s.enabled)
+            if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
             {
                 selected_text = "Disabled";
                 selected_color = IM_COL32(255, 0, 0, 255);
@@ -150,7 +150,7 @@ void ToolsImGui(ToolsData& td)
     {
         ZoneScopedN(ACTION_TITLE);
 
-        ImGui::BeginDisabled(false);
+        ImGui::BeginDisabled(td.running || (!td.output_path.empty() && !fs::exists(td.output_path)));
         const ImVec2 avail = ImGui::GetContentRegionAvail();
         if (ImGui::Button("Run Scripts", avail))
         {
@@ -159,7 +159,7 @@ void ToolsImGui(ToolsData& td)
             for (i32 i = 0; i < arrsize(s_scripts); i++)
             {
                 ScriptInfo& s = s_scripts[i];
-                if (!s.enabled)
+                if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
                     continue;
                 RunProcessLogToFileJob* job = new RunProcessLogToFileJob();
                 job->application_path;
@@ -202,7 +202,7 @@ void ToolsImGui(ToolsData& td)
                 for (i32 i = 0; i < arrsize(s_scripts); i++)
                 {
                     ScriptInfo& s = s_scripts[i];
-                    if (!s.enabled)
+                    if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
                         continue;
 
                     if (s.completed)
@@ -226,7 +226,7 @@ void ToolsImGui(ToolsData& td)
             i32 completed = 0;
             for (i32 i = 0; i < arrsize(s_scripts); i++)
             {
-                if (!s_scripts[i].enabled)
+                if (!FlagExists(s_scripts[i].flags, ScriptInfoFlags_Enabled))
                     continue;
                 total++;
                 if (s_scripts[i].completed)
