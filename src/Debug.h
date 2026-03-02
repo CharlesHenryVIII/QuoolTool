@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <string>
+#include <atomic>
 
 #define _CAR_CONCAT(a, b) a ## b
 #define CAR_CONCAT(a, b) _CAR_CONCAT(a, b)
@@ -13,6 +14,10 @@
 #define VALIDATE(expr)        { if (!VERIFY(expr)) return;     } REQUIRE_SEMICOLON
 #define VALIDATE_V(expr, __v) { if (!VERIFY(expr)) return __v; } REQUIRE_SEMICOLON
 #define arrsize(arr__) (sizeof(arr__) / sizeof(arr__[0]))
+
+//================
+//     enums
+//================
 
 #define ENUMOPS(T) \
 constexpr T operator++(T& a, int)\
@@ -39,7 +44,28 @@ constexpr T operator++(T& a, int)\
 {\
     a = T((std::underlying_type<T>::type)(a) + 1);\
     return a;\
+}\
+constexpr T operator--(T& a, int)\
+{\
+    a = T((std::underlying_type<T>::type)(a) - 1);\
+    return a;\
+}\
+constexpr T operator^=(T& a, const std::underlying_type<T>::type& b)\
+{\
+    a = T(+a ^ +b);\
+    return a;\
+}\
+constexpr T operator|=(T& a, const std::underlying_type<T>::type& b)\
+{\
+    a = T(+a | +b);\
+    return a;\
+}\
+constexpr T operator&=(T& a, const std::underlying_type<T>::type& b)\
+{\
+    a = T(+a & +b);\
+    return a;\
 }
+
 
 #define ENUMOPS_CLASS(T) \
 constexpr auto operator+(T a)\
@@ -68,6 +94,9 @@ friend constexpr T operator++(T& a, int)\
 //return (T)(static_cast<typename std::underlying_type<T>::type>(a)++); \
 //}
 
+//================
+//     assert
+//================
 #define FEATURE_CUSTOM_ASSERT 1
 
 #if FEATURE_CUSTOM_ASSERT
@@ -99,11 +128,9 @@ void OsAssert(bool expr, const char* message, const char* file, int line);
 #define DEBUG_LOG(...) ((void)0)
 #endif
 
-/**********************************************
- *
- * Defer
- *
- ***************/
+//================
+//     defer
+//================
 
 template <typename T>
 struct ExitScope
@@ -121,6 +148,36 @@ struct ExitScopeHelp
 
 #define Defer auto CAR_CONCAT(defer__, __LINE__) = ExitScopeHelp() + [&]()
 
+//================
+//     flags
+//================
+//Credit to Vjekoslav Krajačić (FilePilot)
+#define FlagSet(n, f)    ((n) |= (f))
+#define FlagClear(n, f)  ((n) &= ~(f))
+#define FlagToggle(n, f) ((n) ^= (f))
+#define FlagExists(n, f) (((n) & (f)) == (f))  //Checks if all bits in 'f' are set in 'n'
+#define FlagEquals(n, f) (((n) == (f)))        //Checks if 'n' is exactly equal to 'f'
+#define FlagIntersects(n, f) (((n) & (f)) > 0) //Checks if any bits in 'f' are set in 'n'
+
+
+template<class T> inline void operator^=(std::atomic<T>& a, T b)
+{
+    T at = a.load();
+    at = T(+at ^ b);
+    a.store(at);
+}
+template<class T> inline void operator|=(std::atomic<T>& a, T b)
+{
+    T at = a.load();
+    at = T(+at | b);
+    a.store(at);
+}
+template<class T> inline void operator&=(std::atomic<T>& a, T b)
+{
+    T at = a.load();
+    at = T(+at & b);
+    a.store(at);
+}
 
 extern bool g_running;
 extern char* g_ClipboardTextData;
