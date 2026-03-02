@@ -13,7 +13,7 @@ struct ScriptInfo {
 };
 
 ScriptInfo s_scripts[] = {
-    { .name = "SYSINFO",    .enabled = true,   .cmdline = L"syteminfo" },
+    { .name = "SYSINFO",    .enabled = true,   .cmdline = L"systeminfo" },
     { .name = "NETSTAT",    .enabled = true,   .cmdline = L"netstat -ano" },
     { .name = "IPCONFIG",   .enabled = true,   .cmdline = L"ipconfig" },
     { .name = "PROGRAMS",   .enabled = true,   .cmdline = L"wmic product get name,version /FORMAT:CSV" },
@@ -134,19 +134,6 @@ void ToolsImGui(ToolsData& td)
                 ImGui::SameLine();
         }
         ImGui::EndDisabled();
-
-        if (td.running)
-        {
-            ImGui::SameLine();
-            if (td.progress == u64(-1))
-            {
-                ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, height), "Getting Data...");
-            }
-            else
-            {
-                ImGui::ProgressBar(float(td.progress) / td.total, ImVec2(-FLT_MIN, height));
-            }
-        }
     }
     ImGui::EndChild();
 
@@ -184,7 +171,6 @@ void ToolsImGui(ToolsData& td)
                 threading.SubmitJob(job);
 
                 ImguiLog(ToString("Running: %s", s.name.c_str()));
-                break;
             }
         }
         ImGui::EndDisabled();
@@ -202,7 +188,7 @@ void ToolsImGui(ToolsData& td)
     {
         ZoneScopedN(LOG_TITLE);
         TextCentered(LOG_TITLE);
-        ImGui::Separator();
+        //ImGui::Separator();
 
         if (td.running)
         {
@@ -227,22 +213,30 @@ void ToolsImGui(ToolsData& td)
                     }
 
                 }
-                //ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, individual_height), "testing 2");
-                //if (cd.progress == u64(-1))
-                //{
-                //    ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, height), "Backing up misc files...");
-                //}
-                //else
-                //{
-                //    ImGui::ProgressBar(float(cd.progress) / cd.total, ImVec2(-FLT_MIN, height));
-                //}
             }
             ImGui::EndChild();
 
             float progress_bar_height = 50;
             ImVec2 max = ImGui::GetWindowContentRegionMax();
             ImGui::SetCursorPosY(max.y - progress_bar_height);
-            ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, progress_bar_height), "Total");
+  
+            i32 total = 0;
+            i32 completed = 0;
+            for (i32 i = 0; i < arrsize(s_scripts); i++)
+            {
+                if (!s_scripts[i].enabled)
+                    continue;
+                total++;
+                if (s_scripts[i].completed)
+                    completed++;
+            }
+            if (total == completed)
+                ImGui::ProgressBar(1.0f, ImVec2(-FLT_MIN, progress_bar_height), "Completed");
+            else
+            {
+                std::string title = ToString("%i/%i", completed, total);
+                ImGui::ProgressBar(float(completed) / float(total), ImVec2(-FLT_MIN, progress_bar_height), title.c_str());
+            }
         }
     }
     ImGui::EndChild();
