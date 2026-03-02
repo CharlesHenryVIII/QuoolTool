@@ -18,6 +18,7 @@ ScriptInfo s_scripts[] = {
     { .name = "NETSTAT",    .enabled = true,   .cmdline = L"netstat -ano" },
     { .name = "IPCONFIG",   .enabled = true,   .cmdline = L"ipconfig" },
     { .name = "PROGRAMS",   .enabled = true,   .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\"" },
+    { .name = "PROCESSOR",  .enabled = true,   .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\"" },
 
 };
 
