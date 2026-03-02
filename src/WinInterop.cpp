@@ -14,6 +14,7 @@
 #include "Json.hpp"
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "glfw/glfw3native.h"
+#include "Rendering.h"
 
 #include <fstream>
 #include <filesystem>
@@ -94,7 +95,7 @@ std::wstring ToString(const wchar_t* fmt, ...)
     return buffer;
 }
 
-i32 RunProcess(const wchar_t* path, const wchar_t* args, bool async, bool show)
+i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mutex* output_lock, RunProcessFlags flags)
 {
     //TODO: Allow this to work for ASCII AND Unicode
     SHELLEXECUTEINFO info = {};
@@ -106,7 +107,7 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, bool async, bool show)
     info.lpFile = path ? path : L"cmd.exe";
     info.lpParameters = args;
     info.lpDirectory = NULL;
-    info.nShow = show ? SW_SHOW : SW_HIDE;
+    info.nShow = flags & RunProcess_Show ? SW_SHOW : SW_HIDE;
     info.hInstApp = NULL; //out
     info.lpIDList;
     info.lpClass;
@@ -125,7 +126,7 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, bool async, bool show)
         ASSERT(false);
         return 2;
     }
-    if (!async)
+    if (!(flags & RunProcess_Async))
     {
         DWORD result = WaitForSingleObject(info.hProcess, INFINITE);
         if (result)
@@ -161,50 +162,80 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, bool async, bool show)
     return 0;
 }
 
-i32 RunProcess(std::string& output, const wchar_t* path, const wchar_t* args, std::mutex& output_lock)
+i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mutex* output_lock, RunProcessFlags flags)
 {
 #if 1
-    SECURITY_ATTRIBUTES sa{ sizeof(sa) };
-    sa.bInheritHandle = TRUE;
+    SECURITY_ATTRIBUTES sa = {
+        .nLength = sizeof(sa),
+        .bInheritHandle = TRUE,
+    };
 
-    HANDLE readPipe = nullptr;
-    HANDLE writePipe = nullptr;
+    HANDLE readPipe = NULL;
+    HANDLE writePipe = NULL;
     CreatePipe(&readPipe, &writePipe, &sa, 0);
-
-    // Parent should not inherit read end
     SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0);
 
-    STARTUPINFOW si{};
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdOutput = writePipe;
-    si.hStdError  = writePipe;
-    si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
+    STARTUPINFOW si{
+        .cb = sizeof(si),
+        .dwFlags = STARTF_USESTDHANDLES,
+        .hStdInput = GetStdHandle(STD_INPUT_HANDLE),
+        .hStdOutput = writePipe,
+        .hStdError = writePipe,
+    };
 
-    PROCESS_INFORMATION pi{};
+    std::wstring real_path;
+    if (path)
+        real_path = path;
+    else
+        real_path = L"cmd.exe /C";
 
+    std::wstring cmdline = real_path + L" " + args;
+
+    PROCESS_INFORMATION pi = {};
     BOOL r = CreateProcessW(
-        (LPWSTR)path,
-        (LPWSTR)args,
+        nullptr,
+        (LPWSTR)cmdline.c_str(),
         nullptr, nullptr,
         TRUE, // inherit handles
-        CREATE_NO_WINDOW,
+        (flags & RunProcess_Show) ? CREATE_NEW_CONSOLE : CREATE_NO_WINDOW,
         nullptr, nullptr,
         &si, &pi
     );
 
-    CloseHandle(writePipe); // parent reads only
-    DWORD result = WaitForSingleObject(pi.hProcess, INFINITE);
-
-    char buffer[4096];
-    DWORD bytesRead;
-
-    while (ReadFile(readPipe, buffer, sizeof(buffer), &bytesRead, nullptr))
+    if (r == 0)
     {
-        std::lock_guard<Mutex> lock(output_lock);
-        output.append(buffer, bytesRead);
+        std::wstring errorBoxTitle = ToString(L"CreateProcess() Error: %i", GetLastError());
+        std::wstring errorText     = ToString(L"Application Path: %s\n"
+                                             "Command Line Params: %s", real_path.c_str(), args);
+        ShowErrorWindow(errorBoxTitle, errorText);
+        FAIL;
+        return 2;
     }
 
+    CloseHandle(writePipe); // parent reads only
+
+    if (output && output_lock)
+    {
+        char buffer[4096];
+        DWORD bytesRead;
+        while (ReadFile(readPipe, buffer, sizeof(buffer), &bytesRead, nullptr))
+        {
+            std::lock_guard<Mutex> lock(*output_lock);
+            output->append(buffer, bytesRead);
+        }
+    }
+    else if (!!output != !!output_lock)
+    {
+        std::string p;
+        ConvertWideCharToMultiByte(p, path);
+        std::string a;
+        ConvertWideCharToMultiByte(a, args);
+        DebugPrint("missing output or output_lock in run process: \"%s\" \"%s\"", p.c_str(), a.c_str());
+        FAIL;
+    }
+
+    if (!(flags & RunProcess_Async))
+        DWORD result = WaitForSingleObject(pi.hProcess, INFINITE);
     CloseHandle(readPipe);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
@@ -253,7 +284,7 @@ void RunProcessLogToFileJob::RunJob()
     const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
     std::string output;
     Mutex output_lock;
-    i32 result = RunProcess(output, path, args, output_lock);
+    i32 result = RunProcess(path, args, &output, &output_lock);
     if (run_and_clear && result)
     {
         Threading::GetInstance().RunAndClearJobs();
@@ -437,27 +468,23 @@ i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text)
 {
 #if 1
-    FAIL;
-    //int msgboxID = MessageBox(
-    //    NULL,
-    //    text.c_str(),
-    //    title.c_str(),
-    //    MB_ABORTRETRYIGNORE | MB_ICONSTOP | MB_DEFBUTTON1 | MB_APPLMODAL
-    //);
+    int msgboxID = MessageBox(
+        NULL,
+        text.c_str(),
+        title.c_str(),
+        MB_ABORTRETRYIGNORE | MB_ICONSTOP | MB_DEFBUTTON1 | MB_APPLMODAL
+    );
 
-    //switch (msgboxID)
-    //{
-    //case IDABORT:
-    //    SDL_Event e;
-    //    e.type = SDL_QUIT;
-    //    e.quit.timestamp = 0;
-    //    SDL_PushEvent(&e);
-    //    break;
-    //case IDRETRY:
-    //    break;
-    //case IDIGNORE:
-    //    break;
-    //}
+    switch (msgboxID)
+    {
+    case IDABORT:
+        glfwSetWindowShouldClose(gfx.window, GLFW_TRUE);
+        break;
+    case IDRETRY:
+        break;
+    case IDIGNORE:
+        break;
+    }
 #else
     ImGuiWindowFlags flags =
         ImGuiWindowFlags_NoCollapse |
