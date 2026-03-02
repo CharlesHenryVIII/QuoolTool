@@ -59,7 +59,10 @@ bool InputTextDynamicSize(const std::string& title, Path& path, ImGuiInputTextFl
     std::string s;
     ConvertWideCharToMultiByte(s, path.wstring());
     bool r = ImGui::InputText(title.c_str(), s.data(), s.capacity(), flags | ImGuiInputTextFlags_CallbackResize, DynamicTextCallback, &s);
-    path = s;
+    if (s.back() == '\0')
+        path = s.substr(0, s.size() - 1);// remove nullterminator
+    else
+        path = s;
     return r;
 }
 
@@ -169,7 +172,7 @@ void ImguiMain(AppData& data)
 #else
         ImGuiWindowFlags_NoDecoration |
 #endif
-        ImGuiWindowFlags_MenuBar |
+        //ImGuiWindowFlags_MenuBar |
         ImGuiWindowFlags_NoSavedSettings |
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoNav |
@@ -179,7 +182,7 @@ void ImguiMain(AppData& data)
     {
         ZoneScopedN("Main");
 
-        if (ImGui::BeginMenuBar())
+        if (ImGui::BeginMainMenuBar())
         {
             if (ImGui::BeginMenu("About"))
             {
@@ -218,7 +221,7 @@ void ImguiMain(AppData& data)
 #endif
                 ImGui::EndMenu();
             }
-            ImGui::EndMenuBar();
+            ImGui::EndMainMenuBar();
         }
 
 

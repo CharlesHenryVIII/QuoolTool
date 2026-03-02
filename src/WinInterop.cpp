@@ -161,7 +161,7 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, bool async, bool show)
     return 0;
 }
 
-i32 RunProcess(std::string& output, const wchar_t* path, const wchar_t* args)
+i32 RunProcess(std::string& output, const wchar_t* path, const wchar_t* args, std::mutex& output_lock)
 {
 #if 1
     SECURITY_ATTRIBUTES sa{ sizeof(sa) };
@@ -194,12 +194,16 @@ i32 RunProcess(std::string& output, const wchar_t* path, const wchar_t* args)
     );
 
     CloseHandle(writePipe); // parent reads only
+    DWORD result = WaitForSingleObject(pi.hProcess, INFINITE);
 
     char buffer[4096];
     DWORD bytesRead;
 
     while (ReadFile(readPipe, buffer, sizeof(buffer), &bytesRead, nullptr))
+    {
+        std::lock_guard<Mutex> lock(output_lock);
         output.append(buffer, bytesRead);
+    }
 
     CloseHandle(readPipe);
     CloseHandle(pi.hProcess);
@@ -234,8 +238,8 @@ i32 RunProcess(std::string& output, const wchar_t* path, const wchar_t* args)
 
 void RunProcessJob::RunJob()
 {
-    const wchar_t* path = applicationPath.size()   ? applicationPath.c_str()   : nullptr;
-    const wchar_t* args = arguments.size()         ? arguments.c_str()         : nullptr;
+    const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
+    const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
     i32 result = RunProcess(path, args);
     if (result)
     {
@@ -243,226 +247,40 @@ void RunProcessJob::RunJob()
     }
 }
 
-void RunProcessLogJob::RunJob()
+void RunProcessLogToFileJob::RunJob()
 {
-    const wchar_t* path = applicationPath.size()   ? applicationPath.c_str()   : nullptr;
-    const wchar_t* args = arguments.size()         ? arguments.c_str()         : nullptr;
-    i32 result = RunProcess(output, path, args);
-    if (result)
+    const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
+    const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
+    std::string output;
+    Mutex output_lock;
+    i32 result = RunProcess(output, path, args, output_lock);
+    if (run_and_clear && result)
     {
         Threading::GetInstance().RunAndClearJobs();
     }
-}
 
-const wchar_t* valid_file_exts[] = { L".mp4", L".mov", L".wmv", L".avil", L".mkv", L".webm" };
-
-MATH_PREFIX int QuickSortFilenameComparisonFunction(const void* a, const void* b)
-{
-    const std::wstring& aws = *(std::wstring*)a;
-    const std::wstring& bws = *(std::wstring*)b;
-    const size_t max = Min(aws.size(), bws.size());
-    for (size_t i = 0; i < max; i++)
+    if (output_file.size())
     {
-        const i32 diff = bws[i] - aws[i];
-        if (diff)
+        std::fstream file(output_file, std::ios_base::out);
+        if (!file.good())
         {
-            return diff;
+            FAIL;
+            std::string of;
+            ConvertWideCharToMultiByte(of, output_file);
+            DebugPrint("Failed to open file for write: %s", of.c_str());
+        }
+        else
+        {
+            std::lock_guard<Mutex> lock(output_lock);
+            file << output;
         }
     }
-    return (i32)(bws.size() - aws.size());
-}
 
-template <typename T>
-void AppendProperty(std::string& out, const nlohmann::json& json, const char* property_name)
-{
-    if (json.contains(property_name))
+    if (completed)
     {
-        const T& property = json[property_name];
-        out = std::format("{}[{}]", out.c_str(), property);
+        ASSERT(*completed == false);
+        (*completed) = true;
     }
-}
-
-//void RunUpdateVideoGroupJob::RunJob()
-//{
-    //VALIDATE(video_group);
-    //std::vector<std::wstring> filenames;
-    //ScanDirectoryForFileNames(source_path, filenames, false);
-    //if (!filenames.size())
-    //    return;
-
-    ////NOTE(CSH): Windows in thier infinite wisdom does some sort of random sort SOMETIMES so we must always sort
-    //QuickSort((u8*)filenames.data(), (i32)filenames.size(), sizeof(filenames[0]), QuickSortFilenameComparisonFunction);
-
-    //std::lock_guard<std::mutex> lock(video_group->thread_lock);
-    //std::string json_string;
-    //for (size_t i = 0; i < filenames.size() && !video_group->stop; i++)
-    //{
-    //    bool found_valid_ext = false;
-    //    for (i32 j = 0; j < arrsize(valid_file_exts); j++)
-    //    {
-    //        if (filenames[i].find(valid_file_exts[j]) != std::wstring::npos)
-    //        {
-    //            found_valid_ext = true;
-    //            break;
-    //        }
-    //    }
-    //    if (!found_valid_ext)
-    //        continue;
-    //    json_string.clear();
-    //    //std::wstring full_path = source_path + filenames[i].c_str();
-    //    //std::wstring args = ToString(L"-J \"%s\"", full_path.c_str());
-    //    //std::wstring full = mkv_path + L" " + args;
-    //    std::wstring full = std::format(L"{} -J \"{}{}\"", mkv_path.c_str(), source_path.c_str(), filenames[i].c_str());
-
-    //    i32 r = RunProcess(json_string, nullptr, full.c_str());
-    //    nlohmann::json data;
-    //    if (r)
-    //    {
-    //        data = nlohmann::json::parse(json_string);
-    //    }
-    //    if (r && !data["errors"].size())
-    //    {
-    //        nlohmann::json data = nlohmann::json::parse(json_string);
-    //        video_group->video_infos.push_back({});
-    //        VideoInfo* video_info = &video_group->video_infos[video_group->video_infos.size() - 1];
-    //        video_info->name = filenames[i];
-    //        if (data.contains("tracks"))
-    //        {
-    //            ASSERT(data["tracks"].is_array());
-    //            const auto& tracks = data["tracks"];
-    //            video_group->max_tracks = Max((i32)tracks.size(), video_group->max_tracks);
-    //            bool already_have_video = false;
-    //            bool already_have_audio = false;
-    //            bool already_have_sub = false;
-    //            for (size_t t = 0; t < tracks.size(); t++)
-    //            {
-    //                video_info->tracks.push_back({});
-    //                Track* track = &video_info->tracks[video_info->tracks.size() - 1];
-    //                const auto& jt = tracks[t];
-    //                if (jt["id"] != t)
-    //                {
-    //                    FAIL;
-    //                }
-    //                if (!jt.contains("type") || !jt.contains("properties") || !jt.contains("id"))
-    //                    continue;
-    //                const auto& type = jt["type"];
-    //                const auto& props = jt["properties"];
-    //                track->type = type;
-    //                track->id = jt["id"];
-    //                if (type == "video")
-    //                {
-    //                    AppendProperty<std::string>(track->details, props, "codec");
-    //                    AppendProperty<std::string>(track->details, props, "display_dimensions");
-    //                    if (!already_have_video)
-    //                    {
-    //                        track->encode = true;
-    //                        already_have_video = true;
-    //                    }
-    //                }
-    //                else if (type == "audio")
-    //                {
-    //                    track->type = type;
-    //                    AppendProperty<std::string> (track->details, props, "language");
-    //                    AppendProperty<int>         (track->details, props, "audio_channels");
-    //                    AppendProperty<std::string> (track->details, props, "codec");
-
-    //                    if (!already_have_audio)
-    //                    {
-    //                        track->encode = true;
-    //                        already_have_audio = true;
-    //                    }
-    //                }
-
-    //                else if (type == "subtitles")
-    //                {
-    //                    track->type = "sub";
-    //                    AppendProperty<std::string>(track->details, props, "language");
-    //                    AppendProperty<std::string>(track->details, props, "track_name");
-    //                    AppendProperty<std::string>(track->details, props, "codec_id");
-
-    //                    if (!already_have_sub)
-    //                    {
-    //                        track->encode = true;
-    //                        already_have_sub = true;
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-    //    else
-    //    {
-    //        video_group->video_infos.push_back({});
-    //        VideoInfo* video_info = &video_group->video_infos[video_group->video_infos.size() - 1];
-    //        video_group->max_tracks = Max(1, video_group->max_tracks);
-    //        std::string error = "unknown";
-    //        if (data["errors"].size())
-    //            error = data["errors"][0];
-    //        std::wstring werror;
-    //        ConvertMultibyteToWideChar(werror, error);
-    //        video_info->name = std::format(L"FAILED {}: {}", i + 1, werror);
-    //    }
-    //}
-//}
-
-void RunEncodeJob::RunJob()
-{
-    //VALIDATE(video_group);
-    //VALIDATE(mkv_path.size());
-    //VALIDATE(source_path.size());
-    //VALIDATE(video_group->video_infos.size());
-    //video_group->in_progress = true;
-    //Defer{ video_group->in_progress = false; };
-    //std::wstring dest_folder = dest_path;
-    //if (!dest_folder.size())
-    //    dest_folder = ToString(L"%sencoded/", source_path.c_str());
-
-    //std::wstring path = mkv_path;
-    //for (size_t v = 0; v < video_group->video_infos.size() && !video_group->stop; v++)
-    //{
-    //    const VideoInfo& video = video_group->video_infos[v];
-    //    if (!video.encode)
-    //    {
-    //        video_group->completed++;
-    //        continue;
-    //    }
-    //    const std::wstring full_src = source_path.c_str() + video.name;
-    //    const std::wstring full_dst = dest_folder.c_str() + video.name;
-
-    //    std::wstring audio;
-    //    std::wstring subs;
-    //    for (size_t i = 0; i < video.tracks.size(); i++)
-    //    {
-    //        const Track& track = video.tracks[i];
-    //        if (!track.encode)
-    //            continue;
-    //        if (track.type == "audio")
-    //        {
-    //            if (!audio.size())
-    //                audio = ToString(L"%i", track.id);
-    //            else
-    //                audio = ToString(L"%s,%i", audio.c_str(), track.id);
-    //        }
-    //        else if (track.type == "sub")
-    //        {
-    //            if (!subs.size())
-    //                subs = ToString(L"%i", track.id);
-    //            else
-    //                subs = ToString(L"%s,%i", subs.c_str(), track.id);
-    //        }
-    //    }
-
-    //    std::wstring args = ToString(L"--audio-tracks \"%s\" --subtitle-tracks \"%s\" -m \"%s\",\"%s\" -o \"%s\" \"%s\"",
-    //        audio.c_str(), subs.c_str(), audio.c_str(), subs.c_str(), full_dst.c_str(), full_src.c_str());
-    //    i32 result = RunProcess(path.c_str(), args.c_str(), false, false);
-    //    if (result > 0)
-    //    {
-    //        FAIL;
-    //    }
-    //    video_group->completed++;
-    //}
-    //NotifyWindowBuildFinished();
-    //video_group->completed = 0;
-    //video_group->in_progress = false;
 }
 
 HMODULE modh;

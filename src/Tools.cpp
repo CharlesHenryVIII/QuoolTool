@@ -7,15 +7,31 @@
 
 struct ScriptInfo {
     std::string name;
-    bool selected;
-    //function
+    bool enabled;
+    std::wstring cmdline; //function
+    Atomic<bool> completed = false;
 };
 
 ScriptInfo s_scripts[] = {
-    { .name = "NETSTAT",    .selected = true, },
-    { .name = "SYSINFO",    .selected = true, },
-    { .name = "IPCONFIG",   .selected = true, },
+    { .name = "SYSINFO",    .enabled = true,   .cmdline = L"syteminfo" },
+    { .name = "NETSTAT",    .enabled = true,   .cmdline = L"netstat -ano" },
+    { .name = "IPCONFIG",   .enabled = true,   .cmdline = L"ipconfig" },
+    { .name = "PROGRAMS",   .enabled = true,   .cmdline = L"wmic product get name,version /FORMAT:CSV" },
 };
+
+std::string s_log;
+
+void ImguiLog(const std::string& s)
+{
+    DebugPrint(s.c_str());
+    s_log += s + "\n";
+}
+void ImguiLog(const std::wstring& ws)
+{
+    std::string s;
+    ConvertWideCharToMultiByte(s, ws);
+    ImguiLog(s);
+}
 
 void ToolsImGui(ToolsData& td)
 {
@@ -72,7 +88,7 @@ void ToolsImGui(ToolsData& td)
             bool hovered = ImGui::IsItemHovered();
             bool active = ImGui::IsItemActive();
             if (pressed)
-                s.selected = !s.selected;
+                s.enabled = !s.enabled;
 
             ImVec2 p_min = ImGui::GetItemRectMin();
             ImVec2 p_max = ImGui::GetItemRectMax();
@@ -95,7 +111,7 @@ void ToolsImGui(ToolsData& td)
 
             std::string selected_text = "Enabled";
             ImU32 selected_color = IM_COL32(0, 255, 0, 255);
-            if (!s.selected)
+            if (!s.enabled)
             {
                 selected_text = "Disabled";
                 selected_color = IM_COL32(255, 0, 0, 255);
@@ -149,13 +165,88 @@ void ToolsImGui(ToolsData& td)
         const ImVec2 avail = ImGui::GetContentRegionAvail();
         if (ImGui::Button("Run Scripts", avail))
         {
+            ImguiLog("Running Scripts:");
+            td.running = true;
+            for (i32 i = 0; i < arrsize(s_scripts); i++)
+            {
+                ScriptInfo& s = s_scripts[i];
+                if (!s.enabled)
+                    continue;
+                RunProcessLogToFileJob* job = new RunProcessLogToFileJob();
+                job->application_path;
+                job->arguments = s.cmdline;
+                const std::string name = s.name + ".txt";
+                Path output_file = name;
+                if (fs::exists(td.output_path))
+                     output_file = Path(td.output_path / name);
+                job->output_file = output_file;
+                job->completed = &s.completed;
+                threading.SubmitJob(job);
 
+                ImguiLog(ToString("Running: %s", s.name.c_str()));
+                break;
+            }
         }
         ImGui::EndDisabled();
         
     }
     ImGui::EndChild();
 
+
+#if 1
+    ImGui::SameLine();
+    #define LOG_TITLE "Progress"
+    const ImVec2 progress_scale = { 0, 0 };
+    ImVec2 progress_size = HadamardProduct(viewport->WorkSize, progress_scale);
+    if (ImGui::BeginChild(LOG_TITLE, progress_size, ImGuiChildFlags_Borders, section_flags))
+    {
+        ZoneScopedN(LOG_TITLE);
+        TextCentered(LOG_TITLE);
+        ImGui::Separator();
+
+        if (td.running)
+        {
+            const ImVec2 ip_scale = { 0, 0.75 };
+            ImVec2 ip_size = HadamardProduct(ImGui::GetContentRegionAvail(), ip_scale);
+            if (ImGui::BeginChild("IndividualProgress", ip_size, ImGuiChildFlags_Borders, section_flags))
+            {
+                const float individual_height = 40.0f;
+                for (i32 i = 0; i < arrsize(s_scripts); i++)
+                {
+                    ScriptInfo& s = s_scripts[i];
+                    if (!s.enabled)
+                        continue;
+
+                    if (s.completed)
+                    {
+                        ImGui::ProgressBar(1.0f, ImVec2(-FLT_MIN, individual_height), s.name.c_str());
+                    }
+                    else
+                    {
+                        ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, individual_height), s.name.c_str());
+                    }
+
+                }
+                //ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, individual_height), "testing 2");
+                //if (cd.progress == u64(-1))
+                //{
+                //    ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, height), "Backing up misc files...");
+                //}
+                //else
+                //{
+                //    ImGui::ProgressBar(float(cd.progress) / cd.total, ImVec2(-FLT_MIN, height));
+                //}
+            }
+            ImGui::EndChild();
+
+            float progress_bar_height = 50;
+            ImVec2 max = ImGui::GetWindowContentRegionMax();
+            ImGui::SetCursorPosY(max.y - progress_bar_height);
+            ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, progress_bar_height), "Total");
+        }
+    }
+    ImGui::EndChild();
+#else
 
     ImGui::SameLine();
     #define LOG_TITLE "Log"
@@ -181,9 +272,14 @@ void ToolsImGui(ToolsData& td)
         //Padding inside the log area
         ImGui::SetCursorScreenPos(area_min + ImVec2(8, 6));
         ImGui::PushFont(g_data.fonts[FontIndex_Monospace]);
+#if 1
+        ImGui::TextUnformatted(s_log.c_str());
+#else
         ImGui::TextUnformatted("This is a test of the monospace font");
+#endif
         ImGui::PopFont();
 
     }
     ImGui::EndChild();
+#endif
 }
