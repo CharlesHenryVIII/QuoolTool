@@ -57,23 +57,17 @@ ImFont* LoadFontForImgui(int resource_id, float fontSize);
 
 struct RunProcessJob : Job
 {
-    std::wstring applicationPath;
+    std::wstring application_path;
     std::wstring arguments;
     virtual void RunJob() override;
 };
 
-struct RunProcessLogJob : Job
+struct RunProcessLogToFileJob : Job
 {
-    std::wstring applicationPath;
+    std::wstring application_path;
     std::wstring arguments;
-    std::string output;
-    virtual void RunJob() override;
-};
-
-struct RunEncodeJob : Job
-{
-    std::wstring mkv_path;
-    std::wstring source_path;
-    std::wstring dest_path;
+    std::wstring output_file;
+    Atomic<bool>* completed = nullptr;
+    bool run_and_clear = false;
     virtual void RunJob() override;
 };
