@@ -188,7 +188,7 @@ void ImguiMain(AppData& data)
             {
                 ZoneScopedN("About");
                 if (ImGui::MenuItem("Github Releases"))
-                    RunProcess(L"https://github.com/CharlesHenryVIII/ScadaBackup/releases", nullptr, true);
+                    RunProcess(L"https://github.com/CharlesHenryVIII/ScadaBackup/releases", nullptr);
 
                 ImGui::Text("Color:");
                 ImGui::SameLine();

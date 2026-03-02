@@ -8,11 +8,18 @@
 
 #include <string>
 
+enum RunProcessFlags : u32 {
+    RunProcess_None = 0,
+    RunProcess_Async = BIT(0),
+    RunProcess_Show = BIT(1),
+};
+
 void DebugPrint(const char* fmt, ...);
 void DebugPrint(const wchar_t* fmt, ...);
 std::string ToString(const char* fmt, ...);
 std::wstring ToString(const wchar_t* fmt, ...);
-i32 RunProcess(const wchar_t* path, const wchar_t* args, bool async = false, bool show = true);
+i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 RunProcess     (const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
 void InitOS(GLFWwindow* window);
 int Main(int, char**);
 bool ConsoleAttached();

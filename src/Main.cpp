@@ -30,6 +30,7 @@
 #include "ImguiHelper.h"
 #include "resource.h"
 #include "Citect.h"
+#include "Rendering.h"
 
 #include <stdio.h>
 #include <string>
@@ -171,15 +172,15 @@ int Main(int argc, char** argv)
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
     //GLFWwindow* window = glfwCreateWindow((int)(monitor_size.x * main_scale), (int)(monitor_size.y * main_scale), "SCADA Backup", nullptr, nullptr);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(window_size.x, window_size.y, "SCADA Backup", nullptr, nullptr);
-    if (window == nullptr)
+    gfx.window = glfwCreateWindow(window_size.x, window_size.y, "SCADA Backup", nullptr, nullptr);
+    if (gfx.window == nullptr)
         return 1;
     const Vec2I win_p = (screen_size - window_size) / 2;
-    glfwSetWindowPos(window, win_p.x, win_p.y);
-    glfwMakeContextCurrent(window);
+    glfwSetWindowPos(gfx.window, win_p.x, win_p.y);
+    glfwMakeContextCurrent(gfx.window);
     glfwSwapInterval(1); // Enable vsync
 
-    InitOS(window);
+    InitOS(gfx.window);
     Threading& threading = Threading::GetInstance();
 
     // Setup Dear ImGui context
@@ -199,9 +200,9 @@ int Main(int argc, char** argv)
     style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplGlfw_InitForOpenGL(gfx.window, true);
 #ifdef __EMSCRIPTEN__
-    ImGui_ImplGlfw_InstallEmscriptenCallbacks(window, "#canvas");
+    ImGui_ImplGlfw_InstallEmscriptenCallbacks(gfx.window, "#canvas");
 #endif
     ImGui_ImplOpenGL3_Init(glsl_version);
 
@@ -278,14 +279,14 @@ int Main(int argc, char** argv)
     io.IniFilename = nullptr;
     EMSCRIPTEN_MAINLOOP_BEGIN
 #else
-    //while (!glfwWindowShouldClose(window))
+    //while (!glfwWindowShouldClose(gfx.window))
 #endif
 
     AppData app_data;
 
-    glfwShowWindow(window);
+    glfwShowWindow(gfx.window);
     bool done = false;
-    while (!(done || glfwWindowShouldClose(window)))
+    while (!(done || glfwWindowShouldClose(gfx.window)))
     {
         {
             ZoneScopedN("Frame Update:");
@@ -296,14 +297,14 @@ int Main(int argc, char** argv)
             // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
             glfwPollEvents();
 
-            //if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
+            //if (glfwGetWindowAttrib(gfx.window, GLFW_ICONIFIED) != 0)
             //{
             //    ImGui_ImplGlfw_Sleep(10);
             //    continue;
             //}
 
 #if _DEBUG
-            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            if (glfwGetKey(gfx.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             {
                 done = true;
             }
@@ -352,7 +353,7 @@ int Main(int argc, char** argv)
 
         {
             ZoneScopedN("Frame End");
-            glfwSwapBuffers(window);
+            glfwSwapBuffers(gfx.window);
         }
     }
 #ifdef __EMSCRIPTEN__
@@ -364,7 +365,7 @@ int Main(int argc, char** argv)
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(gfx.window);
     glfwTerminate();
 
     return 0;
