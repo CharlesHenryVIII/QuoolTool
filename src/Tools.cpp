@@ -9,6 +9,7 @@ struct ScriptInfo {
     std::string name;
     bool enabled;
     std::wstring cmdline; //function
+    //break
     Atomic<bool> completed = false;
 };
 
@@ -16,7 +17,8 @@ ScriptInfo s_scripts[] = {
     { .name = "SYSINFO",    .enabled = true,   .cmdline = L"systeminfo" },
     { .name = "NETSTAT",    .enabled = true,   .cmdline = L"netstat -ano" },
     { .name = "IPCONFIG",   .enabled = true,   .cmdline = L"ipconfig" },
-    { .name = "PROGRAMS",   .enabled = true,   .cmdline = L"wmic product get name,version /FORMAT:CSV" },
+    { .name = "PROGRAMS",   .enabled = true,   .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\"" },
+
 };
 
 std::string s_log;
@@ -44,10 +46,11 @@ void ToolsImGui(ToolsData& td)
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoMove;
     
-    if (ImGui::BeginChild("File Paths", { 0, 90 }, true, section_flags))
+    #define FILES_TITLE "File Paths"
+    if (ImGui::BeginChild(FILES_TITLE, { 0, 90 }, true, section_flags))
     {
-        ZoneScopedN("File Paths");
-        TextCentered("File Paths");
+        ZoneScopedN(FILES_TITLE);
+        TextCentered(FILES_TITLE);
         ImGui::NewLine();
 
         {
@@ -145,8 +148,6 @@ void ToolsImGui(ToolsData& td)
     if (ImGui::BeginChild(ACTION_TITLE, action_size, true, section_flags))
     {
         ZoneScopedN(ACTION_TITLE);
-        //TextCentered(ACTION_TITLE);
-        //ImGui::NewLine();
 
         ImGui::BeginDisabled(false);
         const ImVec2 avail = ImGui::GetContentRegionAvail();
