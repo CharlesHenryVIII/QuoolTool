@@ -372,17 +372,16 @@ void InitOS(GLFWwindow* window)
     }
 
     {
-        DWORD pi_size;
-        GetLogicalProcessorInformation(nullptr, &pi_size);
-        std::vector<u8> buf(pi_size);
-        SYSTEM_LOGICAL_PROCESSOR_INFORMATION* info = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)(buf.data());
-        if (!GetLogicalProcessorInformation(info, &pi_size))
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[4 * 1024] = {};
+        DWORD buffer_size = sizeof(info);
+        if (!GetLogicalProcessorInformation(info, &buffer_size))
         {
-            DebugPrint("Failed to get processor information");
+            DebugPrint("Failed to get processor information error: %i", GetLastError());
+            FAIL;
             return;
         }
 
-        i32 count = pi_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+        i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
         g_sysinfo.cores = 0;
         g_sysinfo.threads = 0;
 
@@ -398,6 +397,11 @@ void InitOS(GLFWwindow* window)
                     mask >>= 1;
                 }
             }
+        }
+
+        if (g_sysinfo.cores == 0 || g_sysinfo.threads == 0)
+        {
+            DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
         }
     }
 }
