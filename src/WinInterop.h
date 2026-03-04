@@ -16,6 +16,8 @@ enum RunProcessFlags : u32 {
 
 struct SystemInfo {
     std::wstring name;
+    i32 cores;
+    i32 threads;
 };
 extern SystemInfo g_sysinfo;
 

@@ -15,6 +15,7 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "glfw/glfw3native.h"
 #include "Rendering.h"
+#include "Tracy.hpp"
 
 #include <fstream>
 #include <filesystem>
@@ -271,6 +272,7 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
 
 void RunProcessJob::RunJob()
 {
+    ZoneScopedN("Process Job");
     const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
     const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
     i32 result = RunProcess(path, args);
@@ -282,6 +284,7 @@ void RunProcessJob::RunJob()
 
 void RunProcessLogToFileJob::RunJob()
 {
+    ZoneScopedN("Process Log To File Job");
     const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
     const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
     std::string output;
@@ -366,6 +369,36 @@ void InitOS(GLFWwindow* window)
         g_sysinfo.name.resize(MAX_COMPUTERNAME_LENGTH + 1);
         GetComputerNameW(g_sysinfo.name.data(), &name_size);
         g_sysinfo.name.resize(name_size);
+    }
+
+    {
+        DWORD pi_size;
+        GetLogicalProcessorInformation(nullptr, &pi_size);
+        std::vector<u8> buf(pi_size);
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION* info = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)(buf.data());
+        if (!GetLogicalProcessorInformation(info, &pi_size))
+        {
+            DebugPrint("Failed to get processor information");
+            return;
+        }
+
+        i32 count = pi_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+        g_sysinfo.cores = 0;
+        g_sysinfo.threads = 0;
+
+        for (i32 i = 0; i < count; ++i)
+        {
+            if (info[i].Relationship == RelationProcessorCore)
+            {
+                g_sysinfo.cores++;
+                ULONG_PTR mask = info[i].ProcessorMask;
+                while (mask)
+                {
+                    g_sysinfo.threads += (mask & 1);
+                    mask >>= 1;
+                }
+            }
+        }
     }
 }
 
