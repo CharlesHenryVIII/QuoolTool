@@ -166,8 +166,10 @@ void ToolsImGui(ToolsData& td)
                 job->arguments = s.cmdline;
                 const std::string name = s.name + ".txt";
                 Path output_file = name;
+                output_file = g_sysinfo.name / output_file;
                 if (fs::exists(td.output_path))
                      output_file = Path(td.output_path / name);
+                CreateParentDirectories(output_file);
                 job->output_file = output_file;
                 job->completed = &s.completed;
                 threading.SubmitJob(job);
