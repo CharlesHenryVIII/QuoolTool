@@ -14,6 +14,11 @@ enum RunProcessFlags : u32 {
     RunProcess_Show = BIT(1),
 };
 
+struct SystemInfo {
+    std::wstring name;
+};
+extern SystemInfo g_sysinfo;
+
 void DebugPrint(const char* fmt, ...);
 void DebugPrint(const wchar_t* fmt, ...);
 std::string ToString(const char* fmt, ...);
@@ -29,6 +34,7 @@ void HideConsole();
 void ShowConsole();
 bool IsConsoleVisible();
 void Sleep(u64 ms);
+void GetComputerName(std::wstring& name);
 
 static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);

@@ -27,6 +27,8 @@
 #include "libarchive/libarchive/archive.h"
 #include "libarchive/libarchive/archive_entry.h"
 
+SystemInfo g_sysinfo;
+
 void DebugPrint(const char* fmt, ...)
 {
     va_list list;
@@ -358,6 +360,17 @@ void InitOS(GLFWwindow* window)
         stbi_image_free(images[i].pixels);
     }
 #endif
+
+    {
+        DWORD name_size;
+        g_sysinfo.name.resize(MAX_COMPUTERNAME_LENGTH + 1);
+        GetComputerNameW(g_sysinfo.name.data(), &name_size);
+        g_sysinfo.name.resize(name_size);
+    }
+}
+
+void GetComputerName(std::wstring& name)
+{
 }
 
 bool ConsoleAttached()
@@ -978,8 +991,7 @@ void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, cons
     error = archive_write_set_options(a, "compression-level=9");
     ArchiveErrorCheck(a, error);
     Path zip_filename = std::filesystem::path(zip_pathw) / zip_name;
-    std::error_code ec;
-    fs::create_directories(zip_filename.parent_path(), ec);
+    CreateParentDirectories(zip_filename);
     error = archive_write_open_filename(a, zip_filename.string().c_str());
     ArchiveErrorCheck(a, error);
 
