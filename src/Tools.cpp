@@ -228,7 +228,7 @@ void ToolsImGui(ToolsData& td)
             ImVec2 ip_size = HadamardProduct(ImGui::GetContentRegionAvail(), ip_scale);
             if (ImGui::BeginChild("IndividualProgress", ip_size, ImGuiChildFlags_Borders, section_flags))
             {
-                const float individual_height = 40.0f;
+                const float individual_height = 30.0f;
                 for (i32 i = 0; i < arrsize(s_scripts); i++)
                 {
                     ScriptInfo& s = s_scripts[i];
