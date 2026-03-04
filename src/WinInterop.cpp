@@ -365,9 +365,14 @@ void InitOS(GLFWwindow* window)
 #endif
 
     {
-        DWORD name_size;
-        g_sysinfo.name.resize(MAX_COMPUTERNAME_LENGTH + 1);
-        GetComputerNameW(g_sysinfo.name.data(), &name_size);
+        DWORD name_size = MAX_COMPUTERNAME_LENGTH + 1;
+        g_sysinfo.name.resize(name_size);
+        if (!GetComputerNameW(g_sysinfo.name.data(), &name_size))
+        {
+            DebugPrint("Failed to get Computer Name error: %i", GetLastError());
+            FAIL;
+            return;
+        }
         g_sysinfo.name.resize(name_size);
     }
 
