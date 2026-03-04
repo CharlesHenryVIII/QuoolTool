@@ -462,10 +462,6 @@ void OSInit(GLFWwindow* window)
     }
 }
 
-void GetComputerName(std::wstring& name)
-{
-}
-
 bool ConsoleAttached()
 {
     return AttachConsole(ATTACH_PARENT_PROCESS);
@@ -512,6 +508,11 @@ bool IsConsoleVisible()
 void SysSleep(u64 _ms)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(_ms));
+}
+
+double SysGetTime()
+{
+    return glfwGetTime();
 }
 
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)

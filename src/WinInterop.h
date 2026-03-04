@@ -36,7 +36,7 @@ void HideConsole();
 void ShowConsole();
 bool IsConsoleVisible();
 void SysSleep(u64 ms);
-void GetComputerName(std::wstring& name);
+double SysGetTime();
 
 static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);
