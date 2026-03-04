@@ -27,7 +27,7 @@ std::string ToString(const char* fmt, ...);
 std::wstring ToString(const wchar_t* fmt, ...);
 i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
 i32 RunProcess     (const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
-void InitOS(GLFWwindow* window);
+void OSInit(GLFWwindow* window);
 int Main(int, char**);
 bool ConsoleAttached();
 bool DebuggerAttached();
@@ -35,7 +35,7 @@ void EnableOutputToDebugger();
 void HideConsole();
 void ShowConsole();
 bool IsConsoleVisible();
-void Sleep(u64 ms);
+void SysSleep(u64 ms);
 void GetComputerName(std::wstring& name);
 
 static bool keepOpen = true;
