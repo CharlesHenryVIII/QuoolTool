@@ -12,7 +12,7 @@ Threading::Threading()
     : m_semaphore(0)
 {
 #ifdef ASYNC
-    u32 usableCores = Max<u32>(1, g_sysinfo.threads - 1);
+    u32 usableCores = (u32)Max<i32>(1, g_sysinfo.threads - 1);
 #else
     u32 usableCores = 1;
 #endif
