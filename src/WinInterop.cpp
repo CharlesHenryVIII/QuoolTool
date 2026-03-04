@@ -270,9 +270,51 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
 #endif
 }
 
+#define TRACY_SET_NAME_FOR_JOB(app, args)\
+    ZoneScoped;                                                                         \
+    const std::wstring cmdlinew = app.size() ? app + L" " + args : args;                \
+    std::string cmdline;                                                                \
+    ConvertWideCharToMultiByte(cmdline, cmdlinew);                                      \
+    cmdline.find_first_of('')\
+    const std::string zone_name = cmdline;                                              \
+    ZoneName(zone_name.c_str(), zone_name.size())                                       \
+    \
+    ZoneText()
+    //std::string zone_name = ToString("Process Log To File Job: %s", cmdline.c_str());
+
+void GetNameAndTextForJob(std::string& text, std::string& name, const std::wstring& app, const std::wstring& args)
+{
+    std::wstring namew;
+    std::wstring textw;
+    if (!app.size())
+    {
+       size_t p = args.find_first_of(L' ', 1);
+       namew = args.substr(0, p);
+       textw = args;
+    }
+    else
+    {
+        namew = app;
+        if (args.size())
+            textw = app + L" " + args;
+    }
+    if (namew.size())
+        ConvertWideCharToMultiByte(name, namew);
+    else
+        name.clear();
+    if (textw.size())
+        ConvertWideCharToMultiByte(text, textw);
+    else
+        text.clear();
+}
 void RunProcessJob::RunJob()
 {
-    ZoneScopedN("Process Job");
+    std::string zone_text;
+    std::string zone_name;
+    GetNameAndTextForJob(zone_text, zone_name, application_path, arguments);
+    ZoneScoped;
+    ZoneName(zone_name.c_str(), zone_name.size());
+    ZoneText(zone_text.c_str(), zone_text.size());
     const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
     const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
     i32 result = RunProcess(path, args);
@@ -284,16 +326,15 @@ void RunProcessJob::RunJob()
 
 void RunProcessLogToFileJob::RunJob()
 {
-    //ZoneScopedN("Process Log To File Job");
+    std::string zone_text;
+    std::string zone_name;
+    GetNameAndTextForJob(zone_text, zone_name, application_path, arguments);
     ZoneScoped;
+    ZoneName(zone_name.c_str(), zone_name.size());
+    ZoneText(zone_text.c_str(), zone_text.size());
+
     const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
     const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
-
-    const std::wstring cmdlinew = application_path.size() ? application_path + L" " + arguments : arguments;
-    std::string cmdline;
-    ConvertWideCharToMultiByte(cmdline, cmdlinew);
-    std::string zone_name = ToString("Process Log To File Job: %s", cmdline.c_str());
-    ZoneName(zone_name.c_str(), zone_name.size());
 
     std::string output;
     Mutex output_lock;
