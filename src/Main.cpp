@@ -31,6 +31,7 @@
 #include "resource.h"
 #include "Citect.h"
 #include "Rendering.h"
+#include "Networking.h"
 
 #include <stdio.h>
 #include <string>
@@ -95,12 +96,12 @@ int Main(int argc, char** argv)
                 Threading::GetInstance().SubmitJob(job);
                 while (cd.total == 0)
                 {
-                    Sleep(200);
+                    SysSleep(200);
                 }
 
                 do {
                     TuiProgressBar(cd.progress, cd.total);
-                    Sleep(100);
+                    SysSleep(100);
                 } while (cd.total != 0);
                 TuiProgressBar(100, 100);
             }
@@ -183,8 +184,9 @@ int Main(int argc, char** argv)
     glfwMakeContextCurrent(gfx.window);
     glfwSwapInterval(1); // Enable vsync
 
-    InitOS(gfx.window);
+    OSInit(gfx.window);
     Threading& threading = Threading::GetInstance();
+    NetworkingInit();
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
