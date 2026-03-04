@@ -57,6 +57,8 @@ static void glfw_error_callback(int error, const char* description)
 
 int Main(int argc, char** argv)
 {
+#if 0
+    //ERROR: Threading will not work correctly unless InitOS() is called before
     //argc will always be 1 in console mode
     if (**argv != 0 && (argc == -1 || argc > 1))
     {
@@ -110,6 +112,7 @@ int Main(int argc, char** argv)
         return 0;
     }
     HideConsole();
+#endif
 
 
     glfwSetErrorCallback(glfw_error_callback);

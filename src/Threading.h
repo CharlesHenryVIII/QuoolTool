@@ -27,7 +27,12 @@ private:
     std::vector<Job*>           m_jobs;
     std::vector<std::thread>    m_threads;
 
-    static i32 ThreadFunction(void* data);
+    struct ThreadData {
+        std::string name;
+        u32 index;
+    };
+
+    static i32 ThreadFunction(ThreadData data);
     Threading();
     ~Threading();
     Threading(Threading&) = delete;
