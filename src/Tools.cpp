@@ -46,6 +46,25 @@ void ToolsImGui(ToolsData& td)
         ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoMove;
+
+    i32 enabled_scripts = 0;
+    i32 completed_scripts = 0;
+    bool finished_scripts = false;
+    for (i32 i = 0; i < arrsize(s_scripts); i++)
+    {
+        ScriptInfo& s = s_scripts[i];
+        if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
+            continue;
+        enabled_scripts++;
+        if (s_scripts[i].completed)
+            completed_scripts++;
+    }
+    if (td.running && enabled_scripts == completed_scripts)
+    {
+        td.running = false;
+        finished_scripts = true;
+    }
+
     
     #define FILES_TITLE "File Paths"
     if (ImGui::BeginChild(FILES_TITLE, { 0, 90 }, true, section_flags))
@@ -86,6 +105,7 @@ void ToolsImGui(ToolsData& td)
         {
             ScriptInfo& s = s_scripts[i];
             ImGui::PushID(i);
+            ImGui::BeginDisabled(s.completed);
             ImGui::BeginGroup();
 
             bool pressed = ImGui::InvisibleButton("##btn", button_size);
@@ -115,7 +135,12 @@ void ToolsImGui(ToolsData& td)
 
             std::string selected_text = "Enabled";
             ImU32 selected_color = IM_COL32(0, 255, 0, 255);
-            if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
+            if (s.completed)
+            {
+                selected_text = "Completed";
+                selected_color = IM_COL32(0, 255, 0, 255);
+            }
+            else if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
             {
                 selected_text = "Disabled";
                 selected_color = IM_COL32(255, 0, 0, 255);
@@ -128,6 +153,7 @@ void ToolsImGui(ToolsData& td)
             draw->AddText(value_pos, selected_color, selected_text.c_str());
 
             ImGui::EndGroup();
+            ImGui::EndDisabled();
             ImGui::PopID();
 
             float last_button_x2 = ImGui::GetItemRectMax().x;
@@ -156,10 +182,12 @@ void ToolsImGui(ToolsData& td)
         {
             ImguiLog("Running Scripts:");
             td.running = true;
+            finished_scripts = false;
+
             for (i32 i = 0; i < arrsize(s_scripts); i++)
             {
                 ScriptInfo& s = s_scripts[i];
-                if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
+                if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || s.completed)
                     continue;
                 RunProcessLogToFileJob* job = new RunProcessLogToFileJob();
                 job->application_path;
@@ -224,22 +252,12 @@ void ToolsImGui(ToolsData& td)
             ImVec2 max = ImGui::GetWindowContentRegionMax();
             ImGui::SetCursorPosY(max.y - progress_bar_height);
   
-            i32 total = 0;
-            i32 completed = 0;
-            for (i32 i = 0; i < arrsize(s_scripts); i++)
-            {
-                if (!FlagExists(s_scripts[i].flags, ScriptInfoFlags_Enabled))
-                    continue;
-                total++;
-                if (s_scripts[i].completed)
-                    completed++;
-            }
-            if (total == completed)
+            if (finished_scripts)
                 ImGui::ProgressBar(1.0f, ImVec2(-FLT_MIN, progress_bar_height), "Completed");
             else
             {
-                std::string title = ToString("%i/%i", completed, total);
-                ImGui::ProgressBar(float(completed) / float(total), ImVec2(-FLT_MIN, progress_bar_height), title.c_str());
+                std::string title = ToString("%i/%i", completed_scripts, enabled_scripts);
+                ImGui::ProgressBar(float(completed_scripts) / float(enabled_scripts), ImVec2(-FLT_MIN, progress_bar_height), title.c_str());
             }
         }
     }
