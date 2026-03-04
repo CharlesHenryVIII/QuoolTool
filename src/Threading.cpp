@@ -1,24 +1,28 @@
 #include "Threading.h"
 #include "Math.h"
+#include "Wininterop.h"
+
+#include "Tracy.hpp"
 
 #include <Chrono>
 
-// NOTE(CSH): uncommenting this will enable asyncronous multithreading
-// for the jobs however this does not work yet and i'm not sure if it will ever need to
-//TODO: Make this work (maybe?)
-//#define ASYNC
+#define ASYNC
 
 Threading::Threading()
     : m_semaphore(0)
 {
 #ifdef ASYNC
-    u32 usableCores = Max<u32>(1, SDL_GetCPUCount() - 1);
+    u32 usableCores = Max<u32>(1, g_sysinfo.threads - 1);
 #else
     u32 usableCores = 1;
 #endif
     for (u32 i = 0; i < usableCores; ++i)
     {
-        m_threads.push_back(std::thread(&Threading::ThreadFunction, nullptr));
+        ThreadData data = {
+            .name = ToString("Thread: %i", i),
+            .index = i
+        };
+        m_threads.push_back(std::thread(&Threading::ThreadFunction, data));
     }
     m_running = true;
 }
@@ -51,9 +55,10 @@ void Threading::SubmitJob(Job* job)
     m_semaphore.release();
 }
 
-i32 Threading::ThreadFunction(void* data)
+i32 Threading::ThreadFunction(ThreadData data)
 {
     Threading& MT = GetInstance();
+    tracy::SetThreadName(data.name.c_str());
 
     while (true)
     {
