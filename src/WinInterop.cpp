@@ -377,7 +377,7 @@ void InitOS(GLFWwindow* window)
     }
 
     {
-        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[4 * 1024] = {};
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[1024] = {};
         DWORD buffer_size = sizeof(info);
         if (!GetLogicalProcessorInformation(info, &buffer_size))
         {
