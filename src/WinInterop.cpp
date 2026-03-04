@@ -373,7 +373,7 @@ void RunProcessLogToFileJob::RunJob()
 HMODULE modh;
 HWND window_handle;
 
-void InitOS(GLFWwindow* window)
+void OSInit(GLFWwindow* window)
 {
     modh = GetModuleHandle(NULL);
     VALIDATE(modh != NULL);
@@ -509,7 +509,7 @@ bool IsConsoleVisible()
     return ::IsWindowVisible(::GetConsoleWindow()) != FALSE;
 }
 
-void Sleep(u64 _ms)
+void SysSleep(u64 _ms)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(_ms));
 }
