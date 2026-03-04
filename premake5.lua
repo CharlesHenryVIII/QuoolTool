@@ -29,11 +29,13 @@ project "ScadaBackup"
     dependson {
         "libarchive",
         "contrib",
+        "curl-lib",
     }
 
     links {
         "libarchive",
         "contrib",
+        "curl-lib",
     }
 
     --libdirs { }
@@ -45,6 +47,7 @@ project "ScadaBackup"
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
         "contrib/asio/include",
+        "contrib/curl/include",
         "resources",
     }
     defines {
@@ -53,6 +56,7 @@ project "ScadaBackup"
         "IMGUI_DEFINE_MATH_OPERATORS",
         "ASIO_STANDALONE",
         "_WIN32_WINNT=0x0A00",
+        "CURL_STATICLIB",
     }
     files {
         "src/**",
@@ -134,7 +138,8 @@ project "contrib"
 
     links {
         "OpenGL32",
-        "libarchive"
+        "libarchive",
+        "curl-lib",
     }
 
     warnings ("Default");
@@ -152,6 +157,7 @@ project "contrib"
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
         "contrib/asio/include",
+        "contrib/curl/include",
     }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
@@ -356,3 +362,82 @@ project "libarchive"
     filter "files:**.natvis"
         buildaction "Natvis"
 
+
+project "curl-lib"
+    kind "StaticLib"
+    language "C"
+    staticruntime "On"
+    --cdialect "C99"
+    targetdir "build/"
+    targetname "curl_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
+    editandcontinue "Off"
+    usefullpaths "On"
+
+    multiprocessorcompile "On"
+    enablepch "Off"
+    --fatalwarnings { "All" }
+    warnings "Off";
+
+    externalincludedirs {
+        "contrib/curl/include",
+    }
+    includedirs {
+        "contrib/curl/include",
+    }
+    defines {
+        "BUILDING_LIBCURL",
+        "CURL_STATICLIB",
+        "HTTP_ONLY",
+    }
+    files {
+        "contrib/curl/include/**.c",
+        "contrib/curl/include/**.h",
+        "contrib/curl/lib/**.c",
+        "contrib/curl/lib/**.h",
+    }
+
+
+	filter { "options:not zlib-src=none" }
+		defines     { 'USE_ZLIB' }
+
+	filter { "options:zlib-src=contrib" }
+		includedirs { '../zlib' }
+
+	filter { "system:windows" }
+		defines { "USE_SCHANNEL", "USE_WINDOWS_SSPI" }
+		links { "crypt32", "bcrypt", "secur32", "ws2_32" }
+
+	filter { "system:macosx" }
+		defines { "USE_SECTRANSP" }
+
+	filter { "system:not windows", "system:not macosx" }
+		defines { "USE_MBEDTLS" }
+
+	filter { "system:linux or toolset:cosmocc"}
+		defines { "_GNU_SOURCE" }
+
+	filter { "system:linux or bsd or solaris or haiku or toolset:cosmocc" }
+		defines { "CURL_HIDDEN_SYMBOLS" }
+
+		-- find the location of the ca bundle
+		local ca = nil
+		for _, f in ipairs {
+			"/etc/ssl/certs/ca-certificates.crt",
+			"/etc/openssl/certs/ca-certificates.crt",
+			"/etc/pki/tls/certs/ca-bundle.crt",
+			"/usr/share/ssl/certs/ca-bundle.crt",
+			"/usr/local/share/certs/ca-root.crt",
+			"/usr/local/share/certs/ca-root-nss.crt",
+			"/etc/certs/ca-certificates.crt",
+			"/etc/ssl/cert.pem",
+			"/etc/ssl/cacert.pem",
+			"/boot/system/data/ssl/CARootCertificates.pem" } do
+			if os.isfile(f) then
+				ca = f
+				break
+			end
+		end
+		if ca then
+			defines { 'CURL_CA_BUNDLE="' .. ca .. '"', 'CURL_CA_PATH="' .. path.getdirectory(ca) .. '"' }
+		end
