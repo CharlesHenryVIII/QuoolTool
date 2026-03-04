@@ -17,7 +17,7 @@
 
 void CitectCreateZip(CitectData& cs)
 {
-    std::lock_guard<std::mutex> lock(cs.lock);
+    TRACY_LOCK(cs.lock);
 
     //1. Backup project as Backup.ctz
     std::vector<ScannedFile> filenames;

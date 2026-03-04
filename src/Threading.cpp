@@ -37,8 +37,8 @@ Threading::~Threading()
 
 [[nodiscard]] Job* Threading::AcquireJob()
 {
-
-    std::lock_guard<std::mutex> lock(m_jobVectorMutex);
+    ZoneScopedN("Acquire Job");
+    TRACY_LOCK(m_jobVectorMutex);
     if (m_jobs.empty())
         return nullptr;
     m_jobsInFlight++;
@@ -50,7 +50,8 @@ Threading::~Threading()
 
 void Threading::SubmitJob(Job* job)
 {
-    std::lock_guard<std::mutex> lock(m_jobVectorMutex);
+    ZoneScopedN("Submit Job");
+    TRACY_LOCK(m_jobVectorMutex);
     m_jobs.push_back(job);
     m_semaphore.release();
 }
