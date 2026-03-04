@@ -190,6 +190,7 @@ void ToolsImGui(ToolsData& td)
                 ScriptInfo& s = s_scripts[i];
                 if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || s.completed)
                     continue;
+
                 ZoneScopedN("Run Script");
                 RunProcessLogToFileJob* job = new RunProcessLogToFileJob();
                 job->application_path;

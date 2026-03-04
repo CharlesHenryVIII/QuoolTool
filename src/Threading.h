@@ -1,6 +1,8 @@
 #pragma once
 #include "Math.h"
 
+#include "Tracy.hpp"
+
 #include <atomic>
 #include <mutex>
 #include <semaphore>
@@ -12,6 +14,11 @@ template<std::ptrdiff_t N>
 using Semaphore = std::counting_semaphore<N>;
 template<class N>
 using Atomic = std::atomic<N>;
+template<class N>
+using Lock = std::lock_guard<N>;
+//creates a lock_guard named "lock"
+#define TRACY_LOCK(var) Lock<LockableBase(Mutex)> lock(var)
+#define TRACY_MUTEX(var) TracyLockable(Mutex, var)
 
 struct Job
 {
@@ -20,7 +27,7 @@ struct Job
 
 struct Threading {
 private:
-    Mutex                       m_jobVectorMutex;
+    TRACY_MUTEX(m_jobVectorMutex);
     Semaphore<PTRDIFF_MAX>      m_semaphore;
     Atomic<i32>                 m_jobsInFlight = {};
     Atomic<bool>                m_running;
