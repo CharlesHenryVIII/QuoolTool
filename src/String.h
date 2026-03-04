@@ -74,5 +74,6 @@ void PathCleanSlashs(std::wstring& s);
 void PathRemoveExtension(std::wstring& path);
 std::wstring PathAddEndSlash(const std::wstring& s);
 std::wstring PathConcat(const std::wstring& a, const std::wstring& b);
+void CreateParentDirectories(const Path& path);
 
 void TuiProgressBar(u64 count, u64 max);

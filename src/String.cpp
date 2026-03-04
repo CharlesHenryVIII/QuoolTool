@@ -514,6 +514,18 @@ std::wstring PathConcat(const std::wstring& a, const std::wstring& b)
     return a + L"/" + b;
 }
 
+void CreateParentDirectories(const Path& path)
+{
+    std::error_code ec;
+    fs::create_directories(path.parent_path(), ec);
+    if (ec)
+    {
+        DebugPrint("Failed to create directories for \"%s\"", path.string().c_str());
+        DebugPrint("create_directories Failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
+        FAIL;
+    }
+}
+
 void TuiProgressBar(u64 count, u64 max)
 {
     const i32 bar_width = 50;
