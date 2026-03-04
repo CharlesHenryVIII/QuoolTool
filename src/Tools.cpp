@@ -180,6 +180,7 @@ void ToolsImGui(ToolsData& td)
         const ImVec2 avail = ImGui::GetContentRegionAvail();
         if (ImGui::Button("Run Scripts", avail))
         {
+            ZoneScopedN("Run Scripts");
             ImguiLog("Running Scripts:");
             td.running = true;
             finished_scripts = false;
@@ -189,6 +190,7 @@ void ToolsImGui(ToolsData& td)
                 ScriptInfo& s = s_scripts[i];
                 if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || s.completed)
                     continue;
+                ZoneScopedN("Run Script");
                 RunProcessLogToFileJob* job = new RunProcessLogToFileJob();
                 job->application_path;
                 job->arguments = s.cmdline;

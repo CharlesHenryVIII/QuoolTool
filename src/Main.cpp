@@ -298,7 +298,10 @@ int Main(int argc, char** argv)
             // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
             // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
             // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-            glfwPollEvents();
+            {
+                ZoneScopedN("Poll Events");
+                glfwPollEvents();
+            }
 
             //if (glfwGetWindowAttrib(gfx.window, GLFW_ICONIFIED) != 0)
             //{
@@ -333,7 +336,10 @@ int Main(int argc, char** argv)
 //                buildRunning = false;
 //#endif
 
-            ImguiMain(app_data);
+            {
+                ZoneScopedN("Main Imgui");
+                ImguiMain(app_data);
+            }
 
 
             {
@@ -351,13 +357,12 @@ int Main(int argc, char** argv)
                 }
             }
         }
-        FrameMark;
-
 
         {
             ZoneScopedN("Frame End");
             glfwSwapBuffers(gfx.window);
         }
+        FrameMark;
     }
 #ifdef __EMSCRIPTEN__
     EMSCRIPTEN_MAINLOOP_END;
