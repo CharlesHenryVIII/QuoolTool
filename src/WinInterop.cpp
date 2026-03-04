@@ -284,19 +284,29 @@ void RunProcessJob::RunJob()
 
 void RunProcessLogToFileJob::RunJob()
 {
-    ZoneScopedN("Process Log To File Job");
+    //ZoneScopedN("Process Log To File Job");
+    ZoneScoped;
     const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
     const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
+
+    const std::wstring cmdlinew = application_path.size() ? application_path + L" " + arguments : arguments;
+    std::string cmdline;
+    ConvertWideCharToMultiByte(cmdline, cmdlinew);
+    std::string zone_name = ToString("Process Log To File Job: %s", cmdline.c_str());
+    ZoneName(zone_name.c_str(), zone_name.size());
+
     std::string output;
     Mutex output_lock;
     i32 result = RunProcess(path, args, &output, &output_lock);
     if (run_and_clear && result)
     {
+        ZoneScopedN("Run and Clear");
         Threading::GetInstance().RunAndClearJobs();
     }
 
     if (output_file.size())
     {
+        ZoneScopedN("Ouput File");
         std::fstream file(output_file, std::ios_base::out);
         if (!file.good())
         {
