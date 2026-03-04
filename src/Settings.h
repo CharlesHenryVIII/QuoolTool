@@ -9,7 +9,7 @@ struct ToolsData {
     Atomic<bool> running = false;
     Atomic<u64> progress = 0;
     Atomic<u64> total = 0;
-    Mutex lock;
+    TRACY_MUTEX(lock);
 };
 
 struct CitectData {
@@ -17,7 +17,7 @@ struct CitectData {
     Path program_files_path;
     Path program_files_86;
     Path backup_path;
-    Mutex lock;
+    TRACY_MUTEX(lock);
     Atomic<bool> backup_in_progress = false;
     Atomic<u64> progress;
     Atomic<u64> total;
