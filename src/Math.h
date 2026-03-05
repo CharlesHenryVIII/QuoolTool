@@ -7,6 +7,7 @@
 #include <cstdint>
 
 #define BIT(num) (1<<(num))
+#define HasBit(n, pos) ((n) & (1 << (pos)))
 #define MATH_PREFIX [[nodiscard]] inline
 
 using i8  = int8_t;
@@ -18,6 +19,42 @@ using u8  = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;
 using u64 = uint64_t;
+
+#define Thousands(value) ((value) * 1000LL)
+#define Millions(value)  (Thousands(value) * 1000LL)
+#define Billions(value)  (Millions(value) * 1000LL)
+#define Trillions(value) (Billions(value) * 1000LL)
+
+#define ToThousands(value) ((u64)((value) / 1000LL))
+#define ToMillions(value)  ((u64)(ToThousands(value) / 1000LL))
+#define ToBillions(value)  ((u64)(ToMillions(value) / 1000LL))
+#define ToTrillions(value) ((u64)(ToBillions(value) / 1000LL))
+
+#define MilliFromSeconds(value)         Thousands(value)
+#define MicroFromMilliseconds(value)    Thousands(value)
+#define MicroFromSeconds(value)         Millions(value)
+#define MilliFromMicroseconds(value)    ((value) / 1000LL)
+#define SecFromMicroseconds(value)      ((value) / 1000000LL)
+
+#define kilobytes(value) (         (value) * 1000L)
+#define Megabytes(value) (kilobytes(value) * 1000L)
+#define Gigabytes(value) (Megabytes(value) * 1000L)
+#define Terabytes(value) (Gigabytes(value) * 1000L)
+
+#define ToKilobytes(value) ((u64)(           (value) / 1000.0))
+#define ToMegabytes(value) ((u64)(ToKilobytes(value) / 1000.0))
+#define ToGigabytes(value) ((u64)(ToMegabytes(value) / 1000.0))
+#define ToTerabytes(value) ((u64)(ToGigabytes(value) / 1000.0))
+
+#define Kibibyte(value)  (         (value) * 1024L)
+#define Mebibytes(value) (Kilobytes(value) * 1024L)
+#define Gibibytes(value) (Megabytes(value) * 1024L)
+#define Tebibytes(value) (Gigabytes(value) * 1024L)
+
+#define ToKibibytes(value) ((u64)(           (value) / 1024.0))
+#define ToMebibytes(value) ((u64)(ToKilobytes(value) / 1024.0))
+#define ToGibibytes(value) ((u64)(ToMegabytes(value) / 1024.0))
+#define ToTebibytes(value) ((u64)(ToGigabytes(value) / 1024.0))
 
 typedef gbVec4<float> Color;
 
