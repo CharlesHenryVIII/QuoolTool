@@ -1,7 +1,7 @@
 #include "Version.h"
 #include "WinInterop.h"
 
-Version g_version = { .major = 1, .minor = 0 };
+Version g_version = { .major = 1, .minor = 1 };
 
 std::string Version::AsTagString() const
 {
