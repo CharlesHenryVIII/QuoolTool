@@ -12,7 +12,7 @@
 using Json = nlohmann::json;
 
 struct NetworkInfo {
-    //const std::string url = "https://api.github.com/repos/CharlesHenryVIII/ScadaBackup/releases/latest";
+    //const std::string url = "https://api.github.com/repos/CharlesHenryVIII/QuoolTool/releases/latest";
     const std::string url = "https://api.github.com/repos/CharlesHenryVIII/UATHelper/releases/latest";
     const std::wstring env_filename = L".env";
     EnvironmentVariables env;

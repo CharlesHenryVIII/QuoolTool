@@ -174,9 +174,9 @@ int Main(int argc, char** argv)
 #endif
 
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
-    //GLFWwindow* window = glfwCreateWindow((int)(monitor_size.x * main_scale), (int)(monitor_size.y * main_scale), "SCADA Backup", nullptr, nullptr);
+    //GLFWwindow* window = glfwCreateWindow((int)(monitor_size.x * main_scale), (int)(monitor_size.y * main_scale), "Quool Tool", nullptr, nullptr);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    gfx.window = glfwCreateWindow(window_size.x, window_size.y, "SCADA Backup", nullptr, nullptr);
+    gfx.window = glfwCreateWindow(window_size.x, window_size.y, "Quool Tool", nullptr, nullptr);
     if (gfx.window == nullptr)
         return 1;
     const Vec2I win_p = (screen_size - window_size) / 2;
@@ -263,15 +263,9 @@ int Main(int argc, char** argv)
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
     // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
     style.FontSizeBase = 16.0f;
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
-    //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/DroidSans.ttf");
     g_data.fonts[FontIndex_Default] = LoadFontForImgui(IDR_FONT1, 16.0f);
+    g_data.fonts[FontIndex_Imgui] = io.Fonts->AddFontDefault();
     g_data.fonts[FontIndex_Monospace] = LoadFontForImgui(IDR_FONT2, 16.0f);
-    //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Roboto-Medium.ttf");
-    //io.Fonts->AddFontFromFileTTF("contrib/ImGui/misc/fonts/Cousine-Regular.ttf");
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
-    //ASSERT(font != nullptr);
 
     // Our state
     bool keepProcessWindowAlive = true;
@@ -320,24 +314,21 @@ int Main(int argc, char** argv)
 #endif
 
             {
-                ZoneScopedN("Create New Frame");
+                ZoneScopedN("ImGui Create New Frame");
                 // Start the Dear ImGui frame
-                ImGui_ImplOpenGL3_NewFrame();
-                ImGui_ImplGlfw_NewFrame();
-                ImGui::NewFrame();
-                //ImGui::PushFont(mainFont);
+                {
+                    ZoneScopedN("ImGui OpenGL3 New Frame");
+                    ImGui_ImplOpenGL3_NewFrame();
+                }
+                {
+                    ZoneScopedN("ImGui ImplGlfw New Frame");
+                    ImGui_ImplGlfw_NewFrame();
+                }
+                {
+                    ZoneScopedN("ImGui New Frame");
+                    ImGui::NewFrame();
+                }
             }
-//#if 1
-//            if (buildRunning && threading.GetJobsInFlight() == 0)
-//            {
-//                //BuildFinished
-//                NotifyWindowBuildFinished();
-//            }
-//            buildRunning = threading.GetJobsInFlight();
-//#else
-//            if (!threading.GetJobsInFlight())
-//                buildRunning = false;
-//#endif
 
             {
                 ZoneScopedN("Main Imgui");
