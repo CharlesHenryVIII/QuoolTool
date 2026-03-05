@@ -20,13 +20,18 @@ using Json = nlohmann::json;
 #endif
 
 struct NetworkInfo {
-    const std::string url = "https://api.github.com/repos/CharlesHenryVIII/UATHelper/releases/latest";
+    const std::string url = "https://api.github.com/repos/CharlesHenryVIII/ScadaBackup/releases/latest";
     const std::wstring env_filename = L".env";
     EnvironmentVariables env;
+    Version online_version = {};
 };
 NetworkInfo s_network;
 
-Version GithubsVersion = {};
+std::string GetUrlFromVersion(Version v)
+{
+    std::string r = ToString("https://github.com/CharlesHenryVIII/ScadaBackup/releases/download/%s/ScadaBackup_windows_x64_Release.exe", v.AsString().c_str());
+    return r;
+}
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* out)
 {
@@ -74,7 +79,37 @@ void GetGithubReleaseInfo()
 
     auto json = Json::parse(response);
     std::string tag = json["tag_name"];
-    GithubsVersion.SetFromTag(tag);
+    s_network.online_version.SetFromTag(tag);
+}
+
+void UpdateScadaBackup()
+{
+    ZoneScopedN("Networking GetGithubReleaseInfo");
+
+    CURL* curl = curl_easy_init();
+    struct curl_slist* headers = nullptr;
+    if (s_network.env.github_api_key.size() > 10)
+    {
+        std::string auth = "Authorization: Bearer" + s_network.env.github_api_key;
+        headers = curl_slist_append(headers, auth.c_str());
+        headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
+        headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
+        CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
+    }
+
+    std::vector<u8> response;
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, GetUrlFromVersion(s_network.online_version)));
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback));
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
+
+    CURLCHECK(curl_easy_perform(curl));
+
+    if (s_network.env.github_api_key.size() > 10)
+    {
+        curl_slist_free_all(headers);
+    }
+    curl_easy_cleanup(curl);
 }
 
 void NetworkingInit()
