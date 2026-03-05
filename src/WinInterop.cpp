@@ -381,29 +381,40 @@ void OSInit(GLFWwindow* window)
     window_handle = glfwGetWin32Window(window);
     VALIDATE(window_handle);
 #if 1
-    HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(IDB_PNG1), RT_RCDATA);
-    DWORD error = GetLastError();
-    VALIDATE(res);
-    HGLOBAL resh = LoadResource(nullptr, res);
-    VALIDATE(resh);
-    DWORD size = SizeofResource(nullptr, res);
-    void* data = LockResource(resh);
-    VALIDATE(data);
+//IDB_PNGFULL                     110
+//IDB_PNG512                      111
+//IDB_PNG256                      112
+//IDB_PNG128                      113
+//IDB_PNG64                       114
+//IDB_PNG32                       115
+//IDB_PNG16                       116
+//IDB_PNGEND                      117
+    for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
+    {
+        HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(icon_id), RT_RCDATA);
+        DWORD error = GetLastError();
+        VALIDATE(res);
+        HGLOBAL resh = LoadResource(nullptr, res);
+        VALIDATE(resh);
+        DWORD size = SizeofResource(nullptr, res);
+        void* data = LockResource(resh);
+        VALIDATE(data);
 
-    // ---- Decode PNG from memory ----
-    GLFWimage image{};
-    image.pixels = stbi_load_from_memory(
-        (const stbi_uc*)data,
-        size,
-        &image.width,
-        &image.height,
-        nullptr,
-        4
-    );
-    VALIDATE(image.pixels);
+        // ---- Decode PNG from memory ----
+        GLFWimage image{};
+        image.pixels = stbi_load_from_memory(
+            (const stbi_uc*)data,
+            size,
+            &image.width,
+            &image.height,
+            nullptr,
+            4
+        );
+        VALIDATE(image.pixels);
 
-    glfwSetWindowIcon(window, 1, &image);
-    stbi_image_free(image.pixels);
+        glfwSetWindowIcon(window, 1, &image);
+        stbi_image_free(image.pixels);
+    }
 #else
     GLFWimage images[1] = {};
     images[0].pixels = stbi_load("assets/QuantumFullSize.png",  &images[0].width, &images[0].height, 0, 4);
