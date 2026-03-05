@@ -31,10 +31,10 @@ echo %BAR%
 echo %ROOTTAB% %COMPILETAB% GENERATE EXE:
 echo %BAR%
 
-if not exist "ScadaBackup.slnx" (
-    msbuild /t:ScadaBackup /nologo /verbosity:minimal -p:Configuration=Debug ScadaBackup.sln
+if not exist "QuoolTool.slnx" (
+    msbuild /t:QuoolTool /nologo /verbosity:minimal -p:Configuration=Debug QuoolTool.sln
 ) else (
-    msbuild /t:ScadaBackup /nologo /verbosity:minimal -p:Configuration=Debug ScadaBackup.slnx
+    msbuild /t:QuoolTool /nologo /verbosity:minimal -p:Configuration=Debug QuoolTool.slnx
 )
 
 

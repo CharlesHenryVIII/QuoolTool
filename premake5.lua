@@ -1,19 +1,20 @@
 require "ecc/ecc"
 
-workspace "ScadaBackup"
+workspace "QuoolTool"
     configurations { "Debug", "Profile", "Release" }
     platforms { "x64" }
     --platforms { "x64", "Win32" }
     staticruntime "On"
     runtime "Debug"
+    startproject "QuoolTool"
 
-project "ScadaBackup"
+project "QuoolTool"
     kind "WindowedApp"
     --kind "ConsoleApp"
     language "C++"
     cppdialect "C++20"
     targetdir "build/"
-    targetname "ScadaBackup_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     editandcontinue "Off"
