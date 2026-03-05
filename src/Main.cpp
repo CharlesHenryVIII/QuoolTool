@@ -186,6 +186,7 @@ int Main(int argc, char** argv)
 
     OSInit(gfx.window);
     Threading& threading = Threading::GetInstance();
+
     NetworkingInit();
 
     // Setup Dear ImGui context
