@@ -251,7 +251,7 @@ void ImguiMain(AppData& data)
                 }
 
                 if (ImGui::MenuItem("Github Releases"))
-                    RunProcess(L"https://github.com/CharlesHenryVIII/QuoolTool/releases", nullptr);
+                    RunShellProcess(L"https://github.com/CharlesHenryVIII/QuoolTool/releases", nullptr);
 #if _DEBUG
                 if (ImGui::MenuItem("imgui demo"))
                     s_show_demo_window = !s_show_demo_window;
