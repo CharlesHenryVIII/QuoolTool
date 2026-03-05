@@ -10,6 +10,8 @@
 #include "LoadJson.h"
 #include "Citect.h"
 #include "Tools.h"
+#include "Version.h"
+#include "Networking.h"
 
 #include <stdio.h>
 #include <string>
@@ -184,11 +186,43 @@ void ImguiMain(AppData& data)
 
         if (ImGui::BeginMainMenuBar())
         {
+            if (ImGui::BeginMenu("Version"))
+            {
+                ZoneScopedN("Version");
+
+                const bool new_version = g_online_version.IsValid() && g_online_version > g_version;
+                if (new_version)
+                {
+                    ImGui::TextColored(ImVec4(1.0f, 0.1f, 0.1f, 1.0f), "Version: %s", g_version.AsString().c_str());
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.1f, 1.0f), "New Version Available!");
+                    ImGui::BeginDisabled(g_fetching_download);
+                    const std::string bs = ToString("Download Version %s", g_online_version.AsString().c_str());
+                    if (ImGui::Button(bs.c_str()))
+                    {
+                        DownloadUpdateJob* job = new DownloadUpdateJob();
+                        threading.SubmitJob(job);
+                    }
+                    ImGui::EndDisabled();
+                }
+                else
+                {
+
+                    ImGui::Text("Version: %s", g_version.AsString().c_str());
+                    ImGui::BeginDisabled(g_fetching_version);
+                    if (ImGui::Button("Check for update"))
+                    {
+                        GetOnlineVersionJob* job = new GetOnlineVersionJob();
+                        threading.SubmitJob(job);
+                    }
+                    ImGui::EndDisabled();
+                }
+
+                ImGui::EndMenu();
+            }
+
             if (ImGui::BeginMenu("About"))
             {
                 ZoneScopedN("About");
-                if (ImGui::MenuItem("Github Releases"))
-                    RunProcess(L"https://github.com/CharlesHenryVIII/ScadaBackup/releases", nullptr);
 
                 ImGui::Text("Color:");
                 ImGui::SameLine();
@@ -215,6 +249,9 @@ void ImguiMain(AppData& data)
                         WriteSettings(&g_data.settings, g_settings_filename);
                     }
                 }
+
+                if (ImGui::MenuItem("Github Releases"))
+                    RunProcess(L"https://github.com/CharlesHenryVIII/ScadaBackup/releases", nullptr);
 #if _DEBUG
                 if (ImGui::MenuItem("imgui demo"))
                     s_show_demo_window = !s_show_demo_window;
