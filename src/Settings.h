@@ -35,6 +35,7 @@ struct Settings {
 
 enum FontIndex : u32 {
     FontIndex_Default,
+    FontIndex_Imgui,
     FontIndex_Monospace,
     FontIndex_Count,
 };
