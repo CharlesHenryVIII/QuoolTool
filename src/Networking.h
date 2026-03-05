@@ -10,7 +10,6 @@ extern Atomic<bool> g_fetching_download;
 struct EnvironmentVariables
 {
     std::string github_api_key;
-    std::string github_pat;
 };
 
 struct GetOnlineVersionJob : Job
