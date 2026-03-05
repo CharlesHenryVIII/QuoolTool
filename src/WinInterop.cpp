@@ -192,7 +192,9 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
     else
         real_path = L"cmd.exe /C";
 
-    std::wstring cmdline = real_path + L" " + args;
+    std::wstring cmdline = real_path;
+    if (args)
+        real_path += real_path + L" " + args;
 
     PROCESS_INFORMATION pi = {};
     BOOL r = CreateProcessW(
@@ -210,6 +212,8 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
         std::wstring errorBoxTitle = ToString(L"CreateProcess() Error: %i", GetLastError());
         std::wstring errorText     = ToString(L"Application Path: %s\n"
                                              "Command Line Params: %s", real_path.c_str(), args);
+        DebugPrint("%s\n", errorBoxTitle.c_str());
+        DebugPrint(errorText.c_str());
         ShowErrorWindow(errorBoxTitle, errorText);
         FAIL;
         return 2;
