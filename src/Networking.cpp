@@ -12,8 +12,7 @@
 using Json = nlohmann::json;
 
 struct NetworkInfo {
-    //const std::string url = "https://api.github.com/repos/CharlesHenryVIII/QuoolTool/releases/latest";
-    const std::string url = "https://api.github.com/repos/CharlesHenryVIII/UATHelper/releases/latest";
+    const std::string url = "https://api.github.com/repos/CharlesHenryVIII/QuoolTool/releases/latest";
     const std::wstring env_filename = L".env";
     EnvironmentVariables env;
 };
@@ -25,7 +24,6 @@ Atomic<bool> g_fetching_download;
 std::string GetUrlFromVersion(Version v)
 {
     std::string r = ToString("https://github.com/CharlesHenryVIII/QuoolTool/releases/download/%s/QuoolTool_windows_x64_Release.exe", v.AsTagString().c_str());
-    //std::string r = ToString("https://github.com/CharlesHenryVIII/UATHelper/releases/download/%s/UATHelper_%s_Win64_Release.zip", v.AsString().c_str(), v.AsString().c_str());
     return r;
 }
 
@@ -63,9 +61,9 @@ void DownloadUpdateJob::RunJob()
     if (s_network.env.github_api_key.size() > 10)
     {
         std::string auth = "Authorization: Bearer" + s_network.env.github_api_key;
+        headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
         headers = curl_slist_append(headers, auth.c_str());
         headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
-        headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
         CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
     }
 
@@ -111,10 +109,10 @@ void GetOnlineVersionJob::RunJob()
     struct curl_slist* headers = nullptr;
     if (s_network.env.github_api_key.size() > 10)
     {
-        std::string auth = "Authorization: Bearer" + s_network.env.github_api_key;
+        std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
+        headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
         headers = curl_slist_append(headers, auth.c_str());
         headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
-        headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
         CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
     }
 
@@ -123,6 +121,7 @@ void GetOnlineVersionJob::RunJob()
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackString));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L));
 
     CURLCHECK(curl_easy_perform(curl));
 
