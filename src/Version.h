@@ -5,7 +5,9 @@ struct Version
 {
     u32 major = 0;
     u32 minor = 0;
+    //format is "v1.2"
     std::string AsTagString() const;
+    //format is "1.2"
     std::string AsString() const;
     bool IsValid() const;
     //format is "v1.2"
