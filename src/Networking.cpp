@@ -15,6 +15,7 @@ struct NetworkInfo {
     const std::string url = "https://api.github.com/repos/CharlesHenryVIII/QuoolTool/releases/latest";
     const std::wstring env_filename = L".env";
     EnvironmentVariables env;
+    std::string download_url;
 };
 NetworkInfo s_network;
 Version g_online_version = {};
@@ -23,7 +24,8 @@ Atomic<bool> g_fetching_download;
 
 std::string GetUrlFromVersion(Version v)
 {
-    std::string r = ToString("https://github.com/CharlesHenryVIII/QuoolTool/releases/download/%s/QuoolTool_windows_x64_Release.exe", v.AsTagString().c_str());
+    std::string r = ToString("https://github.com/CharlesHenryVIII/QuoolTool/releases/download/%s/QuoolTool_windows_x64_Release.zip", v.AsTagString().c_str());
+                            //https://github.com/CharlesHenryVIII/QuoolTool/releases/download/v1.1/QuoolTool_windows_x64_Release.zip
     return r;
 }
 
@@ -56,19 +58,25 @@ void DownloadUpdateJob::RunJob()
 {
     ZoneScopedN("NetworkingJob: DownloadUpdateJob");
 
+    if (!s_network.download_url.size())
+    {
+        FAIL;
+        return;
+    }
+
     CURL* curl = curl_easy_init();
     struct curl_slist* headers = nullptr;
     if (s_network.env.github_api_key.size() > 10)
     {
-        std::string auth = "Authorization: Bearer" + s_network.env.github_api_key;
-        headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
+        std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
+        headers = curl_slist_append(headers, "Accept: application/octet-stream");
         headers = curl_slist_append(headers, auth.c_str());
         headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
         CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
     }
 
     std::vector<char> response;
-    std::string url = GetUrlFromVersion(g_online_version);
+    std::string url = s_network.download_url;
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackBinary));
@@ -82,20 +90,56 @@ void DownloadUpdateJob::RunJob()
         curl_slist_free_all(headers);
     }
     curl_easy_cleanup(curl);
-
-    std::wstring filename = L"test.zip";
-    std::fstream file(filename, std::ios_base::out | std::ios_base::binary);
-    if (!file.good())
+    std::string filename = ToString("QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
+    if (response.size() > Megabytes(1))
     {
-        FAIL;
-        std::string of;
-        ConvertWideCharToMultiByte(of, filename);
-        DebugPrint("Failed to open file for write: %s", of.c_str());
+        std::fstream file(filename, std::ios_base::out | std::ios_base::binary);
+        if (!file.good())
+        {
+            DebugPrint("Failed to open file for write: %s", filename.c_str());
+            FAIL;
+            return;
+        }
+        else
+        {
+            file.write((char*)response.data(), response.size());
+        }
     }
     else
     {
-        file.write((char*)response.data(), response.size());
+        DebugPrint("Failed to get file from github");
+        FAIL;
+        return;
     }
+
+    std::vector<std::string> filenames;
+    UnzipArchive(filename, "", filenames);
+    if (filenames.size())
+    {
+        if (filenames[0].find("QuoolTool") != std::string::npos)
+        {
+            Path fe = filename;
+            std::string filename_no_ext = fe.stem().string() + ".exe";
+            std::error_code ec;
+            fs::rename(filenames[0], filename_no_ext, ec);
+            if (ec)
+            {
+                DebugPrint("Error: failed to rename file: \"%s\" to \"%s\"", filenames[0].c_str(), filename_no_ext.c_str());
+                DebugPrint("\"create_directories\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
+                FAIL;
+                return;
+            }
+            fs::remove(filename, ec);
+            if (ec)
+            {
+                DebugPrint("Error: failed to remove file: \"%s\"", filename.c_str());
+                DebugPrint("\"remove\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
+                FAIL;
+                return;
+            }
+        }
+    }
+
     i32 i = 1;
 }
 
@@ -142,6 +186,13 @@ void GetOnlineVersionJob::RunJob()
     else
     {
         g_online_version.SetFromTag(tag);
+        if (json.contains("assets")     &&
+            json["assets"].is_array()   &&
+            json["assets"].size()       &&
+            json["assets"][0].contains("url"))
+        {
+            s_network.download_url = json["assets"][0]["url"];
+        }
     }
 }
 

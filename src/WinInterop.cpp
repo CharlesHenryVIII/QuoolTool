@@ -1106,6 +1106,58 @@ void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, cons
     ArchiveErrorCheck(a, error);
 }
 
+bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, std::vector<std::string>& filenames)
+{
+    struct archive* a = archive_read_new();
+    archive_read_support_format_zip(a);
+    archive_read_support_filter_all(a);
+
+    int error = ARCHIVE_OK;
+    archive_read_open_filename(a, zip_path.c_str(), 10240);
+    ArchiveErrorCheck(a, error);
+
+    struct archive* ext = archive_write_disk_new();
+    archive_write_disk_set_options(ext,
+        ARCHIVE_EXTRACT_TIME |
+        ARCHIVE_EXTRACT_PERM |
+        ARCHIVE_EXTRACT_ACL |
+        ARCHIVE_EXTRACT_FFLAGS);
+
+    struct archive_entry* entry;
+    while (archive_read_next_header(a, &entry) == ARCHIVE_OK)
+    {
+        const char* relative_path = archive_entry_pathname(entry);
+        std::string full_path;
+        if (output_dir.size())
+            full_path = output_dir + "/" + relative_path;
+        else
+            full_path = relative_path;
+        archive_entry_set_pathname(entry, full_path.c_str());
+        filenames.push_back(full_path);
+
+        archive_write_header(ext, entry);
+
+        const void* buff;
+        size_t size;
+        la_int64_t offset;
+
+        while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK)
+        {
+            archive_write_data_block(ext, buff, size, offset);
+        }
+
+        archive_write_finish_entry(ext);
+    }
+
+    archive_write_close(ext);
+    archive_write_free(ext);
+
+    archive_read_close(a);
+    archive_read_free(a);
+
+    return true;
+}
+
 ImFont* LoadFontForImgui(int resource_id, float fontSize)
 {
     HRSRC r = FindResource( nullptr, MAKEINTRESOURCE(resource_id), RT_RCDATA);

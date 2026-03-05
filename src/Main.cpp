@@ -58,6 +58,9 @@ static void glfw_error_callback(int error, const char* description)
 
 int Main(int argc, char** argv)
 {
+    DebugPrint("====================");
+    DebugPrint("     Quool Tool     ");
+    DebugPrint("====================");
 #if 0
     //ERROR: Threading will not work correctly unless InitOS() is called before
     //argc will always be 1 in console mode

@@ -68,6 +68,7 @@ void ExpandEnvironemntVariable(std::wstring& out, const std::wstring& in);
 void ToLower(std::wstring& s);
 void ToLower(std::string& s);
 void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root, std::atomic<u64>& progress/*, ArrayView<std::wstring> ext_to_exclude*/);
+bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, std::vector<std::string>& filenames);
 ImFont* LoadFontForImgui(int resource_id, float fontSize);
 
 struct RunProcessJob : Job
