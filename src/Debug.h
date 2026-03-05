@@ -15,6 +15,12 @@
 #define VALIDATE_V(expr, __v) { if (!VERIFY(expr)) return __v; } REQUIRE_SEMICOLON
 #define arrsize(arr__) (sizeof(arr__) / sizeof(arr__[0]))
 
+#ifdef WIN32
+#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#else
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
+
 //================
 //     enums
 //================

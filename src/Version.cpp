@@ -3,9 +3,15 @@
 
 Version g_version = { .major = 1, .minor = 0 };
 
-std::string Version::AsString() const
+std::string Version::AsTagString() const
 {
     std::string r = ToString("v%i.%i", major, minor);
+    return r;
+}
+
+std::string Version::AsString() const
+{
+    std::string r = ToString("%i.%i", major, minor);
     return r;
 }
 
@@ -30,3 +36,4 @@ void Version::SetFromTag(const std::string& tag)
     major = atoi(mjs.c_str());
     minor = atoi(mms.c_str());
 }
+

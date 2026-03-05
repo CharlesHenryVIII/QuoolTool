@@ -11,3 +11,6 @@ READWRITE_JSON_H(Settings);
 READWRITE_JSON_H(EnvironmentVariables);
 
 #undef READWRITE_JSON_H
+
+
+bool JsonSafeGet(std::string& out, const void* json_type, const char* property_name);

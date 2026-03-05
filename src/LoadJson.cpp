@@ -9,7 +9,7 @@
 #include <fstream>
 #include <iostream>
 
-using json = nlohmann::json;
+using Json = nlohmann::json;
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec2,   x, y      );
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3,   x, y, z   );
@@ -45,7 +45,7 @@ template <typename T>
 void WriteJson(const T* s, const std::wstring& filename)
 {
     VALIDATE(s);
-	json data = *s;
+	Json data = *s;
 	File file = File(filename, FileMode_Write, true);
 	file.Write(data.dump(4));
 }
@@ -58,8 +58,8 @@ bool LoadJson(T* s, const std::wstring& filename)
     VALIDATE_V(file.good(), false);
 	try
 	{
-		json data;
-		data = json::parse(file, nullptr, true);
+		Json data;
+		data = Json::parse(file, nullptr, true);
 		*s = data.template get<T>();
         return true;
 	}
@@ -81,3 +81,15 @@ bool Read  ## name(      name* s, const std::wstring& filename)  { return LoadJs
 
 READWRITE_JSON_CPP(Settings);
 READWRITE_JSON_CPP(EnvironmentVariables);
+
+bool JsonSafeGet(std::string& out, const void* json, const char* property_name)
+{
+    Json& j = *((Json*)json);
+    if (j.contains(property_name))
+    {
+        out = j[property_name];
+        return true;
+    }
+    return false;
+}
+
