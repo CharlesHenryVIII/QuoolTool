@@ -46,7 +46,6 @@ project "ScadaBackup"
         "contrib/SDL2/include",
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
-        "contrib/asio/include",
         "contrib/curl/include",
         "resources",
     }
@@ -54,7 +53,6 @@ project "ScadaBackup"
         "_CRT_SECURE_NO_WARNINGS",
         "LIBARCHIVE_STATIC",
         "IMGUI_DEFINE_MATH_OPERATORS",
-        "ASIO_STANDALONE",
         "_WIN32_WINNT=0x0A00",
         "CURL_STATICLIB",
     }
@@ -156,7 +154,6 @@ project "contrib"
         "contrib/SDL2/include",
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
-        "contrib/asio/include",
         "contrib/curl/include",
     }
     defines {
