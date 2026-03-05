@@ -2,6 +2,7 @@
 #include "WinInterop_File.h"
 #include "Settings.h"
 #include "WinInterop.h"
+#include "Networking.h"
 
 #include "json.hpp"
 
@@ -38,6 +39,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Mat4I,  x, y, z, w);
 
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Settings, color, style)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EnvironmentVariables, github_api_key)
 
 template <typename T>
 void WriteJson(const T* s, const std::wstring& filename)
@@ -78,3 +80,4 @@ void Write ## name(const name* s, const std::wstring& filename) { WriteJson(s, f
 bool Read  ## name(      name* s, const std::wstring& filename)  { return LoadJson(s, filename); }
 
 READWRITE_JSON_CPP(Settings);
+READWRITE_JSON_CPP(EnvironmentVariables);

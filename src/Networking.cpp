@@ -3,13 +3,30 @@
 
 #include "Networking.h"
 #include "WinInterop.h"
+#include "LoadJson.h"
+#include "Version.h"
 
+#include "json.hpp"
+
+#include <fstream>
+#include <iostream>
+
+using Json = nlohmann::json;
+
+#ifdef WIN32
+#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#else
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
 
 struct NetworkInfo {
     const std::string url = "https://api.github.com/repos/CharlesHenryVIII/UATHelper/releases/latest";
-    CURL* curl;
+    const std::wstring env_filename = L".env";
+    EnvironmentVariables env;
 };
 NetworkInfo s_network;
+
+Version GithubsVersion = {};
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* out)
 {
@@ -17,24 +34,70 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::stri
     return size * nmemb;
 }
 
+#define CURLCHECK(fun)  \
+{\
+    CURLcode result = fun;\
+    if (result != CURLE_OK)\
+    {\
+        DebugPrint("Error: \"%s\" failed at %s(%i) CURLcode: %i ", #fun, __FILENAME__, __LINE__, result);\
+    }\
+} REQUIRE_SEMICOLON
+
+void GetGithubReleaseInfo()
+{
+    ZoneScopedN("Networking GetGithubReleaseInfo");
+
+    CURL* curl = curl_easy_init();
+    struct curl_slist* headers = nullptr;
+    if (s_network.env.github_api_key.size() > 10)
+    {
+        std::string auth = "Authorization: Bearer" + s_network.env.github_api_key;
+        headers = curl_slist_append(headers, auth.c_str());
+        headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
+        headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
+        CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
+    }
+
+    std::string response;
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, s_network.url.c_str()));
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback));
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
+
+    CURLCHECK(curl_easy_perform(curl));
+
+    if (s_network.env.github_api_key.size() > 10)
+    {
+        curl_slist_free_all(headers);
+    }
+    curl_easy_cleanup(curl);
+
+    auto json = Json::parse(response);
+    std::string tag = json["tag_name"];
+    GithubsVersion.SetFromTag(tag);
+}
+
 void NetworkingInit()
 {
+    ZoneScopedN("Networking Init");
+#if _DEBUG
     double start = SysGetTime();
-    s_network.curl = curl_easy_init();
-    std::string response;
+#endif
 
-    curl_easy_setopt(s_network.curl, CURLOPT_URL, s_network.url.c_str());
+    ReadEnvironmentVariables(&s_network.env, s_network.env_filename);
 
-    curl_easy_setopt(s_network.curl, CURLOPT_USERAGENT, "MyAppUpdater");
-    curl_easy_setopt(s_network.curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(s_network.curl, CURLOPT_WRITEDATA, &response);
-
-    curl_easy_perform(s_network.curl);
-    curl_easy_cleanup(s_network.curl);
+    GetGithubReleaseInfo();
+#if _DEBUG
     double end = SysGetTime();
     float total_time = float((end - start) * 1000);
     DebugPrint("Time to get response: %fms", total_time);
-    i32 i = 0;
+    i32 test = 1;
+#endif
+}
+
+void NetworkShutdown()
+{
+
 }
 
 
