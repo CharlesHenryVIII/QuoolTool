@@ -194,7 +194,7 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
 
     std::wstring cmdline = real_path;
     if (args)
-        real_path += real_path + L" " + args;
+        cmdline += real_path + L" " + args;
 
     PROCESS_INFORMATION pi = {};
     BOOL r = CreateProcessW(
