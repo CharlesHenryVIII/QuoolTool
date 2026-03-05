@@ -2,10 +2,18 @@
 // Microsoft Visual C++ generated include file.
 // Used by Resource.rc
 //
-#define IDB_PNG1                        101
 #define IDI_ICON1                       102
 #define IDR_FONT1                       103
 #define IDR_FONT2                       104
+
+#define IDB_PNGFULL                     110
+#define IDB_PNG512                      111
+#define IDB_PNG256                      112
+#define IDB_PNG128                      113
+#define IDB_PNG64                       114
+#define IDB_PNG32                       115
+#define IDB_PNG16                       116
+#define IDB_PNGEND                      117
 
 // Next default values for new objects
 //

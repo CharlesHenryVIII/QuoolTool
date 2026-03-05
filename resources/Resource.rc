@@ -50,7 +50,13 @@ END
 // PNG
 //
 
-IDB_PNG1                RCDATA                  "..\\assets\\QuantumFullSize.png"
+IDB_PNGFULL             RCDATA                  "..\\assets\\QuantumFullSize.png"
+IDB_PNG512              RCDATA                  "..\\assets\\Quantum512.png"
+IDB_PNG256              RCDATA                  "..\\assets\\Quantum256.png"
+IDB_PNG128              RCDATA                  "..\\assets\\Quantum128.png"
+IDB_PNG64               RCDATA                  "..\\assets\\Quantum64.png"
+IDB_PNG32               RCDATA                  "..\\assets\\Quantum32.png"
+IDB_PNG16               RCDATA                  "..\\assets\\Quantum16.png"
 
 
 /////////////////////////////////////////////////////////////////////////////
