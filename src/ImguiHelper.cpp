@@ -208,7 +208,11 @@ void ImguiMain(AppData& data)
                 {
 
                     ImGui::Text("Version: %s", g_version.AsString().c_str());
-                    ImGui::BeginDisabled(g_fetching_version);
+                    if (g_online_version.IsValid())
+                    {
+                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Already at latest version");
+                    }
+                    ImGui::BeginDisabled(g_fetching_version || g_online_version.IsValid());
                     if (ImGui::Button("Check for update"))
                     {
                         GetOnlineVersionJob* job = new GetOnlineVersionJob();
