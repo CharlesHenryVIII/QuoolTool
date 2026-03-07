@@ -16,11 +16,13 @@ struct NetworkInfo {
     const std::wstring env_filename = L".env";
     EnvironmentVariables env;
     std::string download_url;
+    size_t download_size;
 };
 NetworkInfo s_network;
 Version g_online_version = {};
-Atomic<bool> g_fetching_version;
-Atomic<bool> g_fetching_download;
+Atomic<DownloadState> g_version_state;
+Atomic<DownloadState> g_download_state;
+Atomic<float> g_download_update_progress = 0;
 
 std::string GetUrlFromVersion(Version v)
 {
@@ -29,20 +31,37 @@ std::string GetUrlFromVersion(Version v)
     return r;
 }
 
+template<typename T>
+struct ResponseData {
+    T data;
+    Atomic<float>* progress = nullptr;
+    Atomic<size_t> completed = 0;
+    size_t total;
+};
+
 static size_t WriteCallbackString(void* contents, size_t size, size_t nmemb, std::string* out)
 {
     ASSERT(size == 1);
     out->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
-static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, std::vector<u8>* out)
+static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, void* data)
 {
+    ResponseData<std::vector<char>>* user_data = (ResponseData<std::vector<char>>*)data;
     ASSERT(size == 1);
+    VALIDATE_V(user_data, 0);
     for (size_t i = 0; i < nmemb; i++)
     {
-        out->push_back(((u8*)contents)[i]);
+        user_data->data.push_back(((u8*)contents)[i]);
     }
-    return size * nmemb;
+    if (user_data->progress)
+    {
+        user_data->completed += nmemb;
+        const float progress = (float)user_data->completed / (float)user_data->total;
+        ASSERT(progress > *user_data->progress);
+        *user_data->progress = progress;
+    }
+    return nmemb;
 }
 
 #define CURLCHECK(fun)  \
@@ -57,6 +76,8 @@ static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, std
 void DownloadUpdateJob::RunJob()
 {
     ZoneScopedN("NetworkingJob: DownloadUpdateJob");
+    g_download_state = DownloadState_Fetching;
+    Defer{ g_download_state = DownloadState_Fetched; };
 
     if (!s_network.download_url.size())
     {
@@ -75,7 +96,9 @@ void DownloadUpdateJob::RunJob()
         CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
     }
 
-    std::vector<char> response;
+    ResponseData<std::vector<char>> response = {
+        .progress = &g_download_update_progress,
+        .total = s_network.download_size };
     std::string url = s_network.download_url;
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
@@ -90,8 +113,9 @@ void DownloadUpdateJob::RunJob()
         curl_slist_free_all(headers);
     }
     curl_easy_cleanup(curl);
+    g_download_update_progress = -1.0f;
     std::string filename = ToString("QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
-    if (response.size() > Megabytes(1))
+    if (response.data.size() > Megabytes(1))
     {
         std::fstream file(filename, std::ios_base::out | std::ios_base::binary);
         if (!file.good())
@@ -102,7 +126,7 @@ void DownloadUpdateJob::RunJob()
         }
         else
         {
-            file.write((char*)response.data(), response.size());
+            file.write((char*)response.data.data(), response.data.size());
         }
     }
     else
@@ -146,8 +170,8 @@ void DownloadUpdateJob::RunJob()
 void GetOnlineVersionJob::RunJob()
 {
     ZoneScopedN("NetworkingJob: GetOnlineVersionJob");
-    g_fetching_version = true;
-    Defer{g_fetching_version = false;};
+    g_version_state = DownloadState_Fetching;
+    Defer{g_version_state = DownloadState_Fetched;};
 
     CURL* curl = curl_easy_init();
     struct curl_slist* headers = nullptr;
@@ -191,7 +215,9 @@ void GetOnlineVersionJob::RunJob()
             json["assets"].size()       &&
             json["assets"][0].contains("url"))
         {
-            s_network.download_url = json["assets"][0]["url"];
+            const auto& asset = json["assets"][0];
+            s_network.download_url = asset["url"];
+            s_network.download_size = asset["size"];
         }
     }
 }
