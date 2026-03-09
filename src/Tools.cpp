@@ -48,6 +48,7 @@ void CompileScriptResultsToExcel(ToolsData& td)
     worksheet_write_number(sheet, 2, 0, 123,     NULL);
     worksheet_write_number(sheet, 3, 0, 123.456, NULL);
     worksheet_insert_image(sheet, 1, 2, "logo.png");
+    //g_sysinfo.
     workbook_close(book);
 }
 

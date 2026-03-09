@@ -286,6 +286,53 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
     ZoneText()
     //std::string zone_name = ToString("Process Log To File Job: %s", cmdline.c_str());
 
+enum DataType {
+    DataType_Invalid,
+    DataType_String,
+    DataType_Double,
+    DataType_Count,
+};
+struct PowershellLayout {
+    std::string name;
+    DataType type;
+};
+
+void ParsePowershell(const std::string& in)//, ArrayView<PowershellLayout> layout)
+{
+    if (in.size() < 2)
+        return;
+    if (in[0] != '\r' || in[1] != '\n')
+        return;
+    const std::vector<std::string> strings = TextToStringArray(in.c_str(), "\n");
+    if (strings.size() < 3)
+        return;
+    const std::string& titles = strings[1];
+    const std::string& lines = strings[2];
+    if (lines[0] != '-')
+        return;
+
+    std::vector<i32> column_length;
+    for (i32 i = 0; i < lines.size(); i++)
+    {
+        i32 dash_count = i;
+        for (; dash_count < lines.size(); dash_count++)
+        {
+            if (lines[dash_count] != '-')
+                break;
+        }
+
+        i32 column_width = dash_count;
+        for (; column_width < lines.size(); column_width++)
+        {
+            if (lines[column_width] != ' ')
+                break;
+        }
+        column_length.push_back(column_width - i + 1);
+        i = column_width;
+    }
+    i32 test = 1;
+}
+
 void GetNameAndTextForJob(std::string& text, std::string& name, const std::wstring& app, const std::wstring& args)
 {
     std::wstring namew;
@@ -364,6 +411,8 @@ void RunProcessLogToFileJob::RunJob()
         {
             std::lock_guard<Mutex> lock(output_lock);
             file << output;
+
+            ParsePowershell(output);//, ArrayView<PowershellLayout> layout)
         }
     }
 
