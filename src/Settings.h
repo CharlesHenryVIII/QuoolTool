@@ -6,6 +6,7 @@
 
 struct ToolsData {
     Path output_path;
+    std::wstring computer_name;
     Atomic<bool> running = false;
     Atomic<u64> progress = 0;
     Atomic<u64> total = 0;

@@ -24,11 +24,22 @@ ScriptInfo s_scripts[] = {
 
 std::string s_log;
 
-#include "xlsxwriter.h"
-void CompileScriptResultsToExcel()
+void GetOutputFolder(Path& out, const ToolsData& td)
 {
-    lxw_workbook* book = workbook_new("test.xlsx");
-    lxw_worksheet* sheet = workbook_add_worksheet(book, "test.xlsx");
+    out.clear();
+    if (fs::exists(td.output_path))
+        out = Path(td.output_path);
+    out += g_sysinfo.name;
+}
+
+#include "xlsxwriter.h"
+void CompileScriptResultsToExcel(ToolsData& td)
+{
+    Path output_folder;
+    GetOutputFolder(output_folder, td);
+    Path filename = output_folder / "SystemInfo.xlsx";
+    lxw_workbook* book = workbook_new(filename.string().c_str());
+    lxw_worksheet* sheet = workbook_add_worksheet(book, NULL);
     lxw_format* format = workbook_add_format(book);
     format_set_bold(format);
     worksheet_set_column(sheet, 0, 0, 20, NULL);
@@ -79,7 +90,7 @@ void ToolsImGui(ToolsData& td)
     {
         td.running = false;
         finished_scripts = true;
-        CompileScriptResultsToExcel();
+        CompileScriptResultsToExcel(td);
     }
 
     
@@ -213,10 +224,9 @@ void ToolsImGui(ToolsData& td)
                 job->application_path;
                 job->arguments = s.cmdline;
                 const std::string name = s.name + ".txt";
-                Path output_file = name;
-                output_file = g_sysinfo.name / output_file;
-                if (fs::exists(td.output_path))
-                     output_file = Path(td.output_path / name);
+                Path output_folder;
+                GetOutputFolder(output_folder, td);
+                const Path output_file = output_folder / name;
                 CreateParentDirectories(output_file);
                 job->output_file = output_file;
                 job->completed = &s.completed;
