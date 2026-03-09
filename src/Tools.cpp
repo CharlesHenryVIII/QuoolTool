@@ -24,6 +24,22 @@ ScriptInfo s_scripts[] = {
 
 std::string s_log;
 
+#include "xlsxwriter.h"
+void CompileScriptResultsToExcel()
+{
+    lxw_workbook* book = workbook_new("test.xlsx");
+    lxw_worksheet* sheet = workbook_add_worksheet(book, "test.xlsx");
+    lxw_format* format = workbook_add_format(book);
+    format_set_bold(format);
+    worksheet_set_column(sheet, 0, 0, 20, NULL);
+    worksheet_write_string(sheet, 0, 0, "Hello", NULL);
+    worksheet_write_string(sheet, 1, 0, "World", format);
+    worksheet_write_number(sheet, 2, 0, 123,     NULL);
+    worksheet_write_number(sheet, 3, 0, 123.456, NULL);
+    worksheet_insert_image(sheet, 1, 2, "logo.png");
+    workbook_close(book);
+}
+
 void ImguiLog(const std::string& s)
 {
     DebugPrint(s.c_str());
@@ -63,6 +79,7 @@ void ToolsImGui(ToolsData& td)
     {
         td.running = false;
         finished_scripts = true;
+        CompileScriptResultsToExcel();
     }
 
     

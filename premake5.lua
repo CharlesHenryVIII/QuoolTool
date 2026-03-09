@@ -48,6 +48,7 @@ project "QuoolTool"
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
         "contrib/curl/include",
+        "contrib/libxlsxwriter/include",
         "resources",
     }
     defines {
@@ -139,6 +140,7 @@ project "contrib"
         "OpenGL32",
         "libarchive",
         "curl-lib",
+        "zlib",
     }
 
     warnings ("Default");
@@ -147,6 +149,7 @@ project "contrib"
         "contrib/SDL2/lib/%{cfg.platform}/",
         "contrib/ImGui",
         "contrib/tracy",
+        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static",
     }
 
     includedirs {
@@ -156,9 +159,13 @@ project "contrib"
         "contrib/tracy/public/tracy",
         "contrib/glfw/include",
         "contrib/curl/include",
+        "contrib/libxlsxwriter/include",
+        "contrib/libxlsxwriter/third_party/*",
+        "contrib/libarchive_dep",
     }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
+        "USE_STATIC_MSVC_RUNTIME",
     }
     files {
         "contrib/tracy/public/TracyClient.cpp",
@@ -187,7 +194,19 @@ project "contrib"
         "contrib/glfw/src/null_window.c",
         "contrib/glfw/src/null_joystick.c",
         "contrib/glfw/src/wgl_context.c",
+        "contrib/libxlsxwriter/src/**",
+        "contrib/libxlsxwriter/third_party/minizip/*.c",
+        "contrib/libxlsxwriter/third_party/minizip/*.h",
+        "contrib/libxlsxwriter/third_party/tmpfileplus/*.c",
+        "contrib/libxlsxwriter/third_party/tmpfileplus/*.h",
     }
+
+	filter { "options:not zlib-src=none" }
+		defines     { 'USE_ZLIB' }
+
+	filter { "options:zlib-src=contrib" }
+		includedirs { '../zlib' }
+
 
     filter "system:Windows"
         system "windows"
