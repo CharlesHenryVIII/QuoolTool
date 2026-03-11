@@ -275,6 +275,39 @@ i32 StringToInt(const std::string& string, i32 i)
     return StringToInt(string, i, NumberLengthInString(string, i));
 }
 
+bool StringRemoveLeading(std::string& s, const char r)
+{
+    i32 i = 0;
+    for (; i < s.size() - 1; ++i)
+    {
+        if (s[i] != r)
+            break;
+    }
+    if (i != 0)
+    {
+        s = s.substr(i, s.size() - 1);
+        return true;
+    }
+    return false;
+}
+
+bool StringRemoveTrailing(std::string& s, const char r)
+{
+    i32 i = (i32)(s.size() - 1);
+    for (; i >= 0; --i)
+    {
+        if (s[i] != r)
+            break;
+    }
+    i++;
+    if (i != s.size())
+    {
+        s = s.substr(0, i);
+        return true;
+    }
+    return false;
+}
+
 bool StringCompare(StringCase case_sensitivity, const std::string& a, const std::string& b)
 {
     if (a.size() != b.size())

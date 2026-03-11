@@ -297,17 +297,26 @@ struct PowershellLayout {
     DataType type;
 };
 
-void ParsePowershell(const std::string& in)//, ArrayView<PowershellLayout> layout)
+#define PWSH_MAX_ROW 1024
+#define PWSH_MAX_COL 16
+void ParsePowershell(std::string (&out)[PWSH_MAX_ROW][PWSH_MAX_COL], const std::string& in)
 {
-    if (in.size() < 2)
+    const i32 titles_index = 1;
+    const i32 lines_index = 2;
+    const i32 data_start_index = 3;
+    if (arrsize(out) <= 0)
+        return;
+    if (arrsize(out[0]) <= 0)
+        return;
+    if (data_start_index >= in.size())
         return;
     if (in[0] != '\r' || in[1] != '\n')
         return;
     const std::vector<std::string> strings = TextToStringArray(in.c_str(), "\n");
     if (strings.size() < 3)
         return;
-    const std::string& titles = strings[1];
-    const std::string& lines = strings[2];
+    const std::string& titles = strings[titles_index];
+    const std::string& lines = strings[lines_index];
     if (lines[0] != '-')
         return;
 
@@ -327,10 +336,34 @@ void ParsePowershell(const std::string& in)//, ArrayView<PowershellLayout> layou
             if (lines[column_width] != ' ')
                 break;
         }
-        column_length.push_back(column_width - i + 1);
-        i = column_width;
+        i32 width = column_width - i;
+        if (width <= 0)
+            break;
+        column_length.push_back(width);
+        i = column_width - 1;
     }
-    i32 test = 1;
+    
+    const i32 max_rows = Min((i32)arrsize(out), (i32)strings.size() - 2);
+    const i32 max_column = Min((i32)arrsize(out[0]), (i32)column_length.size());
+
+    i32 out_index = 0;
+    for (i32 strings_index = titles_index; strings_index < strings.size() - 2 && strings_index - 1 < arrsize(out); strings_index++)
+    {
+        if (strings_index == 0 || strings_index == lines_index)
+            continue;
+        const std::string& s = strings[strings_index];
+        i32 previous_len = 0;
+        for (i32 j = 0; j < column_length.size(); j++)
+        {
+            const i32 len = column_length[j];
+            std::string& s_out = out[out_index][j];
+            s_out = s.substr(previous_len, len);
+            StringRemoveLeading(s_out, ' ');
+            StringRemoveTrailing(s_out, ' ');
+            previous_len += len;
+        }
+        ++out_index;
+    }
 }
 
 void GetNameAndTextForJob(std::string& text, std::string& name, const std::wstring& app, const std::wstring& args)
@@ -412,7 +445,9 @@ void RunProcessLogToFileJob::RunJob()
             std::lock_guard<Mutex> lock(output_lock);
             file << output;
 
-            ParsePowershell(output);//, ArrayView<PowershellLayout> layout)
+            std::string arr[PWSH_MAX_ROW][PWSH_MAX_COL];
+            const i32 sizeee = sizeof(arr);
+            ParsePowershell(arr, output);
         }
     }
 
