@@ -20,8 +20,8 @@ struct NetworkInfo {
 };
 NetworkInfo s_network;
 Version g_online_version = {};
-Atomic<DownloadState> g_version_state;
-Atomic<DownloadState> g_download_state;
+Atomic<AsyncStatus> g_version_state;
+Atomic<AsyncStatus> g_download_state;
 Atomic<float> g_download_update_progress = 0;
 
 std::string GetUrlFromVersion(Version v)
@@ -76,12 +76,11 @@ static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, voi
 void DownloadUpdateJob::RunJob()
 {
     ZoneScopedN("NetworkingJob: DownloadUpdateJob");
-    g_download_state = DownloadState_Fetching;
-    Defer{ g_download_state = DownloadState_Fetched; };
-
+    g_download_state = AsyncStatus_Fetching;
     if (!s_network.download_url.size())
     {
         FAIL;
+        g_download_state = AsyncStatus_FetchedFailed;
         return;
     }
 
@@ -122,6 +121,7 @@ void DownloadUpdateJob::RunJob()
         {
             DebugPrint("Failed to open file for write: %s", filename.c_str());
             FAIL;
+            g_download_state = AsyncStatus_FetchedFailed;
             return;
         }
         else
@@ -133,6 +133,7 @@ void DownloadUpdateJob::RunJob()
     {
         DebugPrint("Failed to get file from github");
         FAIL;
+        g_download_state = AsyncStatus_FetchedFailed;
         return;
     }
 
@@ -151,6 +152,7 @@ void DownloadUpdateJob::RunJob()
                 DebugPrint("Error: failed to rename file: \"%s\" to \"%s\"", filenames[0].c_str(), filename_no_ext.c_str());
                 DebugPrint("\"create_directories\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
                 FAIL;
+                g_download_state = AsyncStatus_FetchedFailed;
                 return;
             }
             fs::remove(filename, ec);
@@ -159,19 +161,19 @@ void DownloadUpdateJob::RunJob()
                 DebugPrint("Error: failed to remove file: \"%s\"", filename.c_str());
                 DebugPrint("\"remove\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
                 FAIL;
+                g_download_state = AsyncStatus_FetchedFailed;
                 return;
             }
         }
     }
 
-    i32 i = 1;
+    g_download_state = AsyncStatus_FetchedSuccess;
 }
 
 void GetOnlineVersionJob::RunJob()
 {
     ZoneScopedN("NetworkingJob: GetOnlineVersionJob");
-    g_version_state = DownloadState_Fetching;
-    Defer{g_version_state = DownloadState_Fetched;};
+    g_version_state = AsyncStatus_Fetching;
 
     CURL* curl = curl_easy_init();
     struct curl_slist* headers = nullptr;
@@ -206,20 +208,21 @@ void GetOnlineVersionJob::RunJob()
         DebugPrint("Error: failed to get tag_name, url: %s", s_network.url.c_str());
         DebugPrint("    json response vvvvvv");
         DebugPrint("%s", response.c_str());
+        g_download_state = AsyncStatus_FetchedFailed;
+        return;
     }
-    else
+
+    g_online_version.SetFromTag(tag);
+    if (json.contains("assets") &&
+        json["assets"].is_array() &&
+        json["assets"].size() &&
+        json["assets"][0].contains("url"))
     {
-        g_online_version.SetFromTag(tag);
-        if (json.contains("assets")     &&
-            json["assets"].is_array()   &&
-            json["assets"].size()       &&
-            json["assets"][0].contains("url"))
-        {
-            const auto& asset = json["assets"][0];
-            s_network.download_url = asset["url"];
-            s_network.download_size = asset["size"];
-        }
+        const auto& asset = json["assets"][0];
+        s_network.download_url = asset["url"];
+        s_network.download_size = asset["size"];
     }
+    g_download_state = AsyncStatus_FetchedSuccess;
 }
 
 void NetworkingInit()

@@ -2,7 +2,6 @@
 
 #include <type_traits>
 #include <string>
-#include <atomic>
 
 #define _CAR_CONCAT(a, b) a ## b
 #define CAR_CONCAT(a, b) _CAR_CONCAT(a, b)
@@ -166,25 +165,6 @@ struct ExitScopeHelp
 #define FlagEquals(n, f) (((n) == (f)))        //Checks if 'n' is exactly equal to 'f'
 #define FlagIntersects(n, f) (((n) & (f)) > 0) //Checks if any bits in 'f' are set in 'n'
 
-
-template<class T> inline void operator^=(std::atomic<T>& a, T b)
-{
-    T at = a.load();
-    at = T(+at ^ b);
-    a.store(at);
-}
-template<class T> inline void operator|=(std::atomic<T>& a, T b)
-{
-    T at = a.load();
-    at = T(+at | b);
-    a.store(at);
-}
-template<class T> inline void operator&=(std::atomic<T>& a, T b)
-{
-    T at = a.load();
-    at = T(+at & b);
-    a.store(at);
-}
 
 extern bool g_running;
 extern char* g_ClipboardTextData;

@@ -194,21 +194,21 @@ void ImguiMain(AppData& data)
                 if (new_version)
                 {
                     ImGui::TextColored(ImVec4(1.0f, 0.1f, 0.1f, 1.0f), "Version: %s", g_version.AsString().c_str());
-                    if (g_download_state == DownloadState_Fetching)
+                    if (g_download_state == AsyncStatus_Fetching)
                     {
                         if (g_download_update_progress >= 0.0f)
                             ImGui::ProgressBar(g_download_update_progress, ImVec2(-FLT_MIN, 20));
                         else
                             ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, 20));
                     }
-                    else if (g_download_state == DownloadState_Fetched)
+                    else if (g_download_state == AsyncStatus_FetchedSuccess)
                     {
                         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.1f, 1.0f), "New version downloaded close and run the new version");
                     }
                     else
                     {
                         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.1f, 1.0f), "New Version Available!");
-                        ImGui::BeginDisabled(g_download_state != DownloadState_Empty);
+                        ImGui::BeginDisabled(g_download_state != AsyncStatus_Empty);
                         const std::string bs = ToString("Download Version %s", g_online_version.AsString().c_str());
                         if (ImGui::Button(bs.c_str()))
                         {
@@ -226,7 +226,7 @@ void ImguiMain(AppData& data)
                     {
                         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Already at latest version");
                     }
-                    ImGui::BeginDisabled(g_version_state != DownloadState_Empty || g_online_version.IsValid());
+                    ImGui::BeginDisabled(g_version_state != AsyncStatus_Empty || g_online_version.IsValid());
                     if (ImGui::Button("Check for update"))
                     {
                         GetOnlineVersionJob* job = new GetOnlineVersionJob();

@@ -83,7 +83,7 @@ struct RunProcessLogToFileJob : Job
     std::wstring application_path;
     std::wstring arguments;
     std::wstring output_file;
-    Atomic<bool>* completed = nullptr;
+    Atomic<bool>* completed;
     bool run_and_clear = false;
     virtual void RunJob() override;
 };

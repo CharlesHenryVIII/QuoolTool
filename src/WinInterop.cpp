@@ -286,17 +286,6 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
     ZoneText()
     //std::string zone_name = ToString("Process Log To File Job: %s", cmdline.c_str());
 
-enum DataType {
-    DataType_Invalid,
-    DataType_String,
-    DataType_Double,
-    DataType_Count,
-};
-struct PowershellLayout {
-    std::string name;
-    DataType type;
-};
-
 #define PWSH_MAX_ROW 1024
 #define PWSH_MAX_COL 16
 void ParsePowershell(std::string (&out)[PWSH_MAX_ROW][PWSH_MAX_COL], const std::string& in)

@@ -1,5 +1,6 @@
 #pragma once
 #include "Math.h"
+#include "Debug.h"
 
 #include "Tracy.hpp"
 
@@ -19,6 +20,22 @@ using Lock = std::lock_guard<N>;
 //creates a lock_guard named "lock"
 #define TRACY_LOCK(var) Lock<LockableBase(Mutex)> lock(var)
 #define TRACY_MUTEX(var) TracyLockable(Mutex, var)
+
+enum AsyncStatus : u32 {
+    AsyncStatus_Empty,
+    AsyncStatus_Fetching,
+    AsyncStatus_FetchedSuccess,
+    AsyncStatus_FetchedFailed,
+    AsyncStatus_Count,
+};
+ENUMOPS_PURE(AsyncStatus);
+
+template<typename T>
+struct AsyncData {
+    T data;
+    Mutex output_lock;
+    Atomic<AsyncStatus> state;
+};
 
 struct Job
 {
@@ -73,3 +90,22 @@ public:
 };
 
 bool OnMainThread();
+
+template<class T> inline void operator^=(std::atomic<T>& a, T b)
+{
+    T at = a.load();
+    at = T(+at ^ b);
+    a.store(at);
+}
+template<class T> inline void operator|=(std::atomic<T>& a, T b)
+{
+    T at = a.load();
+    at = T(+at | b);
+    a.store(at);
+}
+template<class T> inline void operator&=(std::atomic<T>& a, T b)
+{
+    T at = a.load();
+    at = T(+at & b);
+    a.store(at);
+}
