@@ -396,7 +396,7 @@ bool RunProcessAndLogToFile(std::string& output, const std::wstring& path, const
 {
     std::string zone_text;
     std::string zone_name;
-    GetNameAndTextForJob(zone_text, zone_name, path, path);
+    GetNameAndTextForJob(zone_text, zone_name, path, args);
     ZoneScoped;
     ZoneName(zone_name.c_str(), zone_name.size());
     ZoneText(zone_text.c_str(), zone_text.size());

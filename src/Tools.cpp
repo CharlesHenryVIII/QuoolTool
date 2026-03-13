@@ -42,6 +42,29 @@ struct ScriptJob : Job
     }
 };
 
+struct WorkbookJob : Job
+{
+    AsyncData<lxw_workbook*>* workbook;
+    Atomic<ScriptState>* state;
+    void RunJob() override
+    {
+        ZoneScopedN("Workbook Job");
+        if (workbook)
+        {
+            TRACY_LOCK(workbook->lock);
+            workbook_close(workbook->data);
+        }
+        else
+            FAIL;
+        if (state)
+        {
+            *state = ScriptState_Finished;
+        }
+        else
+            FAIL;
+    }
+};
+
 
 struct ScriptInfo {
     std::string name;
@@ -189,9 +212,10 @@ void ToolsImGui(ToolsData& td)
     if (td.state == ScriptState_Scripts && enabled_scripts == completed_scripts)
     {
         td.state = ScriptState_Workbook;
-        TRACY_LOCK(s_workbook.lock);
-        workbook_close(s_workbook.data);
-        td.state = ScriptState_Finished;
+        WorkbookJob* job = new WorkbookJob();
+        job->workbook = &s_workbook;
+        job->state = &td.state;
+        threading.SubmitJob(job);
     }
     const bool scripts_running = td.state == ScriptState_Scripts;
 
