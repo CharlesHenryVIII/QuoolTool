@@ -186,9 +186,33 @@ void ScriptSysinfo(ScriptData& data)
     ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
+void ScriptNetstatTcp(ScriptData& data)
+{
+    PowershellResponse array;
+    ParseCSV(array, data.output);
+    if (!array.size())
+    {
+        FAIL;
+        return;
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, "NetstatTCP");
+
+    size_t column_widths[16] = {};
+    ExcelWriteTitles(book, sheet, column_widths, array);
+    ExcelWriteData(book, sheet, column_widths, array);
+    ExcelAutoSizeColumnWidth(sheet, column_widths);
+}
+
+
+
+
+
 ScriptInfo s_scripts[] = {
     { .name = "SYSINFO",    .func = ScriptSysinfo,      .cmdline = L"systeminfo",},
-    { .name = "NETSTAT",    .cmdline = L"netstat -ano" },
+    //{ .name = "NETSTAT",    .func = ScriptNetstat,      .cmdline = L"netstat -ano" },
+    { .name = "NETSTAT_TCP",.func = ScriptNetstatTcp,   .cmdline = L"powershell -command \"Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,CreationTime,OwningProcess,@{Name='Process';Expression={(Get-Process -Id $_.OwningProcess).ProcessName}} | ConvertTo-Csv -NoTypeInformation | ForEach-Object {$_ -replace '\"',''}\"", },
     { .name = "IPCONFIG",   .cmdline = L"ipconfig" },
     { .name = "PROGRAMS",   .func = ScriptPrograms,     .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\""},
     { .name = "PROCESSOR",  .func = ScriptProcessor,    .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\""},

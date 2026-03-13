@@ -303,7 +303,7 @@ void ParsePowershell(PowershellResponse& out, const std::string& in)
     if (lines[0] != '-')
         return;
 
-    std::vector<i32> column_length;
+    std::vector<i32> column_lengths;
     for (i32 i = 0; i < lines.size(); i++)
     {
         i32 dash_count = i;
@@ -322,24 +322,24 @@ void ParsePowershell(PowershellResponse& out, const std::string& in)
         i32 width = column_width - i;
         if (width <= 0)
             break;
-        column_length.push_back(width);
+        column_lengths.push_back(width);
         i = column_width - 1;
     }
     
     const i32 max_rows = (i32)strings.size() - 2;
-    const size_t max_column = Min(std::tuple_size_v<PowershellResponse::value_type>, column_length.size());
+    const size_t max_column = Min(std::tuple_size_v<PowershellResponse::value_type>, column_lengths.size());
 
     i32 out_index = 0;
     for (i32 strings_index = titles_index; strings_index < max_rows; strings_index++)
     {
-        if (strings_index == 0 || strings_index == lines_index)
+        if (strings_index == lines_index)
             continue;
         const std::string& s = strings[strings_index];
         i32 previous_len = 0;
         out.push_back({});
         for (i32 j = 0; j < max_column; j++)
         {
-            const i32 len = column_length[j];
+            const i32 len = column_lengths[j];
             std::string& s_out = out[out_index][j];
             s_out = s.substr(previous_len, len);
             StringRemoveLeading(s_out, ' ');
@@ -404,6 +404,39 @@ void ParseSysinfo(PowershellResponse& out, const std::string& in)
         value = s.substr(item_len, s.size() - 1);
         StringRemoveTrailing(value, ' ');
         ++out_index;
+    }
+}
+
+void ParseCSV(PowershellResponse& out, const std::string& in)
+{
+    if (!in.size())
+    {
+        FAIL;
+        return;
+    }
+    const std::vector<std::string> rows = TextToStringArray(in.c_str(), "\n");
+    if (!rows.size())
+    {
+        FAIL;
+        return;
+    }
+
+    for (i32 row_i = 0; row_i < rows.size(); row_i++)
+    {
+        const std::string& row = rows[row_i];
+        const std::vector<std::string> strings = TextToStringArray(row.c_str(), ",");
+        out.push_back({});
+        for (i32 i = 0; i < strings.size(); i++)
+        {
+            if (strings[i].size())
+            {
+                std::string& s = out[row_i][i];
+                s = strings[i];
+                TextRemoval(s, "\"");
+                TextRemoval(s, ",");
+                TextRemoval(s, "\r\n");
+            }
+        }
     }
 }
 

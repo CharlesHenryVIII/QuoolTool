@@ -46,6 +46,7 @@ double SysGetTime();
 bool RunProcessAndLogToFile(std::string& output, const std::wstring& path, const std::wstring& args, const std::wstring& output_file);
 void ParsePowershell(PowershellResponse& out, const std::string& in);
 void ParseSysinfo(PowershellResponse& out, const std::string& in);
+void ParseCSV(PowershellResponse& out, const std::string& in);
 
 static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);
