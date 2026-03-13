@@ -350,6 +350,63 @@ void ParsePowershell(PowershellResponse& out, const std::string& in)
     }
 }
 
+void ParseSysinfo(PowershellResponse& out, const std::string& in)
+{
+    const i32 data_start_index = 1;
+    if (data_start_index >= in.size())
+        return;
+    if (in[0] != '\r' || in[1] != '\n')
+        return;
+    const std::vector<std::string> strings = TextToStringArray(in.c_str(), "\n");
+    if (strings.size() < 3)
+        return;
+    const std::string& ds = strings[data_start_index];
+
+    i32 item_len = 0;
+    {
+        i32 name_count = 0;
+        for (; name_count < ds.size(); name_count++)
+        {
+            if (ds[name_count] == ':')
+            {
+                name_count++;
+                break;
+            }
+        }
+
+        i32 column_width = name_count;
+        for (; column_width < ds.size(); column_width++)
+        {
+            if (ds[column_width] != ' ')
+                break;
+        }
+        item_len = column_width;
+    }
+    
+    const i32 rows_max = (i32)strings.size() - 1;
+    const size_t max_column = 2;
+
+    out.push_back({});
+    out[0][0] = "Item";
+    out[0][1] = "Value";
+    i32 out_index = 1;
+    for (i32 rows_i = data_start_index; rows_i < rows_max; rows_i++)
+    {
+        const std::string& s = strings[rows_i];
+        out.push_back({});
+        //Add Item
+        std::string& item = out[out_index][0];
+        item = s.substr(0, item_len);
+        StringRemoveLeading(item, ' ');
+        StringRemoveTrailing(item, ' ');
+        //Add Value
+        std::string& value = out[out_index][1];
+        value = s.substr(item_len, s.size() - 1);
+        StringRemoveTrailing(value, ' ');
+        ++out_index;
+    }
+}
+
 void GetNameAndTextForJob(std::string& text, std::string& name, const std::wstring& app, const std::wstring& args)
 {
     std::wstring namew;

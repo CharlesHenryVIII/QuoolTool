@@ -8,7 +8,8 @@
 
 #include <string>
 
-typedef std::vector<std::array<std::string, 16>> PowershellResponse;
+#define PWSH_MAX_COLUMNS 16
+typedef std::vector<std::array<std::string, PWSH_MAX_COLUMNS>> PowershellResponse;
 
 enum RunProcessFlags : u32 {
     RunProcess_None = 0,
@@ -44,6 +45,7 @@ double SysGetTime();
 //NOTE(CSH): This is a blocking call
 bool RunProcessAndLogToFile(std::string& output, const std::wstring& path, const std::wstring& args, const std::wstring& output_file);
 void ParsePowershell(PowershellResponse& out, const std::string& in);
+void ParseSysinfo(PowershellResponse& out, const std::string& in);
 
 static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);

@@ -87,11 +87,9 @@ lxw_format* CreateTitleFormat(lxw_workbook* book)
     return format;
 }
 
-void ExcelWritePowershellData(lxw_workbook* book, lxw_worksheet* sheet, const PowershellResponse& array)
+void ExcelWriteTitles(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
 {
-    //Write Titles
-    size_t column_lengths[16] = {};
-    ASSERT(arrsize(column_lengths) == array[0].size());
+    ASSERT(PWSH_MAX_COLUMNS == array[0].size());
     lxw_format* title_format = CreateTitleFormat(book);
     worksheet_set_row(sheet, 0, 30, NULL);
     for (i32 i = 0; i < array[0].size(); i++)
@@ -100,10 +98,12 @@ void ExcelWritePowershellData(lxw_workbook* book, lxw_worksheet* sheet, const Po
         if (title.empty())
             continue;
         worksheet_write_string(sheet, 0, i, title.c_str(), title_format);
-        column_lengths[i] = Max(column_lengths[i], title.size() + 4);
+        column_widths[i] = Max(column_widths[i], title.size() + 4);
     }
+}
 
-    //Write Data
+void ExcelWriteData(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
+{
     lxw_format* format = workbook_add_format(book);
     format_set_align(format, LXW_ALIGN_LEFT);
     for (i32 row = 1; row < array.size(); row++)
@@ -114,18 +114,29 @@ void ExcelWritePowershellData(lxw_workbook* book, lxw_worksheet* sheet, const Po
             if (title.empty())
                 continue;
             worksheet_write_string(sheet, row, col, title.c_str(), format);
-            column_lengths[col] = Max(column_lengths[col], title.size());
+            column_widths[col] = Max(column_widths[col], title.size());
         }
     }
+}
 
-    //Auto size the column width
-    for (i32 i = 0; i < arrsize(column_lengths); i++)
+void ExcelAutoSizeColumnWidth(lxw_worksheet* sheet, size_t column_widths[16])
+{
+    for (i32 i = 0; i < PWSH_MAX_COLUMNS; i++)
     {
-        if (column_lengths[i] <= 0)
+        if (column_widths[i] <= 0)
             continue;
-        double width = (double)column_lengths[i];// / 10.0;
+        double width = (double)column_widths[i];// / 10.0;
         worksheet_set_column(sheet, i, i, width, NULL);
     }
+}
+
+void ExcelWritePowershellData(lxw_workbook* book, lxw_worksheet* sheet, const PowershellResponse& array)
+{
+    size_t column_widths[16] = {};
+    ASSERT(arrsize(column_widths) == array[0].size());
+    ExcelWriteTitles(book, sheet, column_widths, array);
+    ExcelWriteData(book, sheet, column_widths, array);
+    ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
 void ScriptPrograms(ScriptData& data)
@@ -156,13 +167,31 @@ void ScriptProcessor(ScriptData& data)
     ExcelWritePowershellData(data.workbook->data, sheet, array);
 }
 
+void ScriptSysinfo(ScriptData& data)
+{
+    PowershellResponse array;
+    ParseSysinfo(array, data.output);
+    if (!array.size())
+    {
+        FAIL;
+        return;
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, "Sysinfo");
+
+    size_t column_widths[16] = {};
+    ExcelWriteTitles(book, sheet, column_widths, array);
+    ExcelWriteData(book, sheet, column_widths, array);
+    ExcelAutoSizeColumnWidth(sheet, column_widths);
+}
+
 ScriptInfo s_scripts[] = {
-    { .name = "SYSINFO",    .cmdline = L"systeminfo", },
+    { .name = "SYSINFO",    .func = ScriptSysinfo,      .cmdline = L"systeminfo",},
     { .name = "NETSTAT",    .cmdline = L"netstat -ano" },
     { .name = "IPCONFIG",   .cmdline = L"ipconfig" },
     { .name = "PROGRAMS",   .func = ScriptPrograms,     .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\""},
     { .name = "PROCESSOR",  .func = ScriptProcessor,    .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\""},
-
 };
 
 std::string s_log;
