@@ -41,6 +41,10 @@ bool IsConsoleVisible();
 void SysSleep(u64 ms);
 double SysGetTime();
 
+//NOTE(CSH): This is a blocking call
+bool RunProcessAndLogToFile(std::string& output, const std::wstring& path, const std::wstring& args, const std::wstring& output_file);
+void ParsePowershell(PowershellResponse& out, const std::string& in);
+
 static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text);

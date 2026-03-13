@@ -5,20 +5,139 @@
 #include "LoadJson.h"
 #include "WinInterop.h"
 
+#include "xlsxwriter.h"
+
+AsyncData<lxw_workbook*> s_workbook;
+
+struct ScriptData {
+    std::string output;
+    AsyncData<lxw_workbook*>* workbook;
+};
+
+typedef void (*ScriptFunction)(ScriptData&);
+struct ScriptJob : Job
+{
+    std::wstring path;
+    std::wstring args;
+    std::wstring output_file;
+    Atomic<bool>* completed;
+    ScriptFunction func;
+    ScriptData data;
+    
+    void RunJob() override
+    {
+        ZoneScopedN("ScriptJob");
+        bool r = RunProcessAndLogToFile(data.output, path, args, output_file);
+        if (func)
+        {
+            ZoneScopedN("ScriptJob func");
+            func(data);
+        }
+
+        if (completed)
+        {
+            ASSERT(*completed == false);
+            (*completed) = true;
+        }
+    }
+};
+
+
 struct ScriptInfo {
     std::string name;
-    Atomic<ScriptInfoFlags> flags;
+    Atomic<ScriptInfoFlags> flags = ScriptInfoFlags(ScriptInfoFlags_Enabled);
+    ScriptFunction func = nullptr;
     std::wstring cmdline; //function
     //break
     Atomic<bool> completed = false;
 };
 
+lxw_format* CreateTitleFormat(lxw_workbook* book)
+{
+    lxw_format* format = workbook_add_format(book);
+    format_set_bold(format);
+    format_set_align(format, LXW_ALIGN_CENTER);
+    format_set_align(format, LXW_ALIGN_VERTICAL_CENTER);
+    format_set_border(format, LXW_BORDER_THICK);
+    //format_set_font_name(format, "Aptos Narrow");
+    return format;
+}
+
+void ExcelWritePowershellData(lxw_workbook* book, lxw_worksheet* sheet, const PowershellResponse& array)
+{
+    //Write Titles
+    size_t column_lengths[16] = {};
+    ASSERT(arrsize(column_lengths) == array[0].size());
+    lxw_format* title_format = CreateTitleFormat(book);
+    worksheet_set_row(sheet, 0, 30, NULL);
+    for (i32 i = 0; i < array[0].size(); i++)
+    {
+        const auto& title = array[0][i];
+        if (title.empty())
+            continue;
+        worksheet_write_string(sheet, 0, i, title.c_str(), title_format);
+        column_lengths[i] = Max(column_lengths[i], title.size() + 4);
+    }
+
+    //Write Data
+    lxw_format* format = workbook_add_format(book);
+    format_set_align(format, LXW_ALIGN_LEFT);
+    for (i32 row = 1; row < array.size(); row++)
+    {
+        for (i32 col = 0; col < array[row].size(); col++)
+        {
+            const auto& title = array[row][col];
+            if (title.empty())
+                continue;
+            worksheet_write_string(sheet, row, col, title.c_str(), format);
+            column_lengths[col] = Max(column_lengths[col], title.size());
+        }
+    }
+
+    //Auto size the column width
+    for (i32 i = 0; i < arrsize(column_lengths); i++)
+    {
+        if (column_lengths[i] <= 0)
+            continue;
+        double width = (double)column_lengths[i];// / 10.0;
+        worksheet_set_column(sheet, i, i, width, NULL);
+    }
+}
+
+void ScriptPrograms(ScriptData& data)
+{
+    PowershellResponse array;
+    ParsePowershell(array, data.output);
+    switch (array.size())
+    {
+    case 0: return;
+    case 1: FAIL; return; //only title?  no title?
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, "Programs");
+    ExcelWritePowershellData(data.workbook->data, sheet, array);
+}
+
+void ScriptProcessor(ScriptData& data)
+{
+    PowershellResponse array;
+    ParsePowershell(array, data.output);
+    switch (array.size())
+    {
+    case 0: return;
+    case 1: FAIL; return; //only title?  no title?
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, "Processor");
+    ExcelWritePowershellData(data.workbook->data, sheet, array);
+}
+
 ScriptInfo s_scripts[] = {
-    { .name = "SYSINFO",    .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"systeminfo"},
-    { .name = "NETSTAT",    .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"netstat -ano" },
-    { .name = "IPCONFIG",   .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"ipconfig" },
-    { .name = "PROGRAMS",   .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\"" },
-    { .name = "PROCESSOR",  .flags = ScriptInfoFlags(ScriptInfoFlags_Enabled),   .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\"" },
+    { .name = "SYSINFO",    .cmdline = L"systeminfo", },
+    { .name = "NETSTAT",    .cmdline = L"netstat -ano" },
+    { .name = "IPCONFIG",   .cmdline = L"ipconfig" },
+    { .name = "PROGRAMS",   .func = ScriptPrograms,     .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\""},
+    { .name = "PROCESSOR",  .func = ScriptProcessor,    .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\""},
 
 };
 
@@ -30,26 +149,6 @@ void GetOutputFolder(Path& out, const ToolsData& td)
     if (fs::exists(td.output_path))
         out = Path(td.output_path);
     out += g_sysinfo.name;
-}
-
-#include "xlsxwriter.h"
-void CompileScriptResultsToExcel(ToolsData& td)
-{
-    Path output_folder;
-    GetOutputFolder(output_folder, td);
-    Path filename = output_folder / "SystemInfo.xlsx";
-    lxw_workbook* book = workbook_new(filename.string().c_str());
-    lxw_worksheet* sheet = workbook_add_worksheet(book, NULL);
-    lxw_format* format = workbook_add_format(book);
-    format_set_bold(format);
-    worksheet_set_column(sheet, 0, 0, 20, NULL);
-    worksheet_write_string(sheet, 0, 0, "Hello", NULL);
-    worksheet_write_string(sheet, 1, 0, "World", format);
-    worksheet_write_number(sheet, 2, 0, 123,     NULL);
-    worksheet_write_number(sheet, 3, 0, 123.456, NULL);
-    worksheet_insert_image(sheet, 1, 2, "logo.png");
-    //g_sysinfo.
-    workbook_close(book);
 }
 
 void ImguiLog(const std::string& s)
@@ -75,9 +174,9 @@ void ToolsImGui(ToolsData& td)
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoMove;
 
+    //State
     i32 enabled_scripts = 0;
     i32 completed_scripts = 0;
-    bool finished_scripts = false;
     for (i32 i = 0; i < arrsize(s_scripts); i++)
     {
         ScriptInfo& s = s_scripts[i];
@@ -87,12 +186,14 @@ void ToolsImGui(ToolsData& td)
         if (s_scripts[i].completed)
             completed_scripts++;
     }
-    if (td.running && enabled_scripts == completed_scripts)
+    if (td.state == ScriptState_Scripts && enabled_scripts == completed_scripts)
     {
-        td.running = false;
-        finished_scripts = true;
-        CompileScriptResultsToExcel(td);
+        td.state = ScriptState_Workbook;
+        TRACY_LOCK(s_workbook.lock);
+        workbook_close(s_workbook.data);
+        td.state = ScriptState_Finished;
     }
+    const bool scripts_running = td.state == ScriptState_Scripts;
 
     
     #define FILES_TITLE "File Paths"
@@ -125,7 +226,7 @@ void ToolsImGui(ToolsData& td)
         ImGui::NewLine();
 
         std::error_code ec;
-        ImGui::BeginDisabled(td.running);
+        ImGui::BeginDisabled(scripts_running);
         float height = 40;
         const ImVec2 button_size(125.0f, 60.0f);
         ImGui::SetCursorPosX(Max((ImGui::GetContentRegionAvail().x - (arrsize(s_scripts) * button_size.x)) * 0.5f, ImGui::GetStyle().ItemSpacing.x));
@@ -205,15 +306,21 @@ void ToolsImGui(ToolsData& td)
     {
         ZoneScopedN(ACTION_TITLE);
 
-        ImGui::BeginDisabled(td.running || (!td.output_path.empty() && !fs::exists(td.output_path)));
+        ImGui::BeginDisabled(scripts_running || (!td.output_path.empty() && !fs::exists(td.output_path)));
         const ImVec2 avail = ImGui::GetContentRegionAvail();
         if (ImGui::Button("Run Scripts", avail))
         {
             ZoneScopedN("Run Scripts");
             ImguiLog("Running Scripts:");
-            td.running = true;
-            finished_scripts = false;
+            td.state = ScriptState_Scripts;
 
+            Path output_folder;
+            GetOutputFolder(output_folder, td);
+            const Path excel_file = output_folder / "SystemInfo.xlsx";
+            {
+                TRACY_LOCK(s_workbook.lock);
+                s_workbook.data = workbook_new(excel_file.string().c_str());
+            }
             for (i32 i = 0; i < arrsize(s_scripts); i++)
             {
                 ScriptInfo& s = s_scripts[i];
@@ -221,15 +328,15 @@ void ToolsImGui(ToolsData& td)
                     continue;
 
                 ZoneScopedN("Run Script");
-                RunProcessLogToFileJob* job = new RunProcessLogToFileJob();
-                job->application_path;
-                job->arguments = s.cmdline;
+                ScriptJob* job = new ScriptJob();
+                job->path;
+                job->args = s.cmdline;
                 const std::string name = s.name + ".txt";
-                Path output_folder;
-                GetOutputFolder(output_folder, td);
                 const Path output_file = output_folder / name;
                 CreateParentDirectories(output_file);
                 job->output_file = output_file;
+                job->func = s.func;
+                job->data.workbook = &s_workbook;
                 job->completed = &s.completed;
                 threading.SubmitJob(job);
 
@@ -253,7 +360,7 @@ void ToolsImGui(ToolsData& td)
         TextCentered(LOG_TITLE);
         //ImGui::Separator();
 
-        if (td.running)
+        if (scripts_running)
         {
             const ImVec2 ip_scale = { 0, 0.75 };
             ImVec2 ip_size = HadamardProduct(ImGui::GetContentRegionAvail(), ip_scale);
@@ -283,7 +390,7 @@ void ToolsImGui(ToolsData& td)
             ImVec2 max = ImGui::GetWindowContentRegionMax();
             ImGui::SetCursorPosY(max.y - progress_bar_height);
   
-            if (finished_scripts)
+            if (td.state != ScriptState_Scripts)
                 ImGui::ProgressBar(1.0f, ImVec2(-FLT_MIN, progress_bar_height), "Completed");
             else
             {

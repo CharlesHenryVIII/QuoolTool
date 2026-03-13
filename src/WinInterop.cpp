@@ -392,26 +392,21 @@ void RunProcessJob::RunJob()
     }
 }
 
-void RunProcessLogToFileJob::RunJob()
+bool RunProcessAndLogToFile(std::string& output, const std::wstring& path, const std::wstring& args, const std::wstring& output_file)
 {
     std::string zone_text;
     std::string zone_name;
-    GetNameAndTextForJob(zone_text, zone_name, application_path, arguments);
+    GetNameAndTextForJob(zone_text, zone_name, path, path);
     ZoneScoped;
     ZoneName(zone_name.c_str(), zone_name.size());
     ZoneText(zone_text.c_str(), zone_text.size());
 
-    const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
-    const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
+    const wchar_t* wpath = path.size()   ? path.c_str()  : nullptr;
+    const wchar_t* wargs = args.size()          ? args.c_str()         : nullptr;
 
-    std::string output;
     Mutex output_lock;
-    i32 result = RunProcess(path, args, &output, &output_lock);
-    if (run_and_clear && result)
-    {
-        ZoneScopedN("Run and Clear");
-        Threading::GetInstance().RunAndClearJobs();
-    }
+    i32 r = RunProcess(wpath, wargs, &output, &output_lock);
+    bool success = !r;
 
     if (output_file.size())
     {
@@ -423,16 +418,27 @@ void RunProcessLogToFileJob::RunJob()
             std::string of;
             ConvertWideCharToMultiByte(of, output_file);
             DebugPrint("Failed to open file for write: %s", of.c_str());
+            success = false;
         }
         else
         {
             std::lock_guard<Mutex> lock(output_lock);
             file << output;
-
-            PowershellResponse array;
-            ParsePowershell(array, output);
-            i32 test = 1;
         }
+    }
+    return success;
+}
+
+
+void RunProcessLogToFileJob::RunJob()
+{
+    ZoneScopedN("RunProcessLogToFileJob");
+    std::string output;
+    bool r = RunProcessAndLogToFile(output, application_path, arguments, output_file);
+    if (run_and_clear && r)
+    {
+        ZoneScopedN("Run and Clear");
+        Threading::GetInstance().RunAndClearJobs();
     }
 
     if (completed)

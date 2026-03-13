@@ -33,8 +33,8 @@ ENUMOPS_PURE(AsyncStatus);
 template<typename T>
 struct AsyncData {
     T data;
-    Mutex output_lock;
-    Atomic<AsyncStatus> state;
+    TRACY_MUTEX(lock);
+    Atomic<AsyncStatus> state = {};
 };
 
 struct Job
