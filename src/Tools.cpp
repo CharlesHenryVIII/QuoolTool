@@ -46,6 +46,7 @@ struct WorkbookJob : Job
 {
     AsyncData<lxw_workbook*>* workbook;
     Atomic<ScriptState>* state;
+
     void RunJob() override
     {
         ZoneScopedN("Workbook Job");
@@ -384,7 +385,10 @@ void ToolsImGui(ToolsData& td)
         TextCentered(LOG_TITLE);
         //ImGui::Separator();
 
-        if (scripts_running)
+        float progress_bar_height = 50;
+        switch (td.state)
+        {
+        case ScriptState_Scripts:
         {
             const ImVec2 ip_scale = { 0, 0.75 };
             ImVec2 ip_size = HadamardProduct(ImGui::GetContentRegionAvail(), ip_scale);
@@ -410,10 +414,9 @@ void ToolsImGui(ToolsData& td)
             }
             ImGui::EndChild();
 
-            float progress_bar_height = 50;
             ImVec2 max = ImGui::GetWindowContentRegionMax();
             ImGui::SetCursorPosY(max.y - progress_bar_height);
-  
+
             if (td.state != ScriptState_Scripts)
                 ImGui::ProgressBar(1.0f, ImVec2(-FLT_MIN, progress_bar_height), "Completed");
             else
@@ -421,7 +424,20 @@ void ToolsImGui(ToolsData& td)
                 std::string title = ToString("%i/%i", completed_scripts, enabled_scripts);
                 ImGui::ProgressBar(float(completed_scripts) / float(enabled_scripts), ImVec2(-FLT_MIN, progress_bar_height), title.c_str());
             }
+            break;
         }
+        case ScriptState_Workbook:
+        {
+            ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, progress_bar_height), "Saving Excel File");
+            break;
+        }
+        case ScriptState_Finished:
+        {
+            ImGui::TextColored(ImVec4(0, 1, 0, 1), "Finished");
+            break;
+        }
+        }
+
     }
     ImGui::EndChild();
 #else
