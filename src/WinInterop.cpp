@@ -286,17 +286,11 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
     ZoneText()
     //std::string zone_name = ToString("Process Log To File Job: %s", cmdline.c_str());
 
-#define PWSH_MAX_ROW 1024
-#define PWSH_MAX_COL 16
-void ParsePowershell(std::string (&out)[PWSH_MAX_ROW][PWSH_MAX_COL], const std::string& in)
+void ParsePowershell(PowershellResponse& out, const std::string& in)
 {
     const i32 titles_index = 1;
     const i32 lines_index = 2;
     const i32 data_start_index = 3;
-    if (arrsize(out) <= 0)
-        return;
-    if (arrsize(out[0]) <= 0)
-        return;
     if (data_start_index >= in.size())
         return;
     if (in[0] != '\r' || in[1] != '\n')
@@ -332,17 +326,18 @@ void ParsePowershell(std::string (&out)[PWSH_MAX_ROW][PWSH_MAX_COL], const std::
         i = column_width - 1;
     }
     
-    const i32 max_rows = Min((i32)arrsize(out), (i32)strings.size() - 2);
-    const i32 max_column = Min((i32)arrsize(out[0]), (i32)column_length.size());
+    const i32 max_rows = (i32)strings.size() - 2;
+    const size_t max_column = Min(std::tuple_size_v<PowershellResponse::value_type>, column_length.size());
 
     i32 out_index = 0;
-    for (i32 strings_index = titles_index; strings_index < strings.size() - 2 && strings_index - 1 < arrsize(out); strings_index++)
+    for (i32 strings_index = titles_index; strings_index < max_rows; strings_index++)
     {
         if (strings_index == 0 || strings_index == lines_index)
             continue;
         const std::string& s = strings[strings_index];
         i32 previous_len = 0;
-        for (i32 j = 0; j < column_length.size(); j++)
+        out.push_back({});
+        for (i32 j = 0; j < max_column; j++)
         {
             const i32 len = column_length[j];
             std::string& s_out = out[out_index][j];
@@ -434,9 +429,9 @@ void RunProcessLogToFileJob::RunJob()
             std::lock_guard<Mutex> lock(output_lock);
             file << output;
 
-            std::string arr[PWSH_MAX_ROW][PWSH_MAX_COL];
-            const i32 sizeee = sizeof(arr);
-            ParsePowershell(arr, output);
+            PowershellResponse array;
+            ParsePowershell(array, output);
+            i32 test = 1;
         }
     }
 

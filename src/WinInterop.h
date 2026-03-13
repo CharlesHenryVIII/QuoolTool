@@ -8,11 +8,14 @@
 
 #include <string>
 
+typedef std::vector<std::array<std::string, 16>> PowershellResponse;
+
 enum RunProcessFlags : u32 {
     RunProcess_None = 0,
     RunProcess_Async = BIT(0),
     RunProcess_Show = BIT(1),
 };
+
 
 struct SystemInfo {
     std::wstring name;
