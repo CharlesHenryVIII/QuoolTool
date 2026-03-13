@@ -213,6 +213,7 @@ ScriptInfo s_scripts[] = {
     { .name = "SYSINFO",    .func = ScriptSysinfo,      .cmdline = L"systeminfo",},
     //{ .name = "NETSTAT",    .func = ScriptNetstat,      .cmdline = L"netstat -ano" },
     { .name = "NETSTAT_TCP",.func = ScriptNetstatTcp,   .cmdline = L"powershell -command \"Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,CreationTime,OwningProcess,@{Name='Process';Expression={(Get-Process -Id $_.OwningProcess).ProcessName}} | ConvertTo-Csv -NoTypeInformation | ForEach-Object {$_ -replace '\"',''}\"", },
+    { .name = "NETSTAT_UPD",.func = ScriptNetstatTcp,   .cmdline = L"powershell -command \"Get-NetUDPEndpoint  | select LocalAddress,LocalPort,CreationTime,OwningProcess,@{Name=\Process';Expression={(Get-Process -Id $_.OwningProcess).ProcessName}} | ft -auto\"", },
     { .name = "IPCONFIG",   .cmdline = L"ipconfig" },
     { .name = "PROGRAMS",   .func = ScriptPrograms,     .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\""},
     { .name = "PROCESSOR",  .func = ScriptProcessor,    .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\""},
