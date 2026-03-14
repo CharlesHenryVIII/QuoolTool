@@ -4,12 +4,14 @@
 #include "Tracy.hpp"
 #include "LoadJson.h"
 #include "WinInterop.h"
+#include "Scripts.h"
 
 #include "xlsxwriter.h"
 
 AsyncData<lxw_workbook*> s_workbook;
 
 struct ScriptData {
+    std::string name;
     std::string output;
     AsyncData<lxw_workbook*>* workbook;
 };
@@ -149,7 +151,7 @@ void ScriptPrograms(ScriptData& data)
     case 1: FAIL; return; //only title?  no title?
     }
     TRACY_LOCK(data.workbook->lock);
-    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, "Programs");
+    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, data.name.c_str());
     ExcelWritePowershellData(data.workbook->data, sheet, array);
 }
 
@@ -163,7 +165,7 @@ void ScriptProcessor(ScriptData& data)
     case 1: FAIL; return; //only title?  no title?
     }
     TRACY_LOCK(data.workbook->lock);
-    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, "Processor");
+    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, data.name.c_str());
     ExcelWritePowershellData(data.workbook->data, sheet, array);
 }
 
@@ -178,7 +180,7 @@ void ScriptSysinfo(ScriptData& data)
     }
     TRACY_LOCK(data.workbook->lock);
     lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, "Sysinfo");
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
 
     size_t column_widths[16] = {};
     ExcelWriteTitles(book, sheet, column_widths, array);
@@ -186,8 +188,9 @@ void ScriptSysinfo(ScriptData& data)
     ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
-void ScriptNetstatTcp(ScriptData& data)
+void ScriptCsv(ScriptData& data)
 {
+    ZoneScoped;
     PowershellResponse array;
     ParseCSV(array, data.output);
     if (!array.size())
@@ -197,26 +200,26 @@ void ScriptNetstatTcp(ScriptData& data)
     }
     TRACY_LOCK(data.workbook->lock);
     lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, "NetstatTCP");
-
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
     size_t column_widths[16] = {};
     ExcelWriteTitles(book, sheet, column_widths, array);
     ExcelWriteData(book, sheet, column_widths, array);
     ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
+void ScriptIpconfig(ScriptData& data)
+{
 
-
+}
 
 
 ScriptInfo s_scripts[] = {
-    { .name = "SYSINFO",    .func = ScriptSysinfo,      .cmdline = L"systeminfo",},
-    //{ .name = "NETSTAT",    .func = ScriptNetstat,      .cmdline = L"netstat -ano" },
-    { .name = "NETSTAT_TCP",.func = ScriptNetstatTcp,   .cmdline = L"powershell -command \"Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,CreationTime,OwningProcess,@{Name='Process';Expression={(Get-Process -Id $_.OwningProcess).ProcessName}} | ConvertTo-Csv -NoTypeInformation | ForEach-Object {$_ -replace '\"',''}\"", },
-    { .name = "NETSTAT_UPD",.func = ScriptNetstatTcp,   .cmdline = L"powershell -command \"Get-NetUDPEndpoint  | select LocalAddress,LocalPort,CreationTime,OwningProcess,@{Name=\Process';Expression={(Get-Process -Id $_.OwningProcess).ProcessName}} | ft -auto\"", },
-    { .name = "IPCONFIG",   .cmdline = L"ipconfig" },
-    { .name = "PROGRAMS",   .func = ScriptPrograms,     .cmdline = L"powershell -command \"Get-ItemProperty 'HKLM:/Software/Microsoft/Windows/CurrentVersion/Uninstall/*' | Where {$_.DisplayName} | Select DisplayName,DisplayVersion\""},
-    { .name = "PROCESSOR",  .func = ScriptProcessor,    .cmdline = L"powershell -command \"Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed\""},
+    { .name = "System Info",.func = ScriptCsv,          .cmdline = g_script_systeminfo_text,    },
+    { .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },//not converted
+    { .name = "Netstat TCP",.func = ScriptCsv,          .cmdline = g_script_netstat_tcp_text,   },
+    { .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
+    { .name = "Programs",   .func = ScriptPrograms,     .cmdline = g_script_programs_text,      },
+    { .name = "Processor",  .func = ScriptProcessor,    .cmdline = g_script_processor_text,     },
 };
 
 std::string s_log;
@@ -416,6 +419,7 @@ void ToolsImGui(ToolsData& td)
                 job->output_file = output_file;
                 job->func = s.func;
                 job->data.workbook = &s_workbook;
+                job->data.name = s.name;
                 job->completed = &s.completed;
                 threading.SubmitJob(job);
 

@@ -409,6 +409,7 @@ void ParseSysinfo(PowershellResponse& out, const std::string& in)
 
 void ParseCSV(PowershellResponse& out, const std::string& in)
 {
+    ZoneScoped;
     if (!in.size())
     {
         FAIL;
