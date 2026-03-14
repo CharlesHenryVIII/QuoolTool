@@ -432,10 +432,18 @@ void ParseCSV(PowershellResponse& out, const std::string& in)
             if (strings[i].size())
             {
                 std::string& s = out[row_i][i];
+#if 1
+                //This seems to be marginally faster?
+                if (i == strings.size() - 1)
+                    s = strings[i].substr(0, strings[i].size() - 2);
+                else
+                    s = strings[i].substr(0, strings[i].size() - 1);
+#else
                 s = strings[i];
-                TextRemoval(s, "\"");
+                //TextRemoval(s, "\"");
                 TextRemoval(s, ",");
                 TextRemoval(s, "\r\n");
+#endif
             }
         }
     }
