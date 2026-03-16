@@ -228,6 +228,9 @@ void ScriptIpconfig(ScriptData& data)
     lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
     lxw_format* title_format = CreateTitleFormat(book);
     lxw_format* data_format = CreateDataFormat(book);
+    const size_t end_len = 2; //character count of "/r/n";
+    const char* pad_end_s = ". :";
+    const size_t pad_end_s_len = strlen(pad_end_s) + 1;
 
     for (i32 i = 0; i < rows.size(); i++)
     {
@@ -238,7 +241,8 @@ void ScriptIpconfig(ScriptData& data)
         if (begin_row.find(". :") == std::string::npos)
         {
             //title
-            worksheet_write_string(sheet, i, 0, begin_row.substr(0, begin_row.size() - 2).c_str(), title_format);
+            const std::string title = begin_row.substr(0, begin_row.size() - end_len);
+            worksheet_merge_range(sheet, i, 0, i, 1, title.c_str(), title_format);
             worksheet_set_row(sheet, i, 30, NULL);
         }
         else
@@ -247,19 +251,14 @@ void ScriptIpconfig(ScriptData& data)
             for (;i < rows.size() && rows[i] != "\r\n"; i++)
             {
                 const std::string& row = rows[i];
-#if 1
                 const size_t key_len = row.find(" .");
                 std::string key = row.substr(0, key_len);
                 StringRemoveLeading(key, ' ');
                 worksheet_write_string(sheet, i, 0, key.c_str(), data_format);
 
-                const size_t pad_end = row.find(". :");
-                const std::string name = row.substr(pad_end + 4, row.size() - (pad_end + 4) - 2);
+                const size_t pad_end = row.find(pad_end_s);
+                const std::string name = row.substr(pad_end + pad_end_s_len, row.size() - (pad_end + pad_end_s_len) - end_len);
                 worksheet_write_string(sheet, i, 1, name.c_str(), data_format);
-
-#else
-                worksheet_write_string(sheet, i, 0, row.substr(0, row.size() - 2).c_str(), data_format);
-#endif
             }
         }
     }
