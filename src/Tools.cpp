@@ -207,10 +207,6 @@ void ScriptCsv(ScriptData& data)
     ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
-void ScriptIpconfig(ScriptData& data)
-{
-
-}
 
 
 ScriptInfo s_scripts[] = {
@@ -218,7 +214,7 @@ ScriptInfo s_scripts[] = {
     { .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },//not converted
     { .name = "Netstat TCP",.func = ScriptCsv,          .cmdline = g_script_netstat_tcp_text,   },
     { .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
-    { .name = "Programs",   .func = ScriptCsv,     .cmdline = g_script_programs_text,      },
+    { .name = "Programs",   .func = ScriptCsv,          .cmdline = g_script_programs_text,      },
     { .name = "Processor",  .func = ScriptProcessor,    .cmdline = g_script_processor_text,     },
 };
 
