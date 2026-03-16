@@ -7,6 +7,8 @@
 #include "Scripts.h"
 
 #include "xlsxwriter.h"
+#include <vector>
+#include <array>
 
 AsyncData<lxw_workbook*> s_workbook;
 
@@ -98,12 +100,13 @@ lxw_format* CreateDataFormat(lxw_workbook* book)
 
 void ExcelWriteTitles(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
 {
-    ASSERT(PWSH_MAX_COLUMNS == array[0].size());
+    const std::array<std::string, PWSH_MAX_COLUMNS>& row = array[0];
+    ASSERT(PWSH_MAX_COLUMNS == row.size());
     lxw_format* title_format = CreateTitleFormat(book);
     worksheet_set_row(sheet, 0, 30, NULL);
-    for (i32 i = 0; i < array[0].size(); i++)
+    for (i32 i = 0; i < row.size(); i++)
     {
-        const auto& title = array[0][i];
+        const std::string& title = row[i];
         if (title.empty())
             continue;
         worksheet_write_string(sheet, 0, i, title.c_str(), title_format);

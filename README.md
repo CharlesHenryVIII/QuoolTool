@@ -1,4 +1,5 @@
 # Quool Tool
+### NOTE: Oldest supported windows version is Vista
 
 ### Setup 
 * clone the repo

@@ -1037,6 +1037,30 @@ void ToLower(std::string& s)
 #pragma comment(lib, "Comctl32.lib")
 #include <commctrl.h>
 #include <signal.h> // raise
+
+#if WINVER <= 0x0501
+#define SRW_LOCK_INIT(_lock) 
+#define SRW_LOCK_ACQUIRE(_lock) _lock.lock()
+#define SRW_LOCK_RELASE(_lock) _lock.unlock()
+#define SRW_LOCK std::mutex
+#define ASSERT_DIALOG(_message, _info, _button) _button = MessageBoxW(NULL,\
+                                                                   _info,\
+                                                                   _message,\
+                                                                   MB_CANCELTRYCONTINUE | MB_ICONWARNING | MB_DEFBUTTON2)
+                                                           
+#else
+#define SRW_LOCK_INIT(_lock) InitializeSRWLock(_lock)
+#define SRW_LOCK_ACQUIRE(_lock) AcquireSRWLockExclusive(&_lock)
+#define SRW_LOCK_RELASE(_lock) ReleaseSRWLockExclusive(&_lock)
+#define SRW_LOCK SRWLOCK
+#define ASSERT_DIALOG(_message, _info, _button) TaskDialog(NULL, NULL, \
+                                                           L"Assertion Failed",\
+                                                           _message,\
+                                                           _info,\
+                                                           TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_RETRY_BUTTON | TDCBF_CLOSE_BUTTON, TD_WARNING_ICON,\
+                                                           &_button)
+#endif
+
 struct AssertRecord
 {
     // Key
@@ -1050,8 +1074,8 @@ struct AssertRecord
 
 struct SRWLock
 {
-    SRWLock() { InitializeSRWLock(&lock); }
-    SRWLOCK lock;
+    SRWLock() { SRW_LOCK_INIT(&lock); }
+    SRW_LOCK lock;
 };
 
 static SRWLock s_assert_mutex;
@@ -1060,8 +1084,8 @@ void OsAssert(bool expr, const char* message, const char* file, int line)
 {
     if (!expr)
     {
-        AcquireSRWLockExclusive(&s_assert_mutex.lock);
-        Defer { ReleaseSRWLockExclusive(&s_assert_mutex.lock); };
+        SRW_LOCK_ACQUIRE(s_assert_mutex.lock);
+        Defer { SRW_LOCK_RELASE(s_assert_mutex.lock); };
 
         AssertRecord* record = nullptr;
         for (AssertRecord& it : s_assert_records)
@@ -1104,6 +1128,14 @@ void OsAssert(bool expr, const char* message, const char* file, int line)
         const char* s = record->hit_counter == 1 ? "" : "s";
         char info_buffer[1024];
         ArrayView<char> info_buffer_view = CreateArrayView(info_buffer);
+#if WINVER == 0x0501
+        sprintf_s(info_buffer_view.data, (size_t)info_buffer_view.Bytes(), "%s(%d)\n\n"
+                                                     "This has been hit %d time%s.\n\n"
+                                                     "Cancel    : Break into debugger\n"
+                                                     "Try Again : Continue execution\n"
+                                                     "Continue  : Ignore this assert in the future",
+                                                     file, line, record->hit_counter, s);
+#else
         sprintf_s(info_buffer_view.data, (size_t)info_buffer_view.Bytes(), "%s(%d)\n\n"
                                                      "This has been hit %d time%s.\n\n"
                                                      "Yes   : Break into debugger\n"
@@ -1111,6 +1143,7 @@ void OsAssert(bool expr, const char* message, const char* file, int line)
                                                      "Retry : Ignore this assert in the future\n"
                                                      "Close : Abort the program",
                                                      file, line, record->hit_counter, s);
+#endif
         WCHAR winfo[1024];
         auto winfo_view = CreateArrayView(winfo);
         winfo_view.Last() = 0;
@@ -1121,25 +1154,25 @@ void OsAssert(bool expr, const char* message, const char* file, int line)
 
 
         int button = 0;
-        TaskDialog(NULL, NULL,
-                   L"Assertion Failed",
-                   wmessage,
-                   winfo,
-                   TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_RETRY_BUTTON | TDCBF_CLOSE_BUTTON,
-                   TD_WARNING_ICON,
-                   &button);
+        ASSERT_DIALOG(wmessage, winfo, button);
+
 
         switch(button)
         {
         default:
-        case IDNO:
+        case IDTRYAGAIN: [[fallthrough]];
+        case IDNO: break;
+#if WINVER == 0x0501
+        case IDCANCEL: [[fallthrough]];
+#else
         case IDCANCEL: {
         } break;
-
+#endif
         case IDYES: {
             __debugbreak();
         } break;
 
+        case IDCONTINUE: [[fallthrough]];
         case IDRETRY: {
             if (record)
             {

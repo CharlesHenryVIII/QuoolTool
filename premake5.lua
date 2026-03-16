@@ -55,7 +55,6 @@ project "QuoolTool"
         "_CRT_SECURE_NO_WARNINGS",
         "LIBARCHIVE_STATIC",
         "IMGUI_DEFINE_MATH_OPERATORS",
-        "_WIN32_WINNT=0x0A00",
         "CURL_STATICLIB",
     }
     files {
@@ -79,7 +78,9 @@ project "QuoolTool"
         system "windows"
         defines {
         "WIN32",
-        "_GLFW_WIN32",}
+        "_GLFW_WIN32",
+        "WINVER=0x0600",
+        "_WIN32_WINNT=0x0600", }
 
         files { }
 
@@ -212,7 +213,9 @@ project "contrib"
         system "windows"
         defines {
         "WIN32",
-        "_GLFW_WIN32",}
+        "_GLFW_WIN32",
+        "WINVER=0x0600",
+        "_WIN32_WINNT=0x0600", }
 
         files {
         "contrib/glfw/src/win32*",
@@ -343,7 +346,10 @@ project "libarchive"
 
     filter "system:Windows"
         system "windows"
-        defines { "WIN32" }
+        defines {
+        "WIN32",
+        "WINVER=0x0600",
+        "_WIN32_WINNT=0x0600", }
 
 
     filter "system:Unix"
@@ -413,6 +419,13 @@ project "curl-lib"
         "contrib/curl/lib/**.c",
         "contrib/curl/lib/**.h",
     }
+
+    filter "system:Windows"
+        system "windows"
+        defines {
+        "WIN32",
+        "WINVER=0x0600",
+        "_WIN32_WINNT=0x0600", }
 
 
 	filter { "options:not zlib-src=none" }
