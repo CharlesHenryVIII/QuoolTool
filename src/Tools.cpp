@@ -247,7 +247,19 @@ void ScriptIpconfig(ScriptData& data)
             for (;i < rows.size() && rows[i] != "\r\n"; i++)
             {
                 const std::string& row = rows[i];
+#if 1
+                const size_t key_len = row.find(" .");
+                std::string key = row.substr(0, key_len);
+                StringRemoveLeading(key, ' ');
+                worksheet_write_string(sheet, i, 0, key.c_str(), data_format);
+
+                const size_t pad_end = row.find(". :");
+                const std::string name = row.substr(pad_end + 4, row.size() - (pad_end + 4) - 2);
+                worksheet_write_string(sheet, i, 1, name.c_str(), data_format);
+
+#else
                 worksheet_write_string(sheet, i, 0, row.substr(0, row.size() - 2).c_str(), data_format);
+#endif
             }
         }
     }
