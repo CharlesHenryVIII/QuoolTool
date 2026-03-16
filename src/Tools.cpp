@@ -238,7 +238,7 @@ void ScriptIpconfig(ScriptData& data)
         if (begin_row == "\r\n")
             continue;
 
-        if (begin_row.find(". :") == std::string::npos)
+        if (begin_row.find(pad_end_s) == std::string::npos)
         {
             //title
             const std::string title = begin_row.substr(0, begin_row.size() - end_len);
