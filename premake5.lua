@@ -46,8 +46,6 @@ project "QuoolTool"
         "contrib/ImGui",
         "contrib/SDL2/include",
         "contrib/tracy/public/tracy",
-        "contrib/glfw/include",
-        "contrib/curl/include",
         "contrib/libxlsxwriter/include",
         "resources",
     }
@@ -61,24 +59,16 @@ project "QuoolTool"
         "src/**",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_opengl3.*h",
-        "contrib/ImGui/backends/imgui_impl_glfw.*h",
         "contrib/json.hpp",
         "contrib/stb/**.h",
         "contrib/libarchive/*.h",
         "resources/**",
-
-        "contrib/glfw/src/internal.h",
-        "contrib/glfw/src/platform.h",
-        "contrib/glfw/src/mappings.h",
-        "contrib/glfw/src/null_platform.h",
-        "contrib/glfw/src/null_joystick.h",
     }
 
     filter "system:Windows"
         system "windows"
         defines {
         "WIN32",
-        "_GLFW_WIN32",
         "WINVER=0x0600",
         "_WIN32_WINNT=0x0600", }
 
@@ -87,9 +77,7 @@ project "QuoolTool"
     filter "system:Unix"
         system "linux"
         defines {
-        "LINUX",
-        "_GLFW_WAYLAND",
-        "_GLFW_X11",}
+        "LINUX", }
 
 
     filter "configurations:Debug"
@@ -158,7 +146,6 @@ project "contrib"
         "contrib/ImGui",
         "contrib/SDL2/include",
         "contrib/tracy/public/tracy",
-        "contrib/glfw/include",
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
         "contrib/libxlsxwriter/third_party/*",
@@ -173,28 +160,8 @@ project "contrib"
         "contrib/ImGui/*.cpp",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_opengl3.*",
-        "contrib/ImGui/backends/imgui_impl_glfw.*",
         "contrib/json.hpp",
         "contrib/stb/**",
-        "contrib/glfw/src/internal.h",
-        "contrib/glfw/src/platform.h",
-        "contrib/glfw/src/mappings.h",
-        "contrib/glfw/src/context.c",
-        "contrib/glfw/src/init.c",
-        "contrib/glfw/src/input.c",
-        "contrib/glfw/src/monitor.c",
-        "contrib/glfw/src/platform.c",
-        "contrib/glfw/src/vulkan.c",
-        "contrib/glfw/src/window.c",
-        "contrib/glfw/src/egl_context.c",
-        "contrib/glfw/src/osmesa_context.c",
-        "contrib/glfw/src/null_platform.h",
-        "contrib/glfw/src/null_joystick.h",
-        "contrib/glfw/src/null_init.c",
-        "contrib/glfw/src/null_monitor.c",
-        "contrib/glfw/src/null_window.c",
-        "contrib/glfw/src/null_joystick.c",
-        "contrib/glfw/src/wgl_context.c",
         "contrib/libxlsxwriter/src/**",
         "contrib/libxlsxwriter/third_party/minizip/*.c",
         "contrib/libxlsxwriter/third_party/minizip/*.h",
@@ -213,22 +180,15 @@ project "contrib"
         system "windows"
         defines {
         "WIN32",
-        "_GLFW_WIN32",
         "WINVER=0x0600",
         "_WIN32_WINNT=0x0600", }
-
-        files {
-        "contrib/glfw/src/win32*",
-        --"contrib/glfw/src/wlx_context.c",
-    }
 
 
     filter "system:Unix"
         system "linux"
         defines {
         "LINUX",
-        "_GLFW_WAYLAND",
-        "_GLFW_X11",}
+        }
 
 
     filter "configurations:Debug"

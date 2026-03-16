@@ -3,6 +3,8 @@
 #include <shellapi.h>
 #include <combaseapi.h>
 
+#include "ImGui/backends/imgui_impl_win32.h"
+
 #include "WinInterop.h"
 #include "WinInterop_File.h"
 #include "Math.h"
@@ -10,10 +12,7 @@
 #include "resource.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
-//#include "Windows/resource.h"
 #include "Json.hpp"
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include "glfw/glfw3native.h"
 #include "Rendering.h"
 #include "Tracy.hpp"
 
@@ -510,89 +509,86 @@ void RunProcessLogToFileJob::RunJob()
     }
 }
 
-HMODULE modh;
-HWND window_handle;
-
-void OSInit(GLFWwindow* window)
-{
-    modh = GetModuleHandle(NULL);
-    VALIDATE(modh != NULL);
-
-    window_handle = glfwGetWin32Window(window);
-    VALIDATE(window_handle);
-    for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
-    {
-        HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(icon_id), RT_RCDATA);
-        DWORD error = GetLastError();
-        VALIDATE(res);
-        HGLOBAL resh = LoadResource(nullptr, res);
-        VALIDATE(resh);
-        DWORD size = SizeofResource(nullptr, res);
-        void* data = LockResource(resh);
-        VALIDATE(data);
-
-        // ---- Decode PNG from memory ----
-        GLFWimage image{};
-        image.pixels = stbi_load_from_memory(
-            (const stbi_uc*)data,
-            size,
-            &image.width,
-            &image.height,
-            nullptr,
-            4
-        );
-        VALIDATE(image.pixels);
-
-        glfwSetWindowIcon(window, 1, &image);
-        stbi_image_free(image.pixels);
-    }
-
-    {
-        DWORD name_size = MAX_COMPUTERNAME_LENGTH + 1;
-        g_sysinfo.name.resize(name_size);
-        if (!GetComputerNameW(g_sysinfo.name.data(), &name_size))
-        {
-            DebugPrint("Failed to get Computer Name error: %i", GetLastError());
-            FAIL;
-            return;
-        }
-        g_sysinfo.name.resize(name_size);
-    }
-
-    {
-        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[1024] = {};
-        DWORD buffer_size = sizeof(info);
-        if (!GetLogicalProcessorInformation(info, &buffer_size))
-        {
-            DebugPrint("Failed to get processor information error: %i", GetLastError());
-            FAIL;
-            return;
-        }
-
-        i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
-        g_sysinfo.cores = 0;
-        g_sysinfo.threads = 0;
-
-        for (i32 i = 0; i < count; ++i)
-        {
-            if (info[i].Relationship == RelationProcessorCore)
-            {
-                g_sysinfo.cores++;
-                ULONG_PTR mask = info[i].ProcessorMask;
-                while (mask)
-                {
-                    g_sysinfo.threads += (mask & 1);
-                    mask >>= 1;
-                }
-            }
-        }
-
-        if (g_sysinfo.cores == 0 || g_sysinfo.threads == 0)
-        {
-            DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
-        }
-    }
-}
+//void OSInit(GLFWwindow* window)
+//{
+//    modh = GetModuleHandle(NULL);
+//    VALIDATE(modh != NULL);
+//
+//    window_handle = glfwGetWin32Window(window);
+//    VALIDATE(window_handle);
+//    for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
+//    {
+//        HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(icon_id), RT_RCDATA);
+//        DWORD error = GetLastError();
+//        VALIDATE(res);
+//        HGLOBAL resh = LoadResource(nullptr, res);
+//        VALIDATE(resh);
+//        DWORD size = SizeofResource(nullptr, res);
+//        void* data = LockResource(resh);
+//        VALIDATE(data);
+//
+//        // ---- Decode PNG from memory ----
+//        GLFWimage image{};
+//        image.pixels = stbi_load_from_memory(
+//            (const stbi_uc*)data,
+//            size,
+//            &image.width,
+//            &image.height,
+//            nullptr,
+//            4
+//        );
+//        VALIDATE(image.pixels);
+//
+//        glfwSetWindowIcon(window, 1, &image);
+//        stbi_image_free(image.pixels);
+//    }
+//
+//    {
+//        DWORD name_size = MAX_COMPUTERNAME_LENGTH + 1;
+//        g_sysinfo.name.resize(name_size);
+//        if (!GetComputerNameW(g_sysinfo.name.data(), &name_size))
+//        {
+//            DebugPrint("Failed to get Computer Name error: %i", GetLastError());
+//            FAIL;
+//            return;
+//        }
+//        g_sysinfo.name.resize(name_size);
+//    }
+//
+//    {
+//        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[1024] = {};
+//        DWORD buffer_size = sizeof(info);
+//        if (!GetLogicalProcessorInformation(info, &buffer_size))
+//        {
+//            DebugPrint("Failed to get processor information error: %i", GetLastError());
+//            FAIL;
+//            return;
+//        }
+//
+//        i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+//        g_sysinfo.cores = 0;
+//        g_sysinfo.threads = 0;
+//
+//        for (i32 i = 0; i < count; ++i)
+//        {
+//            if (info[i].Relationship == RelationProcessorCore)
+//            {
+//                g_sysinfo.cores++;
+//                ULONG_PTR mask = info[i].ProcessorMask;
+//                while (mask)
+//                {
+//                    g_sysinfo.threads += (mask & 1);
+//                    mask >>= 1;
+//                }
+//            }
+//        }
+//
+//        if (g_sysinfo.cores == 0 || g_sysinfo.threads == 0)
+//        {
+//            DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
+//        }
+//    }
+//}
 
 bool ConsoleAttached()
 {
@@ -603,24 +599,24 @@ bool DebuggerAttached()
     return IsDebuggerPresent();
 }
 
-class DebugStreamBuffer final : public std::streambuf
-{
-protected:
-    int overflow(int c) override
-    {
-        if (c != EOF)
-        {
-            OutputDebugStringA((char*)&c);
-        }
-        return c;
-    }
-};
-static DebugStreamBuffer g_debug_stream_buffer;
-void EnableOutputToDebugger()
-{
-    std::cerr.rdbuf(&g_debug_stream_buffer);
-    std::cout.rdbuf(&g_debug_stream_buffer);
-}
+//class DebugStreamBuffer final : public std::streambuf
+//{
+//protected:
+//    int overflow(int c) override
+//    {
+//        if (c != EOF)
+//        {
+//            OutputDebugStringA((char*)&c);
+//        }
+//        return c;
+//    }
+//};
+//static DebugStreamBuffer g_debug_stream_buffer;
+//void EnableOutputToDebugger()
+//{
+//    std::cerr.rdbuf(&g_debug_stream_buffer);
+//    std::cout.rdbuf(&g_debug_stream_buffer);
+//}
 
 void HideConsole()
 {
@@ -1001,7 +997,7 @@ void ToLower(std::string& s)
 #include <commctrl.h>
 #include <signal.h> // raise
 
-#if WINVER <= 0x0501
+#if WINVER <= _WIN32_WINNT_WINXP
 #define SRW_LOCK_INIT(_lock) 
 #define SRW_LOCK_ACQUIRE(_lock) _lock.lock()
 #define SRW_LOCK_RELASE(_lock) _lock.unlock()
@@ -1159,12 +1155,166 @@ void os_assert(bool expr, const char*, const char*, int)
 }
 #endif
 
+struct OS {
+    HMODULE hmod;
+    HWND hwnd;
+    Vec2I screen_size;
+};
+static OS s_os;
+
+LRESULT WINAPI WindowsCallback(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+        return true;
+
+    switch (msg)
+    {
+    case WM_SIZE:
+        if (wParam != SIZE_MINIMIZED)
+        {
+            g_Width = LOWORD(lParam);
+            g_Height = HIWORD(lParam);
+        }
+        return 0;
+    case WM_SYSCOMMAND:
+        if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
+            return 0;
+        break;
+    case WM_DESTROY:
+        ::PostQuitMessage(0);
+        return 0;
+    }
+    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
 int main(int argc, char** argv)
 {
     return Main(argc, argv);
 }
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR str, int val)
 {
+    ImGui_ImplWin32_EnableDpiAwareness();
+    float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
+
+    // Create application window
+
+    float normalRatio = 16.0f / 9.0f;
+    s_os.screen_size = { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
+    //float displayRatio = float(s_os.screen_size.x) / float(s_os.screen_size.y);
+    Vec2I window_size = Vec2I(1024, 600);
+
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(wc);
+    wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
+    wc.lpfnWndProc = WindowsCallback;
+    wc.hInstance = instance;
+    //wc.hIcon = 0L;
+    wc.hCursor = GetModuleHandle(nullptr);
+    //wc.hbrBackground = nullptr;
+    //wc.lpszMenuName = nullptr;
+    wc.lpszClassName = L"Quool Tool";
+    //wc.hIconSm = nullptr;
+    if (!RegisterClassExW(&wc))
+    {
+        return 1;
+    }
+    s_os.hwnd = CreateWindowExW(0,
+                                wc.lpszClassName,
+                                L"Quool Tool",
+                                WS_OVERLAPPEDWINDOW,
+                                (s_os.screen_size.x - window_size.x) / 2,
+                                (s_os.screen_size.y - window_size.y) / 2,
+                                window_size.x,
+                                window_size.y,
+                                nullptr,
+                                nullptr,
+                                wc.hInstance,
+                                nullptr);
+    if (!s_os.hwnd)
+    {
+        return 1;
+    }
+
+    
+
+//    modh = GetModuleHandle(NULL);
+//    VALIDATE(modh != NULL);
+//
+//    window_handle = glfwGetWin32Window(window);
+//    VALIDATE(window_handle);
+//    for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
+//    {
+//        HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(icon_id), RT_RCDATA);
+//        DWORD error = GetLastError();
+//        VALIDATE(res);
+//        HGLOBAL resh = LoadResource(nullptr, res);
+//        VALIDATE(resh);
+//        DWORD size = SizeofResource(nullptr, res);
+//        void* data = LockResource(resh);
+//        VALIDATE(data);
+//
+//        // ---- Decode PNG from memory ----
+//        GLFWimage image{};
+//        image.pixels = stbi_load_from_memory(
+//            (const stbi_uc*)data,
+//            size,
+//            &image.width,
+//            &image.height,
+//            nullptr,
+//            4
+//        );
+//        VALIDATE(image.pixels);
+//
+//        glfwSetWindowIcon(window, 1, &image);
+//        stbi_image_free(image.pixels);
+//    }
+//
+//    {
+//        DWORD name_size = MAX_COMPUTERNAME_LENGTH + 1;
+//        g_sysinfo.name.resize(name_size);
+//        if (!GetComputerNameW(g_sysinfo.name.data(), &name_size))
+//        {
+//            DebugPrint("Failed to get Computer Name error: %i", GetLastError());
+//            FAIL;
+//            return;
+//        }
+//        g_sysinfo.name.resize(name_size);
+//    }
+//
+//    {
+//        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[1024] = {};
+//        DWORD buffer_size = sizeof(info);
+//        if (!GetLogicalProcessorInformation(info, &buffer_size))
+//        {
+//            DebugPrint("Failed to get processor information error: %i", GetLastError());
+//            FAIL;
+//            return;
+//        }
+//
+//        i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+//        g_sysinfo.cores = 0;
+//        g_sysinfo.threads = 0;
+//
+//        for (i32 i = 0; i < count; ++i)
+//        {
+//            if (info[i].Relationship == RelationProcessorCore)
+//            {
+//                g_sysinfo.cores++;
+//                ULONG_PTR mask = info[i].ProcessorMask;
+//                while (mask)
+//                {
+//                    g_sysinfo.threads += (mask & 1);
+//                    mask >>= 1;
+//                }
+//            }
+//        }
+//
+//        if (g_sysinfo.cores == 0 || g_sysinfo.threads == 0)
+//        {
+//            DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
+//        }
+//    }
+
     return Main(-1, &str);
 }
 
