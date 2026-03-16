@@ -89,6 +89,13 @@ lxw_format* CreateTitleFormat(lxw_workbook* book)
     return format;
 }
 
+lxw_format* CreateDataFormat(lxw_workbook* book)
+{
+    lxw_format* format = workbook_add_format(book);
+    format_set_align(format, LXW_ALIGN_LEFT);
+    return format;
+}
+
 void ExcelWriteTitles(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
 {
     ASSERT(PWSH_MAX_COLUMNS == array[0].size());
@@ -106,8 +113,7 @@ void ExcelWriteTitles(lxw_workbook* book, lxw_worksheet* sheet, size_t column_wi
 
 void ExcelWriteData(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
 {
-    lxw_format* format = workbook_add_format(book);
-    format_set_align(format, LXW_ALIGN_LEFT);
+    lxw_format* format = CreateDataFormat(book);
     for (i32 row = 1; row < array.size(); row++)
     {
         for (i32 col = 0; col < array[row].size(); col++)
@@ -209,13 +215,48 @@ void ScriptCsv(ScriptData& data)
 
 void ScriptIpconfig(ScriptData& data)
 {
+    ZoneScoped;
 
+    const std::vector<std::string> rows = TextToStringArray(data.output.c_str(), "\n");
+    if (!rows.size())
+    {
+        FAIL;
+        return;
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    for (i32 i = 0; i < rows.size(); i++)
+    {
+        const std::string& begin_row = rows[i];
+        if (begin_row == "\r\n")
+            continue;
+
+        if (begin_row.find(". :") == std::string::npos)
+        {
+            //title
+            worksheet_write_string(sheet, i, 0, begin_row.substr(0, begin_row.size() - 2).c_str(), title_format);
+            worksheet_set_row(sheet, i, 30, NULL);
+        }
+        else
+        {
+            //data
+            for (;i < rows.size() && rows[i] != "\r\n"; i++)
+            {
+                const std::string& row = rows[i];
+                worksheet_write_string(sheet, i, 0, row.substr(0, row.size() - 2).c_str(), data_format);
+            }
+        }
+    }
 }
 
 
 ScriptInfo s_scripts[] = {
     { .name = "System Info",.func = ScriptCsv,          .cmdline = g_script_systeminfo_text,    },
-    { .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },//not converted
+    { .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },
     { .name = "Netstat TCP",.func = ScriptCsv,          .cmdline = g_script_netstat_tcp_text,   },
     { .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
     { .name = "Programs",   .func = ScriptCsv,          .cmdline = g_script_programs_text,      },
