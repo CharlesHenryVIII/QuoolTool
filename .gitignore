@@ -20,6 +20,7 @@ tags
 shell.bat
 settings.json
 compile_commands.json
+SystemInfo.xlsx
 
 # Prerequisites
 *.d
