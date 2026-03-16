@@ -30,7 +30,7 @@ void DebugPrint(const wchar_t* fmt, ...);
 std::string ToString(const char* fmt, ...);
 std::wstring ToString(const wchar_t* fmt, ...);
 i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess     (const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
 void OSInit(GLFWwindow* window);
 int Main(int, char**);
 bool ConsoleAttached();
@@ -42,8 +42,6 @@ bool IsConsoleVisible();
 void SysSleep(u64 ms);
 double SysGetTime();
 
-//NOTE(CSH): This is a blocking call
-bool RunProcessAndLogToFile(std::string& output, const std::wstring& path, const std::wstring& args, const std::wstring& output_file);
 void ParsePowershell(PowershellResponse& out, const std::string& in);
 void ParseSysinfo(PowershellResponse& out, const std::string& in);
 void ParseCSV(PowershellResponse& out, const std::string& in);
@@ -83,16 +81,17 @@ ImFont* LoadFontForImgui(int resource_id, float fontSize);
 
 struct RunProcessJob : Job
 {
-    std::wstring application_path;
-    std::wstring arguments;
+    std::wstring path;
+    std::wstring args;
     virtual void RunJob() override;
 };
 
 struct RunProcessLogToFileJob : Job
 {
-    std::wstring application_path;
-    std::wstring arguments;
-    std::wstring output_file;
+    std::wstring path;
+    std::wstring args;
+    std::string output;
+    AsyncData<Path> output_file;
     Atomic<bool>* completed;
     bool run_and_clear = false;
     virtual void RunJob() override;

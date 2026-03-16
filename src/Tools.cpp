@@ -31,7 +31,10 @@ struct ScriptJob : Job
     void RunJob() override
     {
         ZoneScopedN("ScriptJob");
-        bool r = RunProcessAndLogToFile(data.output, path, args, output_file);
+
+        i32 r = RunProcess(path, args, &data.output);
+        bool success = !r;
+
         if (func)
         {
             ZoneScopedN("ScriptJob func");

@@ -165,9 +165,41 @@ i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* outpu
     return 0;
 }
 
-i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mutex* output_lock, RunProcessFlags flags)
+void GetNameAndTextForJob(std::string& text, std::string& name, const std::wstring& app, const std::wstring& args)
 {
-#if 1
+    std::wstring namew;
+    std::wstring textw;
+    if (!app.size())
+    {
+       size_t p = args.find_first_of(L' ', 1);
+       namew = args.substr(0, p);
+       textw = args;
+    }
+    else
+    {
+        namew = app;
+        if (args.size())
+            textw = app + L" " + args;
+    }
+    if (namew.size())
+        ConvertWideCharToMultiByte(name, namew);
+    else
+        name.clear();
+    if (textw.size())
+        ConvertWideCharToMultiByte(text, textw);
+    else
+        text.clear();
+}
+
+i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+{
+    std::string zone_text;
+    std::string zone_name;
+    GetNameAndTextForJob(zone_text, zone_name, path, args);
+    ZoneScoped;
+    ZoneName(zone_name.c_str(), zone_name.size());
+    ZoneText(zone_text.c_str(), zone_text.size());
+
     SECURITY_ATTRIBUTES sa = {
         .nLength = sizeof(sa),
         .bInheritHandle = TRUE,
@@ -187,13 +219,13 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
     };
 
     std::wstring real_path;
-    if (path)
+    if (path.size())
         real_path = path;
     else
         real_path = L"cmd.exe /C";
 
     std::wstring cmdline = real_path;
-    if (args)
+    if (args.size())
         cmdline += real_path + L" " + args;
 
     PROCESS_INFORMATION pi = {};
@@ -221,24 +253,43 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
 
     CloseHandle(writePipe); // parent reads only
 
-    if (output && output_lock)
+    if (output)
     {
         char buffer[4096];
         DWORD bytesRead;
         while (ReadFile(readPipe, buffer, sizeof(buffer), &bytesRead, nullptr))
         {
-            std::lock_guard<Mutex> lock(*output_lock);
             output->append(buffer, bytesRead);
         }
     }
-    else if (!!output != !!output_lock)
+    if (output_file)
     {
-        std::string p;
-        ConvertWideCharToMultiByte(p, path);
-        std::string a;
-        ConvertWideCharToMultiByte(a, args);
-        DebugPrint("missing output or output_lock in run process: \"%s\" \"%s\"", p.c_str(), a.c_str());
-        FAIL;
+        if (output_file->data.empty())
+        {
+            std::string p;
+            ConvertWideCharToMultiByte(p, path);
+            std::string a;
+            ConvertWideCharToMultiByte(a, args);
+            DebugPrint("RunProcess() has output_file specified but no data: \"%s\" \"%s\"", p.c_str(), a.c_str());
+        }
+        else
+        {
+            ZoneScopedN("Output File");
+            std::fstream file(output_file->data, std::ios_base::out);
+            if (!file.good())
+            {
+                std::string of;
+                ConvertWideCharToMultiByte(of, output_file->data);
+                DebugPrint("Failed to open file for write: %s", of.c_str());
+                FAIL;
+                r = ERROR_TOO_MANY_OPEN_FILES;
+            }
+            else
+            {
+                TRACY_LOCK(output_file->lock);
+                file << output;
+            }
+        }
     }
 
     if (!(flags & RunProcess_Async))
@@ -248,30 +299,6 @@ i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mu
     CloseHandle(pi.hThread);
 
     return r;
-#else
-    //SECURITY_DESCRIPTOR security_descriptor;
-    //InitializeSecurityDescriptor(&security_descriptor, SECURITY_DESCRIPTOR_REVISION);
-    //FAIL;
-
-    //SECURITY_ATTRIBUTES security_attributes = {
-    //    .nLength = sizeof(SECURITY_ATTRIBUTES),
-    //    .lpSecurityDescriptor = &security_attributes,
-    //    .bInheritHandle = false,
-    //};
-
-    BOOL r = CreateProcess(
-    path,                   //_In_opt_ LPCWSTR lpApplicationName,
-    args,                   //_Inout_opt_ LPWSTR lpCommandLine,
-    NULL,//security_attributes,    //_In_opt_ LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    NULL,//security_attributes,    //_In_opt_ LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    false,//_In_ BOOL bInheritHandles,
-    CREATE_NO_WINDOW,//_In_ DWORD dwCreationFlags,
-    //_In_opt_ LPVOID lpEnvironment,
-    //_In_opt_ LPCWSTR lpCurrentDirectory,
-    //_In_ LPSTARTUPINFOW lpStartupInfo,
-    //_Out_ LPPROCESS_INFORMATION lpProcessInformation
-    );
-#endif
 }
 
 #define TRACY_SET_NAME_FOR_JOB(app, args)\
@@ -449,49 +476,7 @@ void ParseCSV(PowershellResponse& out, const std::string& in)
     }
 }
 
-void GetNameAndTextForJob(std::string& text, std::string& name, const std::wstring& app, const std::wstring& args)
-{
-    std::wstring namew;
-    std::wstring textw;
-    if (!app.size())
-    {
-       size_t p = args.find_first_of(L' ', 1);
-       namew = args.substr(0, p);
-       textw = args;
-    }
-    else
-    {
-        namew = app;
-        if (args.size())
-            textw = app + L" " + args;
-    }
-    if (namew.size())
-        ConvertWideCharToMultiByte(name, namew);
-    else
-        name.clear();
-    if (textw.size())
-        ConvertWideCharToMultiByte(text, textw);
-    else
-        text.clear();
-}
 void RunProcessJob::RunJob()
-{
-    std::string zone_text;
-    std::string zone_name;
-    GetNameAndTextForJob(zone_text, zone_name, application_path, arguments);
-    ZoneScoped;
-    ZoneName(zone_name.c_str(), zone_name.size());
-    ZoneText(zone_text.c_str(), zone_text.size());
-    const wchar_t* path = application_path.size()   ? application_path.c_str()  : nullptr;
-    const wchar_t* args = arguments.size()          ? arguments.c_str()         : nullptr;
-    i32 result = RunProcess(path, args);
-    if (result)
-    {
-        Threading::GetInstance().RunAndClearJobs();
-    }
-}
-
-bool RunProcessAndLogToFile(std::string& output, const std::wstring& path, const std::wstring& args, const std::wstring& output_file)
 {
     std::string zone_text;
     std::string zone_name;
@@ -499,41 +484,19 @@ bool RunProcessAndLogToFile(std::string& output, const std::wstring& path, const
     ZoneScoped;
     ZoneName(zone_name.c_str(), zone_name.size());
     ZoneText(zone_text.c_str(), zone_text.size());
-
-    const wchar_t* wpath = path.size()   ? path.c_str()  : nullptr;
-    const wchar_t* wargs = args.size()          ? args.c_str()         : nullptr;
-
-    Mutex output_lock;
-    i32 r = RunProcess(wpath, wargs, &output, &output_lock);
-    bool success = !r;
-
-    if (output_file.size())
+    const wchar_t* wpath = path.size() ? path.c_str() : nullptr;
+    const wchar_t* wargs = args.size() ? args.c_str() : nullptr;
+    i32 result = RunProcess(wpath, wargs);
+    if (result)
     {
-        ZoneScopedN("Ouput File");
-        std::fstream file(output_file, std::ios_base::out);
-        if (!file.good())
-        {
-            FAIL;
-            std::string of;
-            ConvertWideCharToMultiByte(of, output_file);
-            DebugPrint("Failed to open file for write: %s", of.c_str());
-            success = false;
-        }
-        else
-        {
-            std::lock_guard<Mutex> lock(output_lock);
-            file << output;
-        }
+        Threading::GetInstance().RunAndClearJobs();
     }
-    return success;
 }
-
 
 void RunProcessLogToFileJob::RunJob()
 {
     ZoneScopedN("RunProcessLogToFileJob");
-    std::string output;
-    bool r = RunProcessAndLogToFile(output, application_path, arguments, output_file);
+    bool r = RunProcess(path.c_str(), args.c_str(), &output, &output_file);
     if (run_and_clear && r)
     {
         ZoneScopedN("Run and Clear");
