@@ -15,7 +15,8 @@ const wchar_t* g_script_programs_text = LR"term(powershell -command "Get-ItemPro
 CSV_CONVERT_TEXT;
 
 const wchar_t* g_script_processor_text = LR"term(powershell -command "Get-CimInstance Win32_Processor | )term"
-LR"term(Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed")term";
+"Select-Object Name, NumberOfCores, NumberOfEnabledCore, NumberOfLogicalProcessors, ThreadCount, MaxClockSpeed | "
+CSV_CONVERT_TEXT;
 
 const wchar_t* g_script_systeminfo_text = LR"term(powershell -command "Get-ComputerInfo | Select * | ForEach-Object { $_.PSObject.Properties } | Select Name,Value | )term"
 CSV_CONVERT_TEXT;
