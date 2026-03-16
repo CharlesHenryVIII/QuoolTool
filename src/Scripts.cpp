@@ -17,8 +17,10 @@ CSV_CONVERT_TEXT;
 const wchar_t* g_script_processor_text = LR"term(powershell -command "Get-CimInstance Win32_Processor | )term"
 LR"term(Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed")term";
 
+const wchar_t* g_script_systeminfo_text = LR"term(powershell -command "Get-ComputerInfo | Select * | ForEach-Object { $_.PSObject.Properties } | Select Name,Value | )term"
+CSV_CONVERT_TEXT;
 
-const wchar_t* g_script_systeminfo_text = LR"term(powershell -command "$x = Get-ComputerInfo | Select *; $x.PSObject.Properties | Select Name,Value | ConvertTo-Csv -NoTypeInformation | ForEach-Object {$_ -replace '\"',''}")term";
+
 //LR"term(systeminfo)term";
 const wchar_t* g_script_ipconfig_text = LR"term(ipconfig)term";
 
