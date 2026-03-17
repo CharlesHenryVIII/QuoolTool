@@ -31,12 +31,14 @@ project "QuoolTool"
         "libarchive",
         "contrib",
         "curl-lib",
+        "SDL3-lib",
     }
 
     links {
         "libarchive",
         "contrib",
         "curl-lib",
+        "SDL3-lib",
     }
 
     --libdirs { }
@@ -47,6 +49,7 @@ project "QuoolTool"
         "contrib/SDL2/include",
         "contrib/tracy/public/tracy",
         "contrib/libxlsxwriter/include",
+        "contrib/SDL3/include",
         "resources",
     }
     defines {
@@ -58,7 +61,8 @@ project "QuoolTool"
     files {
         "src/**",
         "contrib/ImGui/*.h",
-        "contrib/ImGui/backends/imgui_impl_opengl3.*h",
+        "contrib/ImGui/backends/imgui_impl_sdl3.h",
+        "contrib/ImGui/backends/imgui_impl_sdlrenderer3.h",
         "contrib/json.hpp",
         "contrib/stb/**.h",
         "contrib/libarchive/*.h",
@@ -159,7 +163,8 @@ project "contrib"
         "contrib/tracy/public/TracyClient.cpp",
         "contrib/ImGui/*.cpp",
         "contrib/ImGui/*.h",
-        "contrib/ImGui/backends/imgui_impl_opengl3.*",
+        "contrib/ImGui/backends/imgui_impl_sdl3.h",
+        "contrib/ImGui/backends/imgui_impl_sdlrenderer3.h",
         "contrib/json.hpp",
         "contrib/stb/**",
         "contrib/libxlsxwriter/src/**",
@@ -431,3 +436,75 @@ project "curl-lib"
 		if ca then
 			defines { 'CURL_CA_BUNDLE="' .. ca .. '"', 'CURL_CA_PATH="' .. path.getdirectory(ca) .. '"' }
 		end
+
+project "SDL3-lib"
+    kind "StaticLib"
+    language "C"
+    staticruntime "On"
+
+    targetdir "build/"
+    targetname "SDL3_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
+
+    multiprocessorcompile "On"
+    enablepch "Off"
+    warnings "Off"
+
+    includedirs {
+        "contrib/SDL3/include",
+        "contrib/SDL3/src",
+    }
+
+    files {
+        "contrib/SDL3/include/**.h",
+        "contrib/SDL3/src/**.c",
+        "contrib/SDL3/src/**.h",
+    }
+
+    defines {
+        "SDL_STATIC_LIB",
+        "SDL_BUILDING_LIBRARY",
+    }
+
+    filter "system:Windows"
+        system "windows"
+
+        defines {
+            "WIN32",
+            "_WIN32_WINNT=0x0600",
+        }
+
+        links {
+            "setupapi",
+            "winmm",
+            "imm32",
+            "version",
+            "ole32",
+            "oleaut32",
+            "shell32",
+            "advapi32",
+            "user32",
+            "gdi32",
+        }
+
+        removefiles {
+            "contrib/SDL3/src/*linux*",
+            "contrib/SDL3/src/*posix*",
+            "contrib/SDL3/src/*wayland*",
+            "contrib/SDL3/src/*x11*",
+            "contrib/SDL3/src/*cocoa*",
+            "contrib/SDL3/src/*unix*",
+        }
+
+    filter "configurations:Debug"
+        symbols "Full"
+        optimize "Off"
+
+    filter "configurations:Profile"
+        runtime "Release"
+        symbols "Full"
+        optimize "Speed"
+
+    filter "configurations:Release"
+        runtime "Release"
+        optimize "Speed"

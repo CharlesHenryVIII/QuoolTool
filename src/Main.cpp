@@ -85,76 +85,10 @@ int Main(int argc, char** argv)
     HideConsole();
 #endif
 
-
-
-    glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit())
-        return 1;
-
-    // Decide GL+GLSL versions
-#if defined(IMGUI_IMPL_OPENGL_ES2)
-    // GL ES 2.0 + GLSL 100 (WebGL 1.0)
-    const char* glsl_version = "#version 100";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-#elif defined(IMGUI_IMPL_OPENGL_ES3)
-    // GL ES 3.0 + GLSL 300 es (WebGL 2.0)
-    const char* glsl_version = "#version 300 es";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-#elif defined(__APPLE__)
-    // GL 3.2 + GLSL 150
-    const char* glsl_version = "#version 150";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
-#else
-    // GL 3.0 + GLSL 130
-    const char* glsl_version = "#version 130";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
-#endif
-
-    // Create window with graphics context
-
-    const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-    float normalRatio = 16.0f / 9.0f;
-    Vec2I screen_size = { mode->width, mode->height };
-    float displayRatio = float(mode->width) / float(mode->height);
-    Vec2I window_size = {};
-#if 1
-    //window_size = Vec2I(1280, 720);
-    window_size = Vec2I(1024, 600);
-#else
-    float screen_scale = 1.5;
-    if (displayRatio < normalRatio)
+    if (!RenderInit())
     {
-        window_size.x  = i32(float(mode->width) / screen_scale);
-        window_size.y = i32(float(mode->width) / normalRatio);
-    }
-    else
-    {
-        window_size.y = i32(mode->height / screen_scale);
-        window_size.x  = i32(normalRatio * window_size.y);
-    }
-#endif
-
-    float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
-    //GLFWwindow* window = glfwCreateWindow((int)(monitor_size.x * main_scale), (int)(monitor_size.y * main_scale), "Quool Tool", nullptr, nullptr);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    gfx.window = glfwCreateWindow(window_size.x, window_size.y, "Quool Tool", nullptr, nullptr);
-    if (gfx.window == nullptr)
         return 1;
-    const Vec2I win_p = (screen_size - window_size) / 2;
-    glfwSetWindowPos(gfx.window, win_p.x, win_p.y);
-    glfwMakeContextCurrent(gfx.window);
-    glfwSwapInterval(1); // Enable vsync
-
+    }
     OSInit(gfx.window);
     Threading& threading = Threading::GetInstance();
 

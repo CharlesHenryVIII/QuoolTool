@@ -509,86 +509,66 @@ void RunProcessLogToFileJob::RunJob()
     }
 }
 
-//void OSInit(GLFWwindow* window)
-//{
-//    modh = GetModuleHandle(NULL);
-//    VALIDATE(modh != NULL);
-//
-//    window_handle = glfwGetWin32Window(window);
-//    VALIDATE(window_handle);
-//    for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
-//    {
-//        HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(icon_id), RT_RCDATA);
-//        DWORD error = GetLastError();
-//        VALIDATE(res);
-//        HGLOBAL resh = LoadResource(nullptr, res);
-//        VALIDATE(resh);
-//        DWORD size = SizeofResource(nullptr, res);
-//        void* data = LockResource(resh);
-//        VALIDATE(data);
-//
-//        // ---- Decode PNG from memory ----
-//        GLFWimage image{};
-//        image.pixels = stbi_load_from_memory(
-//            (const stbi_uc*)data,
-//            size,
-//            &image.width,
-//            &image.height,
-//            nullptr,
-//            4
-//        );
-//        VALIDATE(image.pixels);
-//
-//        glfwSetWindowIcon(window, 1, &image);
-//        stbi_image_free(image.pixels);
-//    }
-//
-//    {
-//        DWORD name_size = MAX_COMPUTERNAME_LENGTH + 1;
-//        g_sysinfo.name.resize(name_size);
-//        if (!GetComputerNameW(g_sysinfo.name.data(), &name_size))
-//        {
-//            DebugPrint("Failed to get Computer Name error: %i", GetLastError());
-//            FAIL;
-//            return;
-//        }
-//        g_sysinfo.name.resize(name_size);
-//    }
-//
-//    {
-//        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[1024] = {};
-//        DWORD buffer_size = sizeof(info);
-//        if (!GetLogicalProcessorInformation(info, &buffer_size))
-//        {
-//            DebugPrint("Failed to get processor information error: %i", GetLastError());
-//            FAIL;
-//            return;
-//        }
-//
-//        i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
-//        g_sysinfo.cores = 0;
-//        g_sysinfo.threads = 0;
-//
-//        for (i32 i = 0; i < count; ++i)
-//        {
-//            if (info[i].Relationship == RelationProcessorCore)
-//            {
-//                g_sysinfo.cores++;
-//                ULONG_PTR mask = info[i].ProcessorMask;
-//                while (mask)
-//                {
-//                    g_sysinfo.threads += (mask & 1);
-//                    mask >>= 1;
-//                }
-//            }
-//        }
-//
-//        if (g_sysinfo.cores == 0 || g_sysinfo.threads == 0)
-//        {
-//            DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
-//        }
-//    }
-//}
+void OSInit(SDL_Window* window)
+{
+    HMODULE modh = GetModuleHandle(NULL);
+    VALIDATE(modh != NULL);
+
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+    HWND hwnd = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+    if (!hwnd)
+    {
+        DebugPrint("Failed to get HWND: %s", SDL_GetError());
+        FAIL;
+        return;
+    }
+
+    {
+        DWORD name_size = MAX_COMPUTERNAME_LENGTH + 1;
+        g_sysinfo.name.resize(name_size);
+        if (!GetComputerNameW(g_sysinfo.name.data(), &name_size))
+        {
+            DebugPrint("Failed to get Computer Name error: %i", GetLastError());
+            FAIL;
+            return;
+        }
+        g_sysinfo.name.resize(name_size);
+    }
+
+    {
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[1024] = {};
+        DWORD buffer_size = sizeof(info);
+        if (!GetLogicalProcessorInformation(info, &buffer_size))
+        {
+            DebugPrint("Failed to get processor information error: %i", GetLastError());
+            FAIL;
+            return;
+        }
+
+        i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+        g_sysinfo.cores = 0;
+        g_sysinfo.threads = 0;
+
+        for (i32 i = 0; i < count; ++i)
+        {
+            if (info[i].Relationship == RelationProcessorCore)
+            {
+                g_sysinfo.cores++;
+                ULONG_PTR mask = info[i].ProcessorMask;
+                while (mask)
+                {
+                    g_sysinfo.threads += (mask & 1);
+                    mask >>= 1;
+                }
+            }
+        }
+
+        if (g_sysinfo.cores == 0 || g_sysinfo.threads == 0)
+        {
+            DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
+        }
+    }
+}
 
 bool ConsoleAttached()
 {
@@ -1477,17 +1457,24 @@ bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, st
     return true;
 }
 
+void* OsGetDataFromResource(i32* out_size, const i32 resource_id)
+{
+    HRSRC handle = FindResource(nullptr, MAKEINTRESOURCE(resource_id), RT_RCDATA);
+    DWORD error = GetLastError();
+    VALIDATE(handle);
+    HGLOBAL res = LoadResource(nullptr, handle);
+    VALIDATE(res);
+    DWORD size = SizeofResource(nullptr, handle);
+    if (out_size)
+        *out_size = (i32)size;
+    void* data = LockResource(res);
+    return data;
+}
+
 ImFont* LoadFontForImgui(int resource_id, float fontSize)
 {
-    HRSRC r = FindResource( nullptr, MAKEINTRESOURCE(resource_id), RT_RCDATA);
-    if (!r)
-        return nullptr;
-
-    HGLOBAL handle = LoadResource(nullptr, r);
-    if (!handle)
-        return nullptr;
-    DWORD size = SizeofResource(nullptr, r);
-    void* data = LockResource(handle);
+    i32 size;
+    void* data = OsGetDataFromResource(&size, resource_id)
     if (!data || size == 0)
         return nullptr;
 
@@ -1503,3 +1490,4 @@ ImFont* LoadFontForImgui(int resource_id, float fontSize)
         return nullptr;
     return font;
 }
+

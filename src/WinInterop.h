@@ -31,7 +31,7 @@ std::string ToString(const char* fmt, ...);
 std::wstring ToString(const wchar_t* fmt, ...);
 i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
 i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-void OSInit(GLFWwindow* window);
+void OSInit(SDL_Window* window);
 int Main(int, char**);
 bool ConsoleAttached();
 bool DebuggerAttached();
@@ -78,6 +78,7 @@ void ToLower(std::string& s);
 void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root, std::atomic<u64>& progress/*, ArrayView<std::wstring> ext_to_exclude*/);
 bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, std::vector<std::string>& filenames);
 ImFont* LoadFontForImgui(int resource_id, float fontSize);
+void* OsGetDataFromResource(i32* out_size, const i32 resource_id);
 
 struct RunProcessJob : Job
 {
