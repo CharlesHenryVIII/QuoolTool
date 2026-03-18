@@ -3,8 +3,6 @@
 #include <shellapi.h>
 #include <combaseapi.h>
 
-#include "ImGui/backends/imgui_impl_win32.h"
-
 #include "WinInterop.h"
 #include "WinInterop_File.h"
 #include "Math.h"
@@ -15,6 +13,12 @@
 #include "Json.hpp"
 #include "Rendering.h"
 #include "Tracy.hpp"
+
+#include "SDL3/SDL.h"
+//#include "SDL3/SDL_events.h"
+#include "ImguiHelper.h"
+#include "ImGui/backends/imgui_impl_sdl3.h"
+#include "ImGui/backends/imgui_impl_sdlrenderer3.h"
 
 #include <fstream>
 #include <filesystem>
@@ -509,18 +513,24 @@ void RunProcessLogToFileJob::RunJob()
     }
 }
 
-void OSInit(SDL_Window* window)
+void* OSGetWindowHandle(SDL_Window* window)
 {
-    HMODULE modh = GetModuleHandle(NULL);
-    VALIDATE(modh != NULL);
-
     SDL_PropertiesID props = SDL_GetWindowProperties(window);
-    HWND hwnd = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+    HWND hwnd = (HWND)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+    return hwnd;
+}
+
+bool OSInit(SDL_Window* window)
+{
+    //HMODULE modh = GetModuleHandle(NULL);
+    //VALIDATE_V(modh != NULL, false);
+
+    HWND hwnd = (HWND)OSGetWindowHandle(window);
     if (!hwnd)
     {
         DebugPrint("Failed to get HWND: %s", SDL_GetError());
         FAIL;
-        return;
+        return false;
     }
 
     {
@@ -530,7 +540,7 @@ void OSInit(SDL_Window* window)
         {
             DebugPrint("Failed to get Computer Name error: %i", GetLastError());
             FAIL;
-            return;
+            return false;
         }
         g_sysinfo.name.resize(name_size);
     }
@@ -542,7 +552,7 @@ void OSInit(SDL_Window* window)
         {
             DebugPrint("Failed to get processor information error: %i", GetLastError());
             FAIL;
-            return;
+            return false;
         }
 
         i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
@@ -567,6 +577,135 @@ void OSInit(SDL_Window* window)
         {
             DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
         }
+    }
+    return true;
+}
+
+void OSDestroy(SDL_Window* window)
+{
+    SDL_DestroyWindow(window);
+}
+
+void SysProcessEvents()
+{
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    ZoneScopedN("Poll Events");
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
+    {
+        ImguiProcessEvent(&event);
+        if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(gfx.window))
+            g_running = true;
+
+        switch (event.type)
+        {
+        case SDL_EVENT_QUIT:
+            g_running = false;
+            break;
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            g_running = !(event.window.windowID == SDL_GetWindowID(gfx.window));
+            break;
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+            g_sysinfo.keys[event.key.key].down = (event.type == SDL_EVENT_KEY_DOWN);
+            break;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            g_sysinfo.keys[event.button.button].down = event.button.down;
+            break;
+        case SDL_EVENT_MOUSE_MOTION:
+        {
+            ZoneScopedN("SDL_MOUSEMOTION");
+            Vec2 delta;
+            delta.x = ((event.motion.x) - g_sysinfo.mouse.p.x);
+            delta.y = ((event.motion.y) - g_sysinfo.mouse.p.y);
+
+            g_sysinfo.mouse.delta_p += delta;
+            g_sysinfo.mouse.p.x = event.motion.x;
+            g_sysinfo.mouse.p.y = event.motion.y;
+            break;
+        }
+        case SDL_EVENT_MOUSE_WHEEL:
+        {
+            g_sysinfo.mouse.wheel_instant.x = g_sysinfo.mouse.wheel.x = event.wheel.x;
+            g_sysinfo.mouse.wheel_instant.y = g_sysinfo.mouse.wheel.y = event.wheel.y;
+            break;
+        }
+        case SDL_EVENT_WINDOW_RESIZED:
+        {
+            gfx.window_size.x = event.window.data1;
+            gfx.window_size.y = event.window.data2;
+            break;
+        }
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        {
+            g_sysinfo.has_attention = true;
+            //g_sysinfo.mouse.delta_p = {};
+            //SDL_GetMouseState(&g_sysinfo.mouse.p.x, &g_sysinfo.mouse.p.y);
+            //g_sysinfo.mouse.p.y = g_settings.graphics.resolution.y - g_sysinfo.mouse.p.y;
+            //SetFocus(g_renderer.SDL_Context);
+            break;
+        }
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+        {
+            g_sysinfo.has_attention = false;
+            break;
+        }
+        //case SDL_EVENT_DROP_FILE:
+        //case SDL_EVENT_DROP_TEXT:
+        //case SDL_EVENT_DROP_BEGIN:
+        //case SDL_EVENT_DROP_COMPLETE:
+        //case SDL_EVENT_DROP_POSITION:
+        //{
+        //    if (event.drop.file)
+        //    {
+        //    }
+        //    break;
+        //}
+        }
+    }
+
+    for (auto& key : g_sysinfo.keys)
+    {
+        if (key.second.down)
+        {
+            key.second.upThisFrame = false;
+            if (key.second.downPrevFrame)
+            {
+                key.second.downThisFrame = false;
+            }
+            else
+            {
+                key.second.downThisFrame = true;
+            }
+        }
+        else
+        {
+            key.second.downThisFrame = false;
+            if (key.second.downPrevFrame)
+            {
+                key.second.upThisFrame = true;
+            }
+            else
+            {
+                key.second.upThisFrame = false;
+            }
+        }
+        key.second.downPrevFrame = key.second.down;
+    }
+
+    if (g_sysinfo.mouse.wheel_modified_last_frame)
+    {
+        g_sysinfo.mouse.wheel_instant.y = 0;
+        g_sysinfo.mouse.wheel_modified_last_frame = false;
+    }
+    else if (g_sysinfo.mouse.wheel_instant.y)
+    {
+        g_sysinfo.mouse.wheel_modified_last_frame = true;
     }
 }
 
@@ -620,7 +759,14 @@ void SysSleep(u64 _ms)
 
 double SysGetTime()
 {
-    return glfwGetTime();
+    const static double freq = double(SDL_GetPerformanceFrequency()); //HZ
+    double time = SDL_GetPerformanceCounter() / freq;
+    return time;
+}
+float SysMonitorScale()
+{
+    const static float scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+    return scale;
 }
 
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
@@ -693,7 +839,7 @@ void ShowErrorWindow(const std::wstring& title, const std::wstring& text)
     switch (msgboxID)
     {
     case IDABORT:
-        glfwSetWindowShouldClose(gfx.window, GLFW_TRUE);
+        g_running = false;
         break;
     case IDRETRY:
         break;
@@ -730,11 +876,10 @@ void ShowErrorWindow(const std::wstring& title, const std::wstring& text)
     }
 #endif
 }
-
-void NotifyWindowBuildFinished()
+void SysFlashWindow(SDL_Window* window)
 {
     FLASHWINFO info = {};
-    info.hwnd = window_handle;
+    info.hwnd = (HWND)OSGetWindowHandle(window);
     info.dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG;
     info.uCount;
     info.dwTimeout;
@@ -851,7 +996,7 @@ bool GetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir)
     dir.resize(MAX_PATH);
     int imageIndex = 0;
     BROWSEINFO info = {
-        .hwndOwner = window_handle,
+        .hwndOwner = (HWND)OSGetWindowHandle(gfx.window),
         .pidlRoot = NULL,
         .pszDisplayName = NULL,//dir.data(),
         .lpszTitle = L"Select Config Directory",
@@ -1142,30 +1287,6 @@ struct OS {
 };
 static OS s_os;
 
-LRESULT WINAPI WindowsCallback(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-        return true;
-
-    switch (msg)
-    {
-    case WM_SIZE:
-        if (wParam != SIZE_MINIMIZED)
-        {
-            g_Width = LOWORD(lParam);
-            g_Height = HIWORD(lParam);
-        }
-        return 0;
-    case WM_SYSCOMMAND:
-        if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
-            return 0;
-        break;
-    case WM_DESTROY:
-        ::PostQuitMessage(0);
-        return 0;
-    }
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
-}
 
 int main(int argc, char** argv)
 {
@@ -1173,128 +1294,6 @@ int main(int argc, char** argv)
 }
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR str, int val)
 {
-    ImGui_ImplWin32_EnableDpiAwareness();
-    float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
-
-    // Create application window
-
-    float normalRatio = 16.0f / 9.0f;
-    s_os.screen_size = { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
-    //float displayRatio = float(s_os.screen_size.x) / float(s_os.screen_size.y);
-    Vec2I window_size = Vec2I(1024, 600);
-
-    WNDCLASSEXW wc = {};
-    wc.cbSize = sizeof(wc);
-    wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = WindowsCallback;
-    wc.hInstance = instance;
-    //wc.hIcon = 0L;
-    wc.hCursor = GetModuleHandle(nullptr);
-    //wc.hbrBackground = nullptr;
-    //wc.lpszMenuName = nullptr;
-    wc.lpszClassName = L"Quool Tool";
-    //wc.hIconSm = nullptr;
-    if (!RegisterClassExW(&wc))
-    {
-        return 1;
-    }
-    s_os.hwnd = CreateWindowExW(0,
-                                wc.lpszClassName,
-                                L"Quool Tool",
-                                WS_OVERLAPPEDWINDOW,
-                                (s_os.screen_size.x - window_size.x) / 2,
-                                (s_os.screen_size.y - window_size.y) / 2,
-                                window_size.x,
-                                window_size.y,
-                                nullptr,
-                                nullptr,
-                                wc.hInstance,
-                                nullptr);
-    if (!s_os.hwnd)
-    {
-        return 1;
-    }
-
-    
-
-//    modh = GetModuleHandle(NULL);
-//    VALIDATE(modh != NULL);
-//
-//    window_handle = glfwGetWin32Window(window);
-//    VALIDATE(window_handle);
-//    for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
-//    {
-//        HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(icon_id), RT_RCDATA);
-//        DWORD error = GetLastError();
-//        VALIDATE(res);
-//        HGLOBAL resh = LoadResource(nullptr, res);
-//        VALIDATE(resh);
-//        DWORD size = SizeofResource(nullptr, res);
-//        void* data = LockResource(resh);
-//        VALIDATE(data);
-//
-//        // ---- Decode PNG from memory ----
-//        GLFWimage image{};
-//        image.pixels = stbi_load_from_memory(
-//            (const stbi_uc*)data,
-//            size,
-//            &image.width,
-//            &image.height,
-//            nullptr,
-//            4
-//        );
-//        VALIDATE(image.pixels);
-//
-//        glfwSetWindowIcon(window, 1, &image);
-//        stbi_image_free(image.pixels);
-//    }
-//
-//    {
-//        DWORD name_size = MAX_COMPUTERNAME_LENGTH + 1;
-//        g_sysinfo.name.resize(name_size);
-//        if (!GetComputerNameW(g_sysinfo.name.data(), &name_size))
-//        {
-//            DebugPrint("Failed to get Computer Name error: %i", GetLastError());
-//            FAIL;
-//            return;
-//        }
-//        g_sysinfo.name.resize(name_size);
-//    }
-//
-//    {
-//        SYSTEM_LOGICAL_PROCESSOR_INFORMATION info[1024] = {};
-//        DWORD buffer_size = sizeof(info);
-//        if (!GetLogicalProcessorInformation(info, &buffer_size))
-//        {
-//            DebugPrint("Failed to get processor information error: %i", GetLastError());
-//            FAIL;
-//            return;
-//        }
-//
-//        i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
-//        g_sysinfo.cores = 0;
-//        g_sysinfo.threads = 0;
-//
-//        for (i32 i = 0; i < count; ++i)
-//        {
-//            if (info[i].Relationship == RelationProcessorCore)
-//            {
-//                g_sysinfo.cores++;
-//                ULONG_PTR mask = info[i].ProcessorMask;
-//                while (mask)
-//                {
-//                    g_sysinfo.threads += (mask & 1);
-//                    mask >>= 1;
-//                }
-//            }
-//        }
-//
-//        if (g_sysinfo.cores == 0 || g_sysinfo.threads == 0)
-//        {
-//            DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
-//        }
-//    }
-
     return Main(-1, &str);
 }
 
@@ -1461,9 +1460,9 @@ void* OsGetDataFromResource(i32* out_size, const i32 resource_id)
 {
     HRSRC handle = FindResource(nullptr, MAKEINTRESOURCE(resource_id), RT_RCDATA);
     DWORD error = GetLastError();
-    VALIDATE(handle);
+    VALIDATE_V(handle, nullptr);
     HGLOBAL res = LoadResource(nullptr, handle);
-    VALIDATE(res);
+    VALIDATE_V(res, nullptr);
     DWORD size = SizeofResource(nullptr, handle);
     if (out_size)
         *out_size = (i32)size;
@@ -1474,7 +1473,7 @@ void* OsGetDataFromResource(i32* out_size, const i32 resource_id)
 ImFont* LoadFontForImgui(int resource_id, float fontSize)
 {
     i32 size;
-    void* data = OsGetDataFromResource(&size, resource_id)
+    void* data = OsGetDataFromResource(&size, resource_id);
     if (!data || size == 0)
         return nullptr;
 

@@ -4,6 +4,12 @@
 #include "Settings.h"
 
 struct CitectData;
+bool ImguiInit();
+void ImguiDestroy();
+union SDL_Event;
+void ImguiProcessEvent(const SDL_Event* event);
+void ImguiNewFrame();
+
 void ImguiMain(AppData& data);
 void TextCentered(std::string text);
 bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& out_path, const bool add_final_slash);

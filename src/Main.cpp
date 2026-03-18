@@ -89,34 +89,15 @@ int Main(int argc, char** argv)
     {
         return 1;
     }
-    OSInit(gfx.window);
+    if (!OSInit(gfx.window))
+    {
+        DebugPrint("Error: OSInit() failed");
+    }
     Threading& threading = Threading::GetInstance();
-
     NetworkingInit();
-
-    // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    io.IniFilename = NULL;
-
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-
-    // Setup scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
-    style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
-
-    // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(gfx.window, true);
-#ifdef __EMSCRIPTEN__
-    ImGui_ImplGlfw_InstallEmscriptenCallbacks(gfx.window, "#canvas");
-#endif
-    ImGui_ImplOpenGL3_Init(glsl_version);
-
+    ImguiInit();
     ThemesInit();
     ThemeSetColor(g_data.settings.color);
     ThemeSetStyle(g_data.settings.style);
@@ -171,51 +152,18 @@ int Main(int argc, char** argv)
 
     AppData app_data;
 
-    glfwShowWindow(gfx.window);
-    bool done = false;
-    while (!(done || glfwWindowShouldClose(gfx.window)))
+    while (!g_running)
     {
         {
             ZoneScopedN("Frame Update:");
-            // Poll and handle events (inputs, window resize, etc.)
-            // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-            // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-            // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-            // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-            {
-                ZoneScopedN("Poll Events");
-                glfwPollEvents();
-            }
-
-            //if (glfwGetWindowAttrib(gfx.window, GLFW_ICONIFIED) != 0)
-            //{
-            //    ImGui_ImplGlfw_Sleep(10);
-            //    continue;
-            //}
+            SysProcessEvents();
 
 #if _DEBUG
-            if (glfwGetKey(gfx.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            {
-                done = true;
-            }
+            if (g_sysinfo.keys[SDLK_ESCAPE].downThisFrame)
+                g_running = false;
 #endif
 
-            {
-                ZoneScopedN("ImGui Create New Frame");
-                // Start the Dear ImGui frame
-                {
-                    ZoneScopedN("ImGui OpenGL3 New Frame");
-                    ImGui_ImplOpenGL3_NewFrame();
-                }
-                {
-                    ZoneScopedN("ImGui ImplGlfw New Frame");
-                    ImGui_ImplGlfw_NewFrame();
-                }
-                {
-                    ZoneScopedN("ImGui New Frame");
-                    ImGui::NewFrame();
-                }
-            }
+            ImguiNewFrame();
 
             {
                 ZoneScopedN("Main Imgui");
@@ -229,20 +177,10 @@ int Main(int argc, char** argv)
                     ZoneScopedN("ImGui Render");
                     ImGui::Render();
                 }
-                glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-                glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-                glClear(GL_COLOR_BUFFER_BIT);
-                {
-                    ZoneScopedN("RenderDrawData");
-                    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-                }
+                RenderPresent();
             }
         }
 
-        {
-            ZoneScopedN("Frame End");
-            glfwSwapBuffers(gfx.window);
-        }
         FrameMark;
     }
 #ifdef __EMSCRIPTEN__
@@ -250,12 +188,10 @@ int Main(int argc, char** argv)
 #endif
 
     // Cleanup
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    glfwDestroyWindow(gfx.window);
-    glfwTerminate();
+    ImguiDestroy();
+    RenderDestroy();
+    OSDestroy(gfx.window);
+    SDL_Quit();
 
     return 0;
 }

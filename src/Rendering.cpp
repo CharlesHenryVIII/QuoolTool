@@ -5,6 +5,8 @@
 
 //#define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
+#include "ImGui/backends/imgui_impl_sdl3.h"
+#include "ImGui/backends/imgui_impl_sdlrenderer3.h"
 
 Renderer gfx;
 
@@ -16,10 +18,11 @@ bool RenderInit()
         float normalRatio = 16.0f / 9.0f;
         SDL_Rect screen_size = {};
         SDL_GetDisplayBounds(0, &screen_size);
-        Vec2I screen_size = { screen_size.w, screen_size.h };
+        gfx.screen_size = { screen_size.w, screen_size.h };
 #if 1
         //gfx.window_size = { 1280, 720 };
         gfx.window_size = { 1024, 600 };
+        gfx.window_size = gfx.window_size * SysMonitorScale();
 #else
         float screen_scale = 1.5;
         if (displayRatio < normalRatio)
@@ -45,6 +48,15 @@ bool RenderInit()
         return false;
     }
 
+    gfx.context = SDL_CreateRenderer(gfx.window, nullptr);
+    SDL_SetRenderVSync(gfx.context, 1);
+    if (!gfx.context)
+    {
+        DebugPrint("Error: SDL_CreateRenderer(): %s\n", SDL_GetError());
+        return false;
+    }
+    SDL_SetWindowPosition(gfx.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+
     SDL_Surface* icons;
     std::vector<void*> pixels_to_free;
     std::vector<SDL_Surface*> surfaces_to_free;
@@ -69,7 +81,12 @@ bool RenderInit()
             nullptr,
             4
         );
-        VALIDATE(pixels);
+        if (!pixels)
+        {
+            DebugPrint("Warning: Failed to get pixels from memory icon_id: %i", icon_id);
+            FAIL;
+            continue;
+        }
 
 
         if (!icon_id)
@@ -95,10 +112,22 @@ bool RenderInit()
 
 
     SDL_ShowWindow(gfx.window);
+    return true;
+}
+
+void RenderPresent()
+{
+    ZoneScoped;
+    static const ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    SDL_SetRenderScale(gfx.context, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    SDL_SetRenderDrawColorFloat(gfx.context, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    SDL_RenderClear(gfx.context);
+    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), gfx.context);
+    SDL_RenderPresent(gfx.context);
 }
 
 void RenderDestroy()
 {
-    SDL_DestroyWindow(gfx.window);
+    SDL_DestroyRenderer(gfx.context);
 }
-

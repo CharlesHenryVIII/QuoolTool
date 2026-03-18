@@ -12,6 +12,11 @@
 #include "Tools.h"
 #include "Version.h"
 #include "Networking.h"
+#include "Rendering.h"
+
+#include "SDL3/SDL.h"
+#include "ImGui/backends/imgui_impl_sdl3.h"
+#include "ImGui/backends/imgui_impl_sdlrenderer3.h"
 
 #include <stdio.h>
 #include <string>
@@ -21,6 +26,60 @@
 
 const wchar_t* g_settings_filename = L"settings.json";
 bool s_show_demo_window = false;
+
+bool ImguiInit()
+{
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.IniFilename = NULL;
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    // Setup scaling
+    float main_scale = SysMonitorScale();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
+    style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplSDL3_InitForSDLRenderer(gfx.window, gfx.context);
+    ImGui_ImplSDLRenderer3_Init(gfx.context);
+    return true;
+}
+
+void ImguiDestroy()
+{
+    ImGui_ImplSDLRenderer3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void ImguiProcessEvent(const SDL_Event* event)
+{
+    ImGui_ImplSDL3_ProcessEvent(event);
+}
+
+void ImguiNewFrame()
+{
+    ZoneScoped;
+    {
+        ZoneScopedN("ImGui SDL Renderer3 New Frame");
+        ImGui_ImplSDLRenderer3_NewFrame();
+    }
+    {
+        ZoneScopedN("ImGui SDL3 New Frame");
+        ImGui_ImplSDL3_NewFrame();
+    }
+    {
+        ZoneScopedN("ImGui New Frame");
+        ImGui::NewFrame();
+    }
+}
 
 void ImguiText(const std::wstring& ws)
 {

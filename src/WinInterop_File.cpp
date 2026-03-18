@@ -1,8 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-#include "glfw/glfw3.h"
-
 #include "WinInterop_File.h"
 #include "WinInterop.h"
 
