@@ -95,9 +95,9 @@ int Main(int argc, char** argv)
     }
     Threading& threading = Threading::GetInstance();
     NetworkingInit();
+    ImguiInit();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
-    ImguiInit();
     ThemesInit();
     ThemeSetColor(g_data.settings.color);
     ThemeSetStyle(g_data.settings.style);

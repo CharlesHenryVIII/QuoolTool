@@ -41,20 +41,19 @@ bool RenderInit()
 
     u32 window_flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     gfx.window = SDL_CreateWindow("Quool Tool", gfx.window_size.x, gfx.window_size.y, window_flags);
-    
     if (!gfx.window)
     {
         DebugPrint("Failed to create window");
         return false;
     }
-
     gfx.context = SDL_CreateRenderer(gfx.window, nullptr);
-    SDL_SetRenderVSync(gfx.context, 1);
     if (!gfx.context)
     {
         DebugPrint("Error: SDL_CreateRenderer(): %s\n", SDL_GetError());
         return false;
     }
+
+    SDL_SetRenderVSync(gfx.context, 1);
     SDL_SetWindowPosition(gfx.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
     SDL_Surface* icons;
@@ -89,7 +88,7 @@ bool RenderInit()
         }
 
 
-        if (!icon_id)
+        if (icon_id == IDB_PNGFULL)
         {
             icons = SDL_CreateSurfaceFrom(image_size.x, image_size.y, SDL_PIXELFORMAT_RGBA8888, pixels, sizeof(u32) * image_size.x);
         }
