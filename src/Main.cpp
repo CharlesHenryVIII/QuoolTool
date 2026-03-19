@@ -180,6 +180,7 @@ int Main(int argc, char** argv)
 #endif
 
     // Cleanup
+    (Threading::GetInstance()).ForceQuit();
     ImguiDestroy();
     RenderDestroy();
     OSDestroy(gfx.window);
