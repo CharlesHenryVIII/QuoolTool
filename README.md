@@ -1,5 +1,6 @@
 # Quool Tool
-### NOTE: Oldest supported windows version is Vista
+### NOTE: The current oldest tested working windows version is windows 11
+* Current target: windows 8
 
 ### Setup 
 * clone the repo

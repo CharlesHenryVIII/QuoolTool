@@ -8,8 +8,8 @@ require "ecc/ecc"
 --local windows_version = "0x0600" -- Windows Vista
 --local windows_version = "0x0600" -- Windows Server 2008
 --local windows_version = "0x0600" -- Windows Vista
-local windows_version = "0x0601" -- Windows 7
---local windows_version = "0x0602" -- Windows 8
+--local windows_version = "0x0601" -- Windows 7
+local windows_version = "0x0602" -- Windows 8
 --local windows_version = "0x0603" -- Windows 8.1
 --local windows_version = "0x0A00" -- Windows 10
 --local windows_version = "0x0A00" -- Windows 10
@@ -24,7 +24,7 @@ workspace "QuoolTool"
     configurations { "Debug", "Profile", "Release" }
     platforms { "x64" }
     --platforms { "x64", "Win32" }
-    staticruntime "Off"
+    staticruntime "on"
     runtime "Debug"
     startproject "QuoolTool"
     --toolset "v141_xp"
@@ -61,8 +61,6 @@ project "QuoolTool"
         "curl-lib",
         "SDL3-lib",
     }
-
-    --libdirs { }
 
     includedirs {
         "contrib",
@@ -149,7 +147,6 @@ project "contrib"
     fatalwarnings { "All" }
 
     links {
-        "OpenGL32",
         "libarchive",
         "curl-lib",
         "zlib",
@@ -176,6 +173,7 @@ project "contrib"
     defines {
         "_CRT_SECURE_NO_WARNINGS",
         "USE_STATIC_MSVC_RUNTIME",
+        "IOWIN32_USING_WINRT_API=0",
     }
     files {
         "contrib/tracy/public/TracyClient.cpp",
@@ -285,26 +283,23 @@ project "libarchive"
         "contrib/libarchive/contrib/**",
         "contrib/libarchive_dep/openssl",
         "contrib/libarchive_dep/lzma",
-        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static",
+        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static", --static
+        --"contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}", --dynamic
     }
 
     includedirs {
-        --"contrib/libarchive/contrib/**",
-        --"contrib/libarchive/libarchive/**",
         "contrib/libarchive",
         "contrib/libarchive/libarchive",
         "contrib/libarchive/contrib",
         "contrib/libarchive_dep/",
     }
     defines {
-        --"_CRT_SECURE_NO_WARNINGS",
         "LIBARCHIVE_STATIC",
         "LIB_DLL",
         "USE_BZIP2_DLL",
         "HAVE_CONFIG_H",
         "_CRT_SECURE_NO_DEPRECATE",
         "ARCHIVE_STATIC",
-        --"PLATFORM_CONFIG_H=<contrib/libarchive/libarchive/config.h>"
         "PLATFORM_CONFIG_H=<config.h>",
         "NODEFAULTLIB",
         "__LIBARCHIVE_BUILD",
@@ -312,14 +307,11 @@ project "libarchive"
     files {
         "contrib/libarchive/libarchive/**",
         "contrib/libarchive/libarchive/config.h",
-        --"contrib/libarchive_dep/**",
         "contrib/libarchive_dep/openssl/**",
         "contrib/libarchive_dep/lzma/**",
-        --"contrib/libarchive_dep/lib/**",
         "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static/**",
     }
     removefiles {
-        --"contrib/libarchive/contrib/**",
         "contrib/libarchive/libarchive/*_posix.c",
         "contrib/libarchive/libarchive/filter_fork_posix.c",
 
@@ -473,7 +465,7 @@ project "SDL3-lib"
         "contrib/SDL3/src",
     }
     defines {
-        --"DSDL_FORCE_STATIC_VCRT=ON",
+        "DSDL_FORCE_STATIC_VCRT=ON",
     }
 
     filter "system:Windows"
@@ -592,7 +584,6 @@ project "SDL3-lib"
             "SDL_DISABLE_X11",
             "SDL_DISABLE_WAYLAND",
         }
-
 
         removefiles {
             "contrib/SDL3/src/*linux*",
