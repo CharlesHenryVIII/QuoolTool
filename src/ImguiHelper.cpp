@@ -220,6 +220,7 @@ bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path)
 
 void ImguiMain(AppData& data)
 {
+    ZoneScoped;
     Threading& threading = Threading::GetInstance();
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport();

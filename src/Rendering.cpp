@@ -88,13 +88,14 @@ bool RenderInit()
         }
 
 
+        //NOTE(CSH): Not sure why the pixels are inverted should be loaded as RGBA8888 but SDL_CreateSurface is seeing them as BGRA8888
         if (icon_id == IDB_PNGFULL)
         {
-            icons = SDL_CreateSurfaceFrom(image_size.x, image_size.y, SDL_PIXELFORMAT_RGBA8888, pixels, sizeof(u32) * image_size.x);
+            icons = SDL_CreateSurfaceFrom(image_size.x, image_size.y, SDL_PIXELFORMAT_BGRA8888, pixels, sizeof(u32) * image_size.x);
         }
         else
         {
-            SDL_Surface* icon = SDL_CreateSurfaceFrom(image_size.x, image_size.y, SDL_PIXELFORMAT_RGBA8888, pixels, sizeof(u32) * image_size.x);
+            SDL_Surface* icon = SDL_CreateSurfaceFrom(image_size.x, image_size.y, SDL_PIXELFORMAT_BGRA8888, pixels, sizeof(u32) * image_size.x);
             SDL_AddSurfaceAlternateImage(icons, icon);
             surfaces_to_free.push_back(icon);
         }

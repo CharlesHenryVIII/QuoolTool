@@ -439,8 +439,6 @@ project "curl-lib"
 project "SDL3-lib"
     kind "StaticLib"
     language "C"
-    --language "C++"
-    --cppdialect "C++17"
     staticruntime "On"
 
     targetdir "build/"
@@ -462,7 +460,9 @@ project "SDL3-lib"
 
         defines {
             "WIN32",
-            "_WIN32_WINNT=0x0600",
+            "DSDL_FORCE_STATIC_VCRT=ON",
+            "WINVER=0x0601",
+            "_WIN32_WINNT=0x0601",
         }
 
         links {

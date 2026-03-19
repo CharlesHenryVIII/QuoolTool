@@ -139,6 +139,7 @@ int Main(int argc, char** argv)
     bool keepProcessWindowAlive = true;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     u64 frameStartTicks = 0;
+    AppData app_data;
 
     // Main loop
 #ifdef __EMSCRIPTEN__
@@ -147,12 +148,8 @@ int Main(int argc, char** argv)
     io.IniFilename = nullptr;
     EMSCRIPTEN_MAINLOOP_BEGIN
 #else
-    //while (!glfwWindowShouldClose(gfx.window))
+    while (g_running)
 #endif
-
-    AppData app_data;
-
-    while (!g_running)
     {
         {
             ZoneScopedN("Frame Update:");
@@ -164,12 +161,7 @@ int Main(int argc, char** argv)
 #endif
 
             ImguiNewFrame();
-
-            {
-                ZoneScopedN("Main Imgui");
-                ImguiMain(app_data);
-            }
-
+            ImguiMain(app_data);
 
             {
                 ZoneScopedN("ImGui Render");
