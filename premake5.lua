@@ -1,12 +1,33 @@
 require "ecc/ecc"
 
+--local windows_version = "0x0400" -- Windows NT 4.0
+--local windows_version = "0x0500" -- Windows 2000
+--local windows_version = "0x0501" -- Windows XP
+--local windows_version = "0x0502" -- Windows Server 2003
+--local windows_version = "0x0600" -- Windows Vista
+--local windows_version = "0x0600" -- Windows Vista
+--local windows_version = "0x0600" -- Windows Server 2008
+--local windows_version = "0x0600" -- Windows Vista
+local windows_version = "0x0601" -- Windows 7
+--local windows_version = "0x0602" -- Windows 8
+--local windows_version = "0x0603" -- Windows 8.1
+--local windows_version = "0x0A00" -- Windows 10
+--local windows_version = "0x0A00" -- Windows 10
+
+local windows_defines = {
+    "WIN32",
+    "WINVER=" .. windows_version,
+    "_WIN32_WINNT=" .. windows_version,
+}
+
 workspace "QuoolTool"
     configurations { "Debug", "Profile", "Release" }
     platforms { "x64" }
     --platforms { "x64", "Win32" }
-    staticruntime "On"
+    staticruntime "Off"
     runtime "Debug"
     startproject "QuoolTool"
+    --toolset "v141_xp"
 
 project "QuoolTool"
     kind "WindowedApp"
@@ -72,9 +93,8 @@ project "QuoolTool"
     filter "system:Windows"
         system "windows"
         defines {
-        "WIN32",
-        "WINVER=0x0601",
-        "_WIN32_WINNT=0x0601", }
+            windows_defines,
+        }
 
         files { }
 
@@ -116,7 +136,6 @@ project "QuoolTool"
 project "contrib"
     kind "StaticLib"
     language "C++"
-    staticruntime "On"
     --cdialect "C99"
     targetdir "build/"
     targetname "contrib_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
@@ -173,6 +192,11 @@ project "contrib"
         "contrib/libxlsxwriter/third_party/tmpfileplus/*.h",
     }
 
+    removefiles {
+        "contrib/libxlsxwriter/third_party/minizip/minizip.c",
+        "contrib/libxlsxwriter/third_party/minizip/miniunz.c"
+    }
+
 	filter { "options:not zlib-src=none" }
 		defines     { 'USE_ZLIB' }
 
@@ -183,9 +207,8 @@ project "contrib"
     filter "system:Windows"
         system "windows"
         defines {
-        "WIN32",
-        "WINVER=0x0601",
-        "_WIN32_WINNT=0x0601", }
+            windows_defines,
+        }
 
 
     filter "system:Unix"
@@ -227,7 +250,6 @@ project "contrib"
 project "libarchive"
     kind "StaticLib"
     language "C"
-    staticruntime "On"
     --cdialect "C99"
     targetdir "build/"
     targetname "libarchive_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
@@ -241,7 +263,7 @@ project "libarchive"
     --fatalwarnings { "None" }
 
     links {
-        "archive",
+        --"archive",
         "zlib",
         "lzma",
         "bz2",
@@ -311,9 +333,8 @@ project "libarchive"
     filter "system:Windows"
         system "windows"
         defines {
-        "WIN32",
-        "WINVER=0x0601",
-        "_WIN32_WINNT=0x0601", }
+            windows_defines,
+        }
 
 
     filter "system:Unix"
@@ -353,7 +374,6 @@ project "libarchive"
 project "curl-lib"
     kind "StaticLib"
     language "C"
-    staticruntime "On"
     --cdialect "C99"
     targetdir "build/"
     targetname "curl_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
@@ -387,9 +407,8 @@ project "curl-lib"
     filter "system:Windows"
         system "windows"
         defines {
-        "WIN32",
-        "WINVER=0x0601",
-        "_WIN32_WINNT=0x0601", }
+            windows_defines,
+        }
 
 
 	filter { "options:not zlib-src=none" }
@@ -439,7 +458,6 @@ project "curl-lib"
 project "SDL3-lib"
     kind "StaticLib"
     language "C"
-    staticruntime "On"
 
     targetdir "build/"
     targetname "SDL3_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
@@ -454,15 +472,15 @@ project "SDL3-lib"
         "contrib/SDL3/include/build_config",
         "contrib/SDL3/src",
     }
+    defines {
+        --"DSDL_FORCE_STATIC_VCRT=ON",
+    }
 
     filter "system:Windows"
         system "windows"
 
         defines {
-            "WIN32",
-            "DSDL_FORCE_STATIC_VCRT=ON",
-            "WINVER=0x0601",
-            "_WIN32_WINNT=0x0601",
+            windows_defines,
         }
 
         links {
