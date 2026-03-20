@@ -46,6 +46,7 @@ bool RenderInit()
         DebugPrint("Failed to create window");
         return false;
     }
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
     gfx.context = SDL_CreateRenderer(gfx.window, nullptr);
     if (!gfx.context)
     {

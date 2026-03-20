@@ -1,4 +1,4 @@
-#include "curl/curl.h"
+//#include "curl/curl.h"
 
 #include "Networking.h"
 #include "WinInterop.h"
@@ -84,88 +84,88 @@ void DownloadUpdateJob::RunJob()
         return;
     }
 
-    CURL* curl = curl_easy_init();
-    struct curl_slist* headers = nullptr;
-    if (s_network.env.github_api_key.size() > 10)
-    {
-        std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
-        headers = curl_slist_append(headers, "Accept: application/octet-stream");
-        headers = curl_slist_append(headers, auth.c_str());
-        headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
-        CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
-    }
+    //CURL* curl = curl_easy_init();
+    //struct curl_slist* headers = nullptr;
+    //if (s_network.env.github_api_key.size() > 10)
+    //{
+    //    std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
+    //    headers = curl_slist_append(headers, "Accept: application/octet-stream");
+    //    headers = curl_slist_append(headers, auth.c_str());
+    //    headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
+    //    CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
+    //}
 
-    ResponseData<std::vector<char>> response = {
-        .progress = &g_download_update_progress,
-        .total = s_network.download_size };
-    std::string url = s_network.download_url;
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackBinary));
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L));
+    //ResponseData<std::vector<char>> response = {
+    //    .progress = &g_download_update_progress,
+    //    .total = s_network.download_size };
+    //std::string url = s_network.download_url;
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackBinary));
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L));
 
-    CURLCHECK(curl_easy_perform(curl));
+    //CURLCHECK(curl_easy_perform(curl));
 
-    if (s_network.env.github_api_key.size() > 10)
-    {
-        curl_slist_free_all(headers);
-    }
-    curl_easy_cleanup(curl);
-    g_download_update_progress = -1.0f;
-    std::string filename = ToString("QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
-    if (response.data.size() > Megabytes(1))
-    {
-        std::fstream file(filename, std::ios_base::out | std::ios_base::binary);
-        if (!file.good())
-        {
-            DebugPrint("Failed to open file for write: %s", filename.c_str());
-            FAIL;
-            g_download_state = AsyncStatus_FetchedFailed;
-            return;
-        }
-        else
-        {
-            file.write((char*)response.data.data(), response.data.size());
-        }
-    }
-    else
-    {
-        DebugPrint("Failed to get file from github");
-        FAIL;
-        g_download_state = AsyncStatus_FetchedFailed;
-        return;
-    }
+    //if (s_network.env.github_api_key.size() > 10)
+    //{
+    //    curl_slist_free_all(headers);
+    //}
+    //curl_easy_cleanup(curl);
+    //g_download_update_progress = -1.0f;
+    //std::string filename = ToString("QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
+    //if (response.data.size() > Megabytes(1))
+    //{
+    //    std::fstream file(filename, std::ios_base::out | std::ios_base::binary);
+    //    if (!file.good())
+    //    {
+    //        DebugPrint("Failed to open file for write: %s", filename.c_str());
+    //        FAIL;
+    //        g_download_state = AsyncStatus_FetchedFailed;
+    //        return;
+    //    }
+    //    else
+    //    {
+    //        file.write((char*)response.data.data(), response.data.size());
+    //    }
+    //}
+    //else
+    //{
+    //    DebugPrint("Failed to get file from github");
+    //    FAIL;
+    //    g_download_state = AsyncStatus_FetchedFailed;
+    //    return;
+    //}
 
-    std::vector<std::string> filenames;
-    UnzipArchive(filename, "", filenames);
-    if (filenames.size())
-    {
-        if (filenames[0].find("QuoolTool") != std::string::npos)
-        {
-            Path fe = filename;
-            std::string filename_no_ext = fe.stem().string() + ".exe";
-            std::error_code ec;
-            fs::rename(filenames[0], filename_no_ext, ec);
-            if (ec)
-            {
-                DebugPrint("Error: failed to rename file: \"%s\" to \"%s\"", filenames[0].c_str(), filename_no_ext.c_str());
-                DebugPrint("\"create_directories\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
-                FAIL;
-                g_download_state = AsyncStatus_FetchedFailed;
-                return;
-            }
-            fs::remove(filename, ec);
-            if (ec)
-            {
-                DebugPrint("Error: failed to remove file: \"%s\"", filename.c_str());
-                DebugPrint("\"remove\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
-                FAIL;
-                g_download_state = AsyncStatus_FetchedFailed;
-                return;
-            }
-        }
-    }
+    //std::vector<std::string> filenames;
+    //UnzipArchive(filename, "", filenames);
+    //if (filenames.size())
+    //{
+    //    if (filenames[0].find("QuoolTool") != std::string::npos)
+    //    {
+    //        Path fe = filename;
+    //        std::string filename_no_ext = fe.stem().string() + ".exe";
+    //        std::error_code ec;
+    //        fs::rename(filenames[0], filename_no_ext, ec);
+    //        if (ec)
+    //        {
+    //            DebugPrint("Error: failed to rename file: \"%s\" to \"%s\"", filenames[0].c_str(), filename_no_ext.c_str());
+    //            DebugPrint("\"create_directories\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
+    //            FAIL;
+    //            g_download_state = AsyncStatus_FetchedFailed;
+    //            return;
+    //        }
+    //        fs::remove(filename, ec);
+    //        if (ec)
+    //        {
+    //            DebugPrint("Error: failed to remove file: \"%s\"", filename.c_str());
+    //            DebugPrint("\"remove\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
+    //            FAIL;
+    //            g_download_state = AsyncStatus_FetchedFailed;
+    //            return;
+    //        }
+    //    }
+    //}
 
     g_download_state = AsyncStatus_FetchedSuccess;
 }
@@ -175,53 +175,53 @@ void GetOnlineVersionJob::RunJob()
     ZoneScopedN("NetworkingJob: GetOnlineVersionJob");
     g_version_state = AsyncStatus_Fetching;
 
-    CURL* curl = curl_easy_init();
-    struct curl_slist* headers = nullptr;
-    if (s_network.env.github_api_key.size() > 10)
-    {
-        std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
-        headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
-        headers = curl_slist_append(headers, auth.c_str());
-        headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
-        CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
-    }
+    //CURL* curl = curl_easy_init();
+    //struct curl_slist* headers = nullptr;
+    //if (s_network.env.github_api_key.size() > 10)
+    //{
+    //    std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
+    //    headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
+    //    headers = curl_slist_append(headers, auth.c_str());
+    //    headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
+    //    CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
+    //}
 
-    std::string response;
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, s_network.url.c_str()));
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackString));
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L));
+    //std::string response;
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, s_network.url.c_str()));
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackString));
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
+    //CURLCHECK(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L));
 
-    CURLCHECK(curl_easy_perform(curl));
+    //CURLCHECK(curl_easy_perform(curl));
 
-    if (s_network.env.github_api_key.size() > 10)
-    {
-        curl_slist_free_all(headers);
-    }
-    curl_easy_cleanup(curl);
+    //if (s_network.env.github_api_key.size() > 10)
+    //{
+    //    curl_slist_free_all(headers);
+    //}
+    //curl_easy_cleanup(curl);
 
-    std::string tag;
-    auto json = Json::parse(response);
-    if (!JsonSafeGet(tag, &json, "tag_name"))
-    {
-        DebugPrint("Error: failed to get tag_name, url: %s", s_network.url.c_str());
-        DebugPrint("    json response vvvvvv");
-        DebugPrint("%s", response.c_str());
-        g_download_state = AsyncStatus_FetchedFailed;
-        return;
-    }
+    //std::string tag;
+    //auto json = Json::parse(response);
+    //if (!JsonSafeGet(tag, &json, "tag_name"))
+    //{
+    //    DebugPrint("Error: failed to get tag_name, url: %s", s_network.url.c_str());
+    //    DebugPrint("    json response vvvvvv");
+    //    DebugPrint("%s", response.c_str());
+    //    g_download_state = AsyncStatus_FetchedFailed;
+    //    return;
+    //}
 
-    g_online_version.SetFromTag(tag);
-    if (json.contains("assets") &&
-        json["assets"].is_array() &&
-        json["assets"].size() &&
-        json["assets"][0].contains("url"))
-    {
-        const auto& asset = json["assets"][0];
-        s_network.download_url = asset["url"];
-        s_network.download_size = asset["size"];
-    }
+    //g_online_version.SetFromTag(tag);
+    //if (json.contains("assets") &&
+    //    json["assets"].is_array() &&
+    //    json["assets"].size() &&
+    //    json["assets"][0].contains("url"))
+    //{
+    //    const auto& asset = json["assets"][0];
+    //    s_network.download_url = asset["url"];
+    //    s_network.download_size = asset["size"];
+    //}
     g_download_state = AsyncStatus_FetchedSuccess;
 }
 

@@ -352,7 +352,7 @@ bool CopyFile(const Path& source, const Path& dest)
         return false;
     }
     std::error_code ec;
-    fs::create_directories(dest.parent_path(), ec);
+    //fs::create_directories(dest.parent_path(), ec);
     if (ec)
     {
         DebugPrint("Failed to create directories for dest: \"%s\"", dest.string().c_str());
@@ -384,7 +384,7 @@ bool CopyFileRelative(const Path& source, const Path& dest, const Path& relative
     Path full_dest = dest / relative;
 
     std::error_code ec;
-    fs::create_directories(full_dest.parent_path(), ec);
+    //fs::create_directories(full_dest.parent_path(), ec);
     if (ec)
     {
         DebugPrint("Failed to create directories for dest: \"%s\"", (full_dest).string().c_str());
@@ -393,7 +393,7 @@ bool CopyFileRelative(const Path& source, const Path& dest, const Path& relative
         return false;
     }
 
-    bool result = fs::copy_file(full_source, full_dest, fs::copy_options::overwrite_existing, ec);
+    //bool result = fs::copy_file(full_source, full_dest, fs::copy_options::overwrite_existing, ec);
     if (ec)
     {
         DebugPrint("Failed to copy file src: \"%s\" dest: \"%s\"", full_source.string().c_str(), full_dest.string().c_str());
@@ -401,7 +401,7 @@ bool CopyFileRelative(const Path& source, const Path& dest, const Path& relative
         FAIL;
         return false;
     }
-    return result;
+    return true;
 }
 
 bool CopyFolderRelative(const Path& source, const Path& dest, const Path& relative)
@@ -416,7 +416,7 @@ bool CopyFolderRelative(const Path& source, const Path& dest, const Path& relati
     Path full_dest = dest / relative;
 
     std::error_code ec;
-    fs::create_directories(full_dest.parent_path(), ec);
+    //fs::create_directories(full_dest.parent_path(), ec);
     if (ec)
     {
         DebugPrint("Failed to create directories for dest: \"%s\"", full_dest.parent_path().string().c_str());
@@ -425,7 +425,7 @@ bool CopyFolderRelative(const Path& source, const Path& dest, const Path& relati
         return false;
     }
 
-    fs::copy(full_source, full_dest, fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
+    //fs::copy(full_source, full_dest, fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
     if (ec)
     {
         DebugPrint("Failed to copy folder src: \"%s\" dest: \"%s\" ", full_source.string().c_str(), full_dest.string().c_str());
@@ -550,7 +550,7 @@ std::wstring PathConcat(const std::wstring& a, const std::wstring& b)
 void CreateParentDirectories(const Path& path)
 {
     std::error_code ec;
-    fs::create_directories(path.parent_path(), ec);
+    //fs::create_directories(path.parent_path(), ec);
     if (ec)
     {
         DebugPrint("Failed to create directories for \"%s\"", path.string().c_str());

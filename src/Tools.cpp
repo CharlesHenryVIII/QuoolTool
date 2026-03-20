@@ -6,16 +6,16 @@
 #include "WinInterop.h"
 #include "Scripts.h"
 
-#include "xlsxwriter.h"
+//#include "xlsxwriter.h"
 #include <vector>
 #include <array>
 
-AsyncData<lxw_workbook*> s_workbook;
+//AsyncData<lxw_workbook*> s_workbook;
 
 struct ScriptData {
     std::string name;
     std::string output;
-    AsyncData<lxw_workbook*>* workbook;
+    //AsyncData<lxw_workbook*>* workbook;
 };
 
 typedef void (*ScriptFunction)(ScriptData&);
@@ -51,25 +51,25 @@ struct ScriptJob : Job
 
 struct WorkbookJob : Job
 {
-    AsyncData<lxw_workbook*>* workbook;
+    //AsyncData<lxw_workbook*>* workbook;
     Atomic<ScriptState>* state;
 
     void RunJob() override
     {
-        ZoneScopedN("Workbook Job");
-        if (workbook)
-        {
-            TRACY_LOCK(workbook->lock);
-            workbook_close(workbook->data);
-        }
-        else
-            FAIL;
-        if (state)
-        {
-            *state = ScriptState_Finished;
-        }
-        else
-            FAIL;
+        //ZoneScopedN("Workbook Job");
+        //if (workbook)
+        //{
+        //    TRACY_LOCK(workbook->lock);
+        //    workbook_close(workbook->data);
+        //}
+        //else
+        //    FAIL;
+        //if (state)
+        //{
+        //    *state = ScriptState_Finished;
+        //}
+        //else
+        //    FAIL;
     }
 };
 
@@ -83,202 +83,202 @@ struct ScriptInfo {
     Atomic<bool> completed = false;
 };
 
-lxw_format* CreateTitleFormat(lxw_workbook* book)
-{
-    lxw_format* format = workbook_add_format(book);
-    format_set_bold(format);
-    format_set_align(format, LXW_ALIGN_CENTER);
-    format_set_align(format, LXW_ALIGN_VERTICAL_CENTER);
-    format_set_border(format, LXW_BORDER_THICK);
-    //format_set_font_name(format, "Aptos Narrow");
-    return format;
-}
+//lxw_format* CreateTitleFormat(lxw_workbook* book)
+//{
+//    lxw_format* format = workbook_add_format(book);
+//    format_set_bold(format);
+//    format_set_align(format, LXW_ALIGN_CENTER);
+//    format_set_align(format, LXW_ALIGN_VERTICAL_CENTER);
+//    format_set_border(format, LXW_BORDER_THICK);
+//    //format_set_font_name(format, "Aptos Narrow");
+//    return format;
+//}
+//
+//lxw_format* CreateDataFormat(lxw_workbook* book)
+//{
+//    lxw_format* format = workbook_add_format(book);
+//    format_set_align(format, LXW_ALIGN_LEFT);
+//    return format;
+//}
+//
+//void ExcelWriteTitles(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
+//{
+//    const std::array<std::string, PWSH_MAX_COLUMNS>& row = array[0];
+//    ASSERT(PWSH_MAX_COLUMNS == row.size());
+//    lxw_format* title_format = CreateTitleFormat(book);
+//    worksheet_set_row(sheet, 0, 30, NULL);
+//    for (i32 i = 0; i < row.size(); i++)
+//    {
+//        const std::string& title = row[i];
+//        if (title.empty())
+//            continue;
+//        worksheet_write_string(sheet, 0, i, title.c_str(), title_format);
+//        column_widths[i] = Max(column_widths[i], title.size() + 4);
+//    }
+//}
+//
+//void ExcelWriteData(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
+//{
+//    lxw_format* format = CreateDataFormat(book);
+//    for (i32 row = 1; row < array.size(); row++)
+//    {
+//        for (i32 col = 0; col < array[row].size(); col++)
+//        {
+//            const auto& title = array[row][col];
+//            if (title.empty())
+//                continue;
+//            worksheet_write_string(sheet, row, col, title.c_str(), format);
+//            column_widths[col] = Max(column_widths[col], title.size());
+//        }
+//    }
+//}
+//
+//void ExcelAutoSizeColumnWidth(lxw_worksheet* sheet, size_t column_widths[16])
+//{
+//    for (i32 i = 0; i < PWSH_MAX_COLUMNS; i++)
+//    {
+//        if (column_widths[i] <= 0)
+//            continue;
+//        double width = (double)column_widths[i];// / 10.0;
+//        worksheet_set_column(sheet, i, i, width, NULL);
+//    }
+//}
+//
+//void ExcelWritePowershellData(lxw_workbook* book, lxw_worksheet* sheet, const PowershellResponse& array)
+//{
+//    size_t column_widths[16] = {};
+//    ASSERT(arrsize(column_widths) == array[0].size());
+//    ExcelWriteTitles(book, sheet, column_widths, array);
+//    ExcelWriteData(book, sheet, column_widths, array);
+//    ExcelAutoSizeColumnWidth(sheet, column_widths);
+//}
+//
+//void ScriptPrograms(ScriptData& data)
+//{
+//    PowershellResponse array;
+//    ParsePowershell(array, data.output);
+//    switch (array.size())
+//    {
+//    case 0: return;
+//    case 1: FAIL; return; //only title?  no title?
+//    }
+//    TRACY_LOCK(data.workbook->lock);
+//    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, data.name.c_str());
+//    ExcelWritePowershellData(data.workbook->data, sheet, array);
+//}
+//
+//void ScriptProcessor(ScriptData& data)
+//{
+//    PowershellResponse array;
+//    ParsePowershell(array, data.output);
+//    switch (array.size())
+//    {
+//    case 0: return;
+//    case 1: FAIL; return; //only title?  no title?
+//    }
+//    TRACY_LOCK(data.workbook->lock);
+//    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, data.name.c_str());
+//    ExcelWritePowershellData(data.workbook->data, sheet, array);
+//}
+//
+//void ScriptSysinfo(ScriptData& data)
+//{
+//    PowershellResponse array;
+//    ParseSysinfo(array, data.output);
+//    if (!array.size())
+//    {
+//        FAIL;
+//        return;
+//    }
+//    TRACY_LOCK(data.workbook->lock);
+//    lxw_workbook* book = data.workbook->data;
+//    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+//
+//    size_t column_widths[16] = {};
+//    ExcelWriteTitles(book, sheet, column_widths, array);
+//    ExcelWriteData(book, sheet, column_widths, array);
+//    ExcelAutoSizeColumnWidth(sheet, column_widths);
+//}
+//
+//void ScriptCsv(ScriptData& data)
+//{
+//    ZoneScoped;
+//    PowershellResponse array;
+//    ParseCSV(array, data.output);
+//    if (!array.size())
+//    {
+//        FAIL;
+//        return;
+//    }
+//    TRACY_LOCK(data.workbook->lock);
+//    lxw_workbook* book = data.workbook->data;
+//    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+//    size_t column_widths[16] = {};
+//    ExcelWriteTitles(book, sheet, column_widths, array);
+//    ExcelWriteData(book, sheet, column_widths, array);
+//    ExcelAutoSizeColumnWidth(sheet, column_widths);
+//}
+//
+//void ScriptIpconfig(ScriptData& data)
+//{
+//    ZoneScoped;
+//
+//    const std::vector<std::string> rows = TextToStringArray(data.output.c_str(), "\n");
+//    if (!rows.size())
+//    {
+//        FAIL;
+//        return;
+//    }
+//    TRACY_LOCK(data.workbook->lock);
+//    lxw_workbook* book = data.workbook->data;
+//    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+//    lxw_format* title_format = CreateTitleFormat(book);
+//    lxw_format* data_format = CreateDataFormat(book);
+//    const size_t end_len = 2; //character count of "/r/n";
+//    const char* pad_end_s = ". :";
+//    const size_t pad_end_s_len = strlen(pad_end_s) + 1;
+//
+//    for (i32 i = 0; i < rows.size(); i++)
+//    {
+//        const std::string& begin_row = rows[i];
+//        if (begin_row == "\r\n")
+//            continue;
+//
+//        if (begin_row.find(pad_end_s) == std::string::npos)
+//        {
+//            //title
+//            const std::string title = begin_row.substr(0, begin_row.size() - end_len);
+//            worksheet_merge_range(sheet, i, 0, i, 1, title.c_str(), title_format);
+//            worksheet_set_row(sheet, i, 30, NULL);
+//        }
+//        else
+//        {
+//            //data
+//            for (;i < rows.size() && rows[i] != "\r\n"; i++)
+//            {
+//                const std::string& row = rows[i];
+//                const size_t key_len = row.find(" .");
+//                std::string key = row.substr(0, key_len);
+//                StringRemoveLeading(key, ' ');
+//                worksheet_write_string(sheet, i, 0, key.c_str(), data_format);
+//
+//                const size_t pad_end = row.find(pad_end_s);
+//                const std::string name = row.substr(pad_end + pad_end_s_len, row.size() - (pad_end + pad_end_s_len) - end_len);
+//                worksheet_write_string(sheet, i, 1, name.c_str(), data_format);
+//            }
+//        }
+//    }
+//}
 
-lxw_format* CreateDataFormat(lxw_workbook* book)
-{
-    lxw_format* format = workbook_add_format(book);
-    format_set_align(format, LXW_ALIGN_LEFT);
-    return format;
-}
 
-void ExcelWriteTitles(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
-{
-    const std::array<std::string, PWSH_MAX_COLUMNS>& row = array[0];
-    ASSERT(PWSH_MAX_COLUMNS == row.size());
-    lxw_format* title_format = CreateTitleFormat(book);
-    worksheet_set_row(sheet, 0, 30, NULL);
-    for (i32 i = 0; i < row.size(); i++)
-    {
-        const std::string& title = row[i];
-        if (title.empty())
-            continue;
-        worksheet_write_string(sheet, 0, i, title.c_str(), title_format);
-        column_widths[i] = Max(column_widths[i], title.size() + 4);
-    }
-}
-
-void ExcelWriteData(lxw_workbook* book, lxw_worksheet* sheet, size_t column_widths[PWSH_MAX_COLUMNS], const PowershellResponse& array)
-{
-    lxw_format* format = CreateDataFormat(book);
-    for (i32 row = 1; row < array.size(); row++)
-    {
-        for (i32 col = 0; col < array[row].size(); col++)
-        {
-            const auto& title = array[row][col];
-            if (title.empty())
-                continue;
-            worksheet_write_string(sheet, row, col, title.c_str(), format);
-            column_widths[col] = Max(column_widths[col], title.size());
-        }
-    }
-}
-
-void ExcelAutoSizeColumnWidth(lxw_worksheet* sheet, size_t column_widths[16])
-{
-    for (i32 i = 0; i < PWSH_MAX_COLUMNS; i++)
-    {
-        if (column_widths[i] <= 0)
-            continue;
-        double width = (double)column_widths[i];// / 10.0;
-        worksheet_set_column(sheet, i, i, width, NULL);
-    }
-}
-
-void ExcelWritePowershellData(lxw_workbook* book, lxw_worksheet* sheet, const PowershellResponse& array)
-{
-    size_t column_widths[16] = {};
-    ASSERT(arrsize(column_widths) == array[0].size());
-    ExcelWriteTitles(book, sheet, column_widths, array);
-    ExcelWriteData(book, sheet, column_widths, array);
-    ExcelAutoSizeColumnWidth(sheet, column_widths);
-}
-
-void ScriptPrograms(ScriptData& data)
-{
-    PowershellResponse array;
-    ParsePowershell(array, data.output);
-    switch (array.size())
-    {
-    case 0: return;
-    case 1: FAIL; return; //only title?  no title?
-    }
-    TRACY_LOCK(data.workbook->lock);
-    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, data.name.c_str());
-    ExcelWritePowershellData(data.workbook->data, sheet, array);
-}
-
-void ScriptProcessor(ScriptData& data)
-{
-    PowershellResponse array;
-    ParsePowershell(array, data.output);
-    switch (array.size())
-    {
-    case 0: return;
-    case 1: FAIL; return; //only title?  no title?
-    }
-    TRACY_LOCK(data.workbook->lock);
-    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, data.name.c_str());
-    ExcelWritePowershellData(data.workbook->data, sheet, array);
-}
-
-void ScriptSysinfo(ScriptData& data)
-{
-    PowershellResponse array;
-    ParseSysinfo(array, data.output);
-    if (!array.size())
-    {
-        FAIL;
-        return;
-    }
-    TRACY_LOCK(data.workbook->lock);
-    lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
-
-    size_t column_widths[16] = {};
-    ExcelWriteTitles(book, sheet, column_widths, array);
-    ExcelWriteData(book, sheet, column_widths, array);
-    ExcelAutoSizeColumnWidth(sheet, column_widths);
-}
-
-void ScriptCsv(ScriptData& data)
-{
-    ZoneScoped;
-    PowershellResponse array;
-    ParseCSV(array, data.output);
-    if (!array.size())
-    {
-        FAIL;
-        return;
-    }
-    TRACY_LOCK(data.workbook->lock);
-    lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
-    size_t column_widths[16] = {};
-    ExcelWriteTitles(book, sheet, column_widths, array);
-    ExcelWriteData(book, sheet, column_widths, array);
-    ExcelAutoSizeColumnWidth(sheet, column_widths);
-}
-
-void ScriptIpconfig(ScriptData& data)
-{
-    ZoneScoped;
-
-    const std::vector<std::string> rows = TextToStringArray(data.output.c_str(), "\n");
-    if (!rows.size())
-    {
-        FAIL;
-        return;
-    }
-    TRACY_LOCK(data.workbook->lock);
-    lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
-    lxw_format* title_format = CreateTitleFormat(book);
-    lxw_format* data_format = CreateDataFormat(book);
-    const size_t end_len = 2; //character count of "/r/n";
-    const char* pad_end_s = ". :";
-    const size_t pad_end_s_len = strlen(pad_end_s) + 1;
-
-    for (i32 i = 0; i < rows.size(); i++)
-    {
-        const std::string& begin_row = rows[i];
-        if (begin_row == "\r\n")
-            continue;
-
-        if (begin_row.find(pad_end_s) == std::string::npos)
-        {
-            //title
-            const std::string title = begin_row.substr(0, begin_row.size() - end_len);
-            worksheet_merge_range(sheet, i, 0, i, 1, title.c_str(), title_format);
-            worksheet_set_row(sheet, i, 30, NULL);
-        }
-        else
-        {
-            //data
-            for (;i < rows.size() && rows[i] != "\r\n"; i++)
-            {
-                const std::string& row = rows[i];
-                const size_t key_len = row.find(" .");
-                std::string key = row.substr(0, key_len);
-                StringRemoveLeading(key, ' ');
-                worksheet_write_string(sheet, i, 0, key.c_str(), data_format);
-
-                const size_t pad_end = row.find(pad_end_s);
-                const std::string name = row.substr(pad_end + pad_end_s_len, row.size() - (pad_end + pad_end_s_len) - end_len);
-                worksheet_write_string(sheet, i, 1, name.c_str(), data_format);
-            }
-        }
-    }
-}
-
-
-ScriptInfo s_scripts[] = {
-    { .name = "System Info",.func = ScriptCsv,          .cmdline = g_script_systeminfo_text,    },
-    { .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },
-    { .name = "Netstat TCP",.func = ScriptCsv,          .cmdline = g_script_netstat_tcp_text,   },
-    { .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
-    { .name = "Programs",   .func = ScriptCsv,          .cmdline = g_script_programs_text,      },
-    { .name = "Processor",  .func = ScriptCsv,          .cmdline = g_script_processor_text,     },
-};
+//ScriptInfo s_scripts[] = {
+    //{ .name = "System Info",.func = ScriptCsv,          .cmdline = g_script_systeminfo_text,    },
+    //{ .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },
+    //{ .name = "Netstat TCP",.func = ScriptCsv,          .cmdline = g_script_netstat_tcp_text,   },
+    //{ .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
+    //{ .name = "Programs",   .func = ScriptCsv,          .cmdline = g_script_programs_text,      },
+    //{ .name = "Processor",  .func = ScriptCsv,          .cmdline = g_script_processor_text,     },
+//};
 
 std::string s_log;
 
@@ -314,22 +314,22 @@ void ToolsImGui(ToolsData& td)
         ImGuiWindowFlags_NoMove;
 
     //State
-    i32 enabled_scripts = 0;
-    i32 completed_scripts = 0;
-    for (i32 i = 0; i < arrsize(s_scripts); i++)
-    {
-        ScriptInfo& s = s_scripts[i];
-        if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
-            continue;
-        enabled_scripts++;
-        if (s_scripts[i].completed)
-            completed_scripts++;
-    }
+    i32 enabled_scripts = 1;
+    i32 completed_scripts = 1;
+    //for (i32 i = 0; i < arrsize(s_scripts); i++)
+    //{
+    //    ScriptInfo& s = s_scripts[i];
+    //    if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
+    //        continue;
+    //    enabled_scripts++;
+    //    if (s_scripts[i].completed)
+    //        completed_scripts++;
+    //}
     if (td.state == ScriptState_Scripts && enabled_scripts == completed_scripts)
     {
         td.state = ScriptState_Workbook;
         WorkbookJob* job = new WorkbookJob();
-        job->workbook = &s_workbook;
+        //job->workbook = &s_workbook;
         job->state = &td.state;
         threading.SubmitJob(job);
     }
@@ -369,70 +369,70 @@ void ToolsImGui(ToolsData& td)
         ImGui::BeginDisabled(scripts_running);
         float height = 40;
         const ImVec2 button_size(125.0f, 60.0f);
-        ImGui::SetCursorPosX(Max((ImGui::GetContentRegionAvail().x - (arrsize(s_scripts) * button_size.x)) * 0.5f, ImGui::GetStyle().ItemSpacing.x));
+        //ImGui::SetCursorPosX(Max((ImGui::GetContentRegionAvail().x - (arrsize(s_scripts) * button_size.x)) * 0.5f, ImGui::GetStyle().ItemSpacing.x));
         const float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-        for (i32 i = 0; i < arrsize(s_scripts); i++)
-        {
-            ScriptInfo& s = s_scripts[i];
-            ImGui::PushID(i);
-            ImGui::BeginDisabled(s.completed);
-            ImGui::BeginGroup();
+        //for (i32 i = 0; i < arrsize(s_scripts); i++)
+        //{
+        //    ScriptInfo& s = s_scripts[i];
+        //    ImGui::PushID(i);
+        //    ImGui::BeginDisabled(s.completed);
+        //    ImGui::BeginGroup();
 
-            bool pressed = ImGui::InvisibleButton("##btn", button_size);
-            bool hovered = ImGui::IsItemHovered();
-            bool active = ImGui::IsItemActive();
-            if (pressed)
-                FlagToggle(s.flags, ScriptInfoFlags_Enabled);
+        //    bool pressed = ImGui::InvisibleButton("##btn", button_size);
+        //    bool hovered = ImGui::IsItemHovered();
+        //    bool active = ImGui::IsItemActive();
+        //    if (pressed)
+        //        FlagToggle(s.flags, ScriptInfoFlags_Enabled);
 
-            ImVec2 p_min = ImGui::GetItemRectMin();
-            ImVec2 p_max = ImGui::GetItemRectMax();
+        //    ImVec2 p_min = ImGui::GetItemRectMin();
+        //    ImVec2 p_max = ImGui::GetItemRectMax();
 
-            ImDrawList* draw = ImGui::GetWindowDrawList();
-            ImU32 background_color = ImGui::GetColorU32(ImGuiCol_Button);
-            if (active)
-                background_color = ImGui::GetColorU32(ImGuiCol_ButtonActive);
-            if (hovered)
-                background_color = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
-            draw->AddRectFilled(p_min, p_max, background_color, 6.0f);
-            draw->AddRect(p_min, p_max, ImGui::GetColorU32(ImGuiCol_Border), 6.0f);
+        //    ImDrawList* draw = ImGui::GetWindowDrawList();
+        //    ImU32 background_color = ImGui::GetColorU32(ImGuiCol_Button);
+        //    if (active)
+        //        background_color = ImGui::GetColorU32(ImGuiCol_ButtonActive);
+        //    if (hovered)
+        //        background_color = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
+        //    draw->AddRectFilled(p_min, p_max, background_color, 6.0f);
+        //    draw->AddRect(p_min, p_max, ImGui::GetColorU32(ImGuiCol_Border), 6.0f);
 
-            ImVec2 title_size = ImGui::CalcTextSize(s.name.c_str());
-            ImVec2 title_pos = {
-                p_min.x + (button_size.x - title_size.x) * 0.5f,
-                p_min.y + 6.0f
-            };
-            draw->AddText(title_pos, ImGui::GetColorU32(ImGuiCol_Text), s.name.c_str());
+        //    ImVec2 title_size = ImGui::CalcTextSize(s.name.c_str());
+        //    ImVec2 title_pos = {
+        //        p_min.x + (button_size.x - title_size.x) * 0.5f,
+        //        p_min.y + 6.0f
+        //    };
+        //    draw->AddText(title_pos, ImGui::GetColorU32(ImGuiCol_Text), s.name.c_str());
 
-            std::string selected_text = "Enabled";
-            ImU32 selected_color = IM_COL32(0, 255, 0, 255);
-            if (s.completed)
-            {
-                selected_text = "Completed";
-                selected_color = IM_COL32(0, 255, 0, 255);
-            }
-            else if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
-            {
-                selected_text = "Disabled";
-                selected_color = IM_COL32(255, 0, 0, 255);
-            }
-            ImVec2 value_size = ImGui::CalcTextSize(selected_text.c_str());
-            ImVec2 value_pos = {
-                p_min.x + (button_size.x - value_size.x) * 0.5f,
-                p_min.y + (button_size.y - value_size.y) * 0.5f + 6.0f
-            };
-            draw->AddText(value_pos, selected_color, selected_text.c_str());
+        //    std::string selected_text = "Enabled";
+        //    ImU32 selected_color = IM_COL32(0, 255, 0, 255);
+        //    if (s.completed)
+        //    {
+        //        selected_text = "Completed";
+        //        selected_color = IM_COL32(0, 255, 0, 255);
+        //    }
+        //    else if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
+        //    {
+        //        selected_text = "Disabled";
+        //        selected_color = IM_COL32(255, 0, 0, 255);
+        //    }
+        //    ImVec2 value_size = ImGui::CalcTextSize(selected_text.c_str());
+        //    ImVec2 value_pos = {
+        //        p_min.x + (button_size.x - value_size.x) * 0.5f,
+        //        p_min.y + (button_size.y - value_size.y) * 0.5f + 6.0f
+        //    };
+        //    draw->AddText(value_pos, selected_color, selected_text.c_str());
 
-            ImGui::EndGroup();
-            ImGui::EndDisabled();
-            ImGui::PopID();
+        //    ImGui::EndGroup();
+        //    ImGui::EndDisabled();
+        //    ImGui::PopID();
 
-            float last_button_x2 = ImGui::GetItemRectMax().x;
-            float next_button_x2 = last_button_x2 + ImGui::GetStyle().ItemSpacing.x + button_size.x; // Expected position if next button was on same line
+        //    float last_button_x2 = ImGui::GetItemRectMax().x;
+        //    float next_button_x2 = last_button_x2 + ImGui::GetStyle().ItemSpacing.x + button_size.x; // Expected position if next button was on same line
 
-            float text_start = ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x / 2;
-            if (i + 1 < arrsize(s_scripts) && next_button_x2 < window_visible_x2)
-                ImGui::SameLine();
-        }
+        //    float text_start = ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x / 2;
+        //    if (i + 1 < arrsize(s_scripts) && next_button_x2 < window_visible_x2)
+        //        ImGui::SameLine();
+        //}
         ImGui::EndDisabled();
     }
     ImGui::EndChild();
@@ -457,32 +457,32 @@ void ToolsImGui(ToolsData& td)
             Path output_folder;
             GetOutputFolder(output_folder, td);
             const Path excel_file = output_folder / "SystemInfo.xlsx";
-            {
-                TRACY_LOCK(s_workbook.lock);
-                s_workbook.data = workbook_new(excel_file.string().c_str());
-            }
-            for (i32 i = 0; i < arrsize(s_scripts); i++)
-            {
-                ScriptInfo& s = s_scripts[i];
-                if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || s.completed)
-                    continue;
+            //{
+            //    TRACY_LOCK(s_workbook.lock);
+            //    s_workbook.data = workbook_new(excel_file.string().c_str());
+            //}
+            //for (i32 i = 0; i < arrsize(s_scripts); i++)
+            //{
+            //    ScriptInfo& s = s_scripts[i];
+            //    if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || s.completed)
+            //        continue;
 
-                ZoneScopedN("Run Script");
-                ScriptJob* job = new ScriptJob();
-                job->path;
-                job->args = s.cmdline;
-                const std::string name = s.name + ".txt";
-                const Path output_file = output_folder / name;
-                CreateParentDirectories(output_file);
-                job->output_file = output_file;
-                job->func = s.func;
-                job->data.workbook = &s_workbook;
-                job->data.name = s.name;
-                job->completed = &s.completed;
-                threading.SubmitJob(job);
+            //    ZoneScopedN("Run Script");
+            //    ScriptJob* job = new ScriptJob();
+            //    job->path;
+            //    job->args = s.cmdline;
+            //    const std::string name = s.name + ".txt";
+            //    const Path output_file = output_folder / name;
+            //    CreateParentDirectories(output_file);
+            //    job->output_file = output_file;
+            //    job->func = s.func;
+            //    job->data.workbook = &s_workbook;
+            //    job->data.name = s.name;
+            //    job->completed = &s.completed;
+            //    threading.SubmitJob(job);
 
-                ImguiLog(ToString("Running: %s", s.name.c_str()));
-            }
+            //    ImguiLog(ToString("Running: %s", s.name.c_str()));
+            //}
         }
         ImGui::EndDisabled();
         
@@ -511,22 +511,22 @@ void ToolsImGui(ToolsData& td)
             if (ImGui::BeginChild("IndividualProgress", ip_size, ImGuiChildFlags_Borders, section_flags))
             {
                 const float individual_height = 30.0f;
-                for (i32 i = 0; i < arrsize(s_scripts); i++)
-                {
-                    ScriptInfo& s = s_scripts[i];
-                    if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
-                        continue;
+                //for (i32 i = 0; i < arrsize(s_scripts); i++)
+                //{
+                //    ScriptInfo& s = s_scripts[i];
+                //    if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
+                //        continue;
 
-                    if (s.completed)
-                    {
-                        ImGui::ProgressBar(1.0f, ImVec2(-FLT_MIN, individual_height), s.name.c_str());
-                    }
-                    else
-                    {
-                        ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, individual_height), s.name.c_str());
-                    }
+                //    if (s.completed)
+                //    {
+                //        ImGui::ProgressBar(1.0f, ImVec2(-FLT_MIN, individual_height), s.name.c_str());
+                //    }
+                //    else
+                //    {
+                //        ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, individual_height), s.name.c_str());
+                //    }
 
-                }
+                //}
             }
             ImGui::EndChild();
 

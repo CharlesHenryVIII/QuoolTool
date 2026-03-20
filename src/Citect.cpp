@@ -17,37 +17,37 @@
 
 void CitectCreateZip(CitectData& cs)
 {
-    TRACY_LOCK(cs.lock);
+    //TRACY_LOCK(cs.lock);
 
-    //1. Backup project as Backup.ctz
-    std::vector<ScannedFile> filenames;
-    {
-        ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
-        cs.total = filenames.size();
-    }
-    filenames.clear();
-    ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
-     
+    ////1. Backup project as Backup.ctz
+    //std::vector<ScannedFile> filenames;
+    //{
+    //    ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
+    //    cs.total = filenames.size();
+    //}
+    //filenames.clear();
+    //ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
+    // 
 
-    std::vector<std::filesystem::path> ini_files;
-    if (fs::exists(cs.program_files_path))
-    {
-        std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / L"Config";
-        std::vector<ScannedFile> config_files;
-        ScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
+    //std::vector<std::filesystem::path> ini_files;
+    //if (fs::exists(cs.program_files_path))
+    //{
+    //    std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / L"Config";
+    //    std::vector<ScannedFile> config_files;
+    //    ScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
 
-        for (auto f : config_files)
-        {
-            if (f.name.find_last_of(L".ini") != std::wstring::npos)
-            {
-                ini_files.push_back(config_path / f.name);
-            }
-        }
-    }
+    //    for (auto f : config_files)
+    //    {
+    //        if (f.name.find_last_of(L".ini") != std::wstring::npos)
+    //        {
+    //            ini_files.push_back(config_path / f.name);
+    //        }
+    //    }
+    //}
 
-    CreateZip(L"Backup.ctz", cs.backup_path, cs.project_path, CreateArrayView(filenames), CreateArrayView(ini_files), cs.progress);
-    cs.total = 0;
-    cs.progress = u64(-1);
+    //CreateZip(L"Backup.ctz", cs.backup_path, cs.project_path, CreateArrayView(filenames), CreateArrayView(ini_files), cs.progress);
+    //cs.total = 0;
+    //cs.progress = u64(-1);
 }
 
 void RunCitectCreateZipJob::RunJob()

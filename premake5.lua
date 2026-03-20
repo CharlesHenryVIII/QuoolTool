@@ -8,8 +8,8 @@ require "ecc/ecc"
 --local windows_version = "0x0600" -- Windows Vista
 --local windows_version = "0x0600" -- Windows Server 2008
 --local windows_version = "0x0600" -- Windows Vista
---local windows_version = "0x0601" -- Windows 7
-local windows_version = "0x0602" -- Windows 8
+local windows_version = "0x0601" -- Windows 7
+--local windows_version = "0x0602" -- Windows 8
 --local windows_version = "0x0603" -- Windows 8.1
 --local windows_version = "0x0A00" -- Windows 10
 --local windows_version = "0x0A00" -- Windows 10
@@ -18,6 +18,7 @@ local windows_defines = {
     "WIN32",
     "WINVER=" .. windows_version,
     "_WIN32_WINNT=" .. windows_version,
+    --"NTDDI_VERSION=" .. windows_version .. "0000",
 }
 
 workspace "QuoolTool"
@@ -27,13 +28,13 @@ workspace "QuoolTool"
     staticruntime "on"
     runtime "Debug"
     startproject "QuoolTool"
-    --toolset "v141_xp"
+    toolset "v141_xp"
 
 project "QuoolTool"
     kind "WindowedApp"
     --kind "ConsoleApp"
     language "C++"
-    cppdialect "C++20"
+    cppdialect "C++17"
     targetdir "build/"
     targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
@@ -49,16 +50,16 @@ project "QuoolTool"
     fatalwarnings { "All" }
 
     dependson {
-        "libarchive",
+        --"libarchive",
         "contrib",
-        "curl-lib",
+        --"curl-lib",
         "SDL3-lib",
     }
 
     links {
-        "libarchive",
+        --"libarchive",
         "contrib",
-        "curl-lib",
+        --"curl-lib",
         "SDL3-lib",
     }
 
@@ -67,8 +68,8 @@ project "QuoolTool"
         "contrib/ImGui",
         "contrib/SDL3/include",
         "contrib/tracy/public/tracy",
-        "contrib/curl/include",
-        "contrib/libxlsxwriter/include",
+        --"contrib/curl/include",
+        --"contrib/libxlsxwriter/include",
         "resources",
     }
     defines {
@@ -84,7 +85,7 @@ project "QuoolTool"
         "contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
         "contrib/json.hpp",
         "contrib/stb/**.h",
-        "contrib/libarchive/*.h",
+        --"contrib/libarchive/*.h",
         "resources/**",
     }
 
@@ -103,7 +104,9 @@ project "QuoolTool"
 
 
     filter "configurations:Debug"
-        defines { "_DEBUG" , "TRACY_ENABLE", "NOMINMAX" }
+        defines { "_DEBUG" ,
+        --"TRACY_ENABLE",
+        "NOMINMAX" }
         editandcontinue "off"
         symbols  "Full"
         optimize "Off"
@@ -147,9 +150,9 @@ project "contrib"
     fatalwarnings { "All" }
 
     links {
-        "libarchive",
-        "curl-lib",
-        "zlib",
+        --"libarchive",
+        --"curl-lib",
+        --"zlib",
     }
 
     warnings ("Default");
@@ -157,7 +160,7 @@ project "contrib"
     libdirs {
         "contrib/ImGui",
         "contrib/tracy",
-        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static",
+        --"contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static",
     }
 
     includedirs {
@@ -165,10 +168,10 @@ project "contrib"
         "contrib/ImGui",
         "contrib/SDL3/include",
         "contrib/tracy/public/tracy",
-        "contrib/curl/include",
-        "contrib/libxlsxwriter/include",
-        "contrib/libxlsxwriter/third_party/*",
-        "contrib/libarchive_dep",
+        --"contrib/curl/include",
+        --"contrib/libxlsxwriter/include",
+        --"contrib/libxlsxwriter/third_party/*",
+        --"contrib/libarchive_dep",
     }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
@@ -183,11 +186,11 @@ project "contrib"
         "contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
         "contrib/json.hpp",
         "contrib/stb/**",
-        "contrib/libxlsxwriter/src/**",
-        "contrib/libxlsxwriter/third_party/minizip/*.c",
-        "contrib/libxlsxwriter/third_party/minizip/*.h",
-        "contrib/libxlsxwriter/third_party/tmpfileplus/*.c",
-        "contrib/libxlsxwriter/third_party/tmpfileplus/*.h",
+        --"contrib/libxlsxwriter/src/**",
+        --"contrib/libxlsxwriter/third_party/minizip/*.c",
+        --"contrib/libxlsxwriter/third_party/minizip/*.h",
+        --"contrib/libxlsxwriter/third_party/tmpfileplus/*.c",
+        --"contrib/libxlsxwriter/third_party/tmpfileplus/*.h",
     }
 
     removefiles {
@@ -217,7 +220,9 @@ project "contrib"
 
 
     filter "configurations:Debug"
-        defines { "_DEBUG" , "TRACY_ENABLE", "NOMINMAX" }
+        defines { "_DEBUG" ,
+        --"TRACY_ENABLE",
+        "NOMINMAX" }
         editandcontinue "off"
         symbols  "Full"
         optimize "Off"
@@ -245,207 +250,207 @@ project "contrib"
         buildaction "Natvis"
 
 
-project "libarchive"
-    kind "StaticLib"
-    language "C"
-    --cdialect "C99"
-    targetdir "build/"
-    targetname "libarchive_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-    --targetname "libarchive"
-    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
-    editandcontinue "Off"
-    usefullpaths "On"
-
-    multiprocessorcompile "On"
-    enablepch "Off"
-    --fatalwarnings { "None" }
-
-    links {
-        --"archive",
-        "zlib",
-        "lzma",
-        "bz2",
-        "zstd",
-        "lz4",
-        "libcrypto",
-        "libssl",
-        "xmllite",
-        "bcrypt",
-        "crypt32",
-        "ws2_32",
-        "advapi32",
-    }
-
-    --warnings ("Default");
-    warnings ("Off");
-
-    libdirs {
-        "contrib/libarchive/contrib/**",
-        "contrib/libarchive_dep/openssl",
-        "contrib/libarchive_dep/lzma",
-        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static", --static
-        --"contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}", --dynamic
-    }
-
-    includedirs {
-        "contrib/libarchive",
-        "contrib/libarchive/libarchive",
-        "contrib/libarchive/contrib",
-        "contrib/libarchive_dep/",
-    }
-    defines {
-        "LIBARCHIVE_STATIC",
-        "LIB_DLL",
-        "USE_BZIP2_DLL",
-        "HAVE_CONFIG_H",
-        "_CRT_SECURE_NO_DEPRECATE",
-        "ARCHIVE_STATIC",
-        "PLATFORM_CONFIG_H=<config.h>",
-        "NODEFAULTLIB",
-        "__LIBARCHIVE_BUILD",
-    }
-    files {
-        "contrib/libarchive/libarchive/**",
-        "contrib/libarchive/libarchive/config.h",
-        "contrib/libarchive_dep/openssl/**",
-        "contrib/libarchive_dep/lzma/**",
-        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static/**",
-    }
-    removefiles {
-        "contrib/libarchive/libarchive/*_posix.c",
-        "contrib/libarchive/libarchive/filter_fork_posix.c",
-
-        "**/*_posix.c",
-        "**/*_darwin.c",
-        "**/*_freebsd.c",
-        "**/*_linux.c",
-        "**/*_sunos.c",
-    }
-
-    filter "system:Windows"
-        system "windows"
-        defines {
-            windows_defines,
-        }
-
-
-    filter "system:Unix"
-        system "linux"
-        defines { "LINUX", }
-
-
-    filter "configurations:Debug"
-        defines { "_DEBUG" , "TRACY_ENABLE", "NOMINMAX" }
-        editandcontinue "off"
-        symbols  "Full"
-        optimize "Off"
-
-    filter "configurations:Profile"
-        defines { "NDEBUG" , "TRACY_ENABLE", "NOMINMAX" }
-        editandcontinue "off"
-        runtime "Release"
-        symbols  "Full"
-        --floatingpoint "fast"
-        optimize "Speed"
-
-    filter "configurations:Release"
-        defines { "NDEBUG", "NOMINMAX" }
-        editandcontinue "off"
-        runtime "Release"
-        symbols  "Full"
-        --floatingpoint "fast"
-        optimize "Speed"
-
-    filter("files:**.hlsl")
-        excludefrombuild "On"
-
-    filter "files:**.natvis"
-        buildaction "Natvis"
-
-
-project "curl-lib"
-    kind "StaticLib"
-    language "C"
-    --cdialect "C99"
-    targetdir "build/"
-    targetname "curl_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
-    editandcontinue "Off"
-    usefullpaths "On"
-
-    multiprocessorcompile "On"
-    enablepch "Off"
-    --fatalwarnings { "All" }
-    warnings "Off";
-
-    externalincludedirs {
-        "contrib/curl/include",
-    }
-    includedirs {
-        "contrib/curl/include",
-    }
-    defines {
-        "BUILDING_LIBCURL",
-        "CURL_STATICLIB",
-        "HTTP_ONLY",
-    }
-    files {
-        "contrib/curl/include/**.c",
-        "contrib/curl/include/**.h",
-        "contrib/curl/lib/**.c",
-        "contrib/curl/lib/**.h",
-    }
-
-    filter "system:Windows"
-        system "windows"
-        defines {
-            windows_defines,
-        }
-
-
-	filter { "options:not zlib-src=none" }
-		defines     { 'USE_ZLIB' }
-
-	filter { "options:zlib-src=contrib" }
-		includedirs { '../zlib' }
-
-	filter { "system:windows" }
-		defines { "USE_SCHANNEL", "USE_WINDOWS_SSPI" }
-		links { "crypt32", "bcrypt", "secur32", "ws2_32" }
-
-	filter { "system:macosx" }
-		defines { "USE_SECTRANSP" }
-
-	filter { "system:not windows", "system:not macosx" }
-		defines { "USE_MBEDTLS" }
-
-	filter { "system:linux or toolset:cosmocc"}
-		defines { "_GNU_SOURCE" }
-
-	filter { "system:linux or bsd or solaris or haiku or toolset:cosmocc" }
-		defines { "CURL_HIDDEN_SYMBOLS" }
-
-		-- find the location of the ca bundle
-		local ca = nil
-		for _, f in ipairs {
-			"/etc/ssl/certs/ca-certificates.crt",
-			"/etc/openssl/certs/ca-certificates.crt",
-			"/etc/pki/tls/certs/ca-bundle.crt",
-			"/usr/share/ssl/certs/ca-bundle.crt",
-			"/usr/local/share/certs/ca-root.crt",
-			"/usr/local/share/certs/ca-root-nss.crt",
-			"/etc/certs/ca-certificates.crt",
-			"/etc/ssl/cert.pem",
-			"/etc/ssl/cacert.pem",
-			"/boot/system/data/ssl/CARootCertificates.pem" } do
-			if os.isfile(f) then
-				ca = f
-				break
-			end
-		end
-		if ca then
-			defines { 'CURL_CA_BUNDLE="' .. ca .. '"', 'CURL_CA_PATH="' .. path.getdirectory(ca) .. '"' }
-		end
+--project "libarchive"
+--    kind "StaticLib"
+--    language "C"
+--    --cdialect "C99"
+--    targetdir "build/"
+--    targetname "libarchive_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+--    --targetname "libarchive"
+--    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
+--    editandcontinue "Off"
+--    usefullpaths "On"
+--
+--    multiprocessorcompile "On"
+--    enablepch "Off"
+--    --fatalwarnings { "None" }
+--
+--    links {
+--        --"archive",
+--        "zlib",
+--        "lzma",
+--        "bz2",
+--        "zstd",
+--        "lz4",
+--        "libcrypto",
+--        "libssl",
+--        "xmllite",
+--        "bcrypt",
+--        "crypt32",
+--        "ws2_32",
+--        "advapi32",
+--    }
+--
+--    --warnings ("Default");
+--    warnings ("Off");
+--
+--    libdirs {
+--        "contrib/libarchive/contrib/**",
+--        "contrib/libarchive_dep/openssl",
+--        "contrib/libarchive_dep/lzma",
+--        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static", --static
+--        --"contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}", --dynamic
+--    }
+--
+--    includedirs {
+--        "contrib/libarchive",
+--        "contrib/libarchive/libarchive",
+--        "contrib/libarchive/contrib",
+--        "contrib/libarchive_dep/",
+--    }
+--    defines {
+--        "LIBARCHIVE_STATIC",
+--        "LIB_DLL",
+--        "USE_BZIP2_DLL",
+--        "HAVE_CONFIG_H",
+--        "_CRT_SECURE_NO_DEPRECATE",
+--        "ARCHIVE_STATIC",
+--        "PLATFORM_CONFIG_H=<config.h>",
+--        "NODEFAULTLIB",
+--        "__LIBARCHIVE_BUILD",
+--    }
+--    files {
+--        "contrib/libarchive/libarchive/**",
+--        "contrib/libarchive/libarchive/config.h",
+--        "contrib/libarchive_dep/openssl/**",
+--        "contrib/libarchive_dep/lzma/**",
+--        "contrib/libarchive_dep/lib-%{cfg.platform}-%{cfg.system}-static/**",
+--    }
+--    removefiles {
+--        "contrib/libarchive/libarchive/*_posix.c",
+--        "contrib/libarchive/libarchive/filter_fork_posix.c",
+--
+--        "**/*_posix.c",
+--        "**/*_darwin.c",
+--        "**/*_freebsd.c",
+--        "**/*_linux.c",
+--        "**/*_sunos.c",
+--    }
+--
+--    filter "system:Windows"
+--        system "windows"
+--        defines {
+--            windows_defines,
+--        }
+--
+--
+--    filter "system:Unix"
+--        system "linux"
+--        defines { "LINUX", }
+--
+--
+--    filter "configurations:Debug"
+--        defines { "_DEBUG" , "TRACY_ENABLE", "NOMINMAX" }
+--        editandcontinue "off"
+--        symbols  "Full"
+--        optimize "Off"
+--
+--    filter "configurations:Profile"
+--        defines { "NDEBUG" , "TRACY_ENABLE", "NOMINMAX" }
+--        editandcontinue "off"
+--        runtime "Release"
+--        symbols  "Full"
+--        --floatingpoint "fast"
+--        optimize "Speed"
+--
+--    filter "configurations:Release"
+--        defines { "NDEBUG", "NOMINMAX" }
+--        editandcontinue "off"
+--        runtime "Release"
+--        symbols  "Full"
+--        --floatingpoint "fast"
+--        optimize "Speed"
+--
+--    filter("files:**.hlsl")
+--        excludefrombuild "On"
+--
+--    filter "files:**.natvis"
+--        buildaction "Natvis"
+--
+--
+--project "curl-lib"
+--    kind "StaticLib"
+--    language "C"
+--    --cdialect "C99"
+--    targetdir "build/"
+--    targetname "curl_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+--    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
+--    editandcontinue "Off"
+--    usefullpaths "On"
+--
+--    multiprocessorcompile "On"
+--    enablepch "Off"
+--    --fatalwarnings { "All" }
+--    warnings "Off";
+--
+--    externalincludedirs {
+--        "contrib/curl/include",
+--    }
+--    includedirs {
+--        "contrib/curl/include",
+--    }
+--    defines {
+--        "BUILDING_LIBCURL",
+--        "CURL_STATICLIB",
+--        "HTTP_ONLY",
+--    }
+--    files {
+--        "contrib/curl/include/**.c",
+--        "contrib/curl/include/**.h",
+--        "contrib/curl/lib/**.c",
+--        "contrib/curl/lib/**.h",
+--    }
+--
+--    filter "system:Windows"
+--        system "windows"
+--        defines {
+--            windows_defines,
+--        }
+--
+--
+--	filter { "options:not zlib-src=none" }
+--		defines     { 'USE_ZLIB' }
+--
+--	filter { "options:zlib-src=contrib" }
+--		includedirs { '../zlib' }
+--
+--	filter { "system:windows" }
+--		defines { "USE_SCHANNEL", "USE_WINDOWS_SSPI" }
+--		links { "crypt32", "bcrypt", "secur32", "ws2_32" }
+--
+--	filter { "system:macosx" }
+--		defines { "USE_SECTRANSP" }
+--
+--	filter { "system:not windows", "system:not macosx" }
+--		defines { "USE_MBEDTLS" }
+--
+--	filter { "system:linux or toolset:cosmocc"}
+--		defines { "_GNU_SOURCE" }
+--
+--	filter { "system:linux or bsd or solaris or haiku or toolset:cosmocc" }
+--		defines { "CURL_HIDDEN_SYMBOLS" }
+--
+--		-- find the location of the ca bundle
+--		local ca = nil
+--		for _, f in ipairs {
+--			"/etc/ssl/certs/ca-certificates.crt",
+--			"/etc/openssl/certs/ca-certificates.crt",
+--			"/etc/pki/tls/certs/ca-bundle.crt",
+--			"/usr/share/ssl/certs/ca-bundle.crt",
+--			"/usr/local/share/certs/ca-root.crt",
+--			"/usr/local/share/certs/ca-root-nss.crt",
+--			"/etc/certs/ca-certificates.crt",
+--			"/etc/ssl/cert.pem",
+--			"/etc/ssl/cacert.pem",
+--			"/boot/system/data/ssl/CARootCertificates.pem" } do
+--			if os.isfile(f) then
+--				ca = f
+--				break
+--			end
+--		end
+--		if ca then
+--			defines { 'CURL_CA_BUNDLE="' .. ca .. '"', 'CURL_CA_PATH="' .. path.getdirectory(ca) .. '"' }
+--		end
 
 project "SDL3-lib"
     kind "StaticLib"
@@ -487,7 +492,7 @@ project "SDL3-lib"
             "user32",
             "gdi32",
             "ws2_32",
-            "dxguid",
+            --"dxguid",
         }
 
         files {
