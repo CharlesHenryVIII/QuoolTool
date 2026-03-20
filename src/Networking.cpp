@@ -144,17 +144,7 @@ void DownloadUpdateJob::RunJob()
         if (filenames[0].find("QuoolTool") != std::string::npos)
         {
             Path fe = filename;
-            std::string filename_no_ext = fe.stem().string() + ".exe";
             std::error_code ec;
-            fs::rename(filenames[0], filename_no_ext, ec);
-            if (ec)
-            {
-                DebugPrint("Error: failed to rename file: \"%s\" to \"%s\"", filenames[0].c_str(), filename_no_ext.c_str());
-                DebugPrint("\"create_directories\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
-                FAIL;
-                g_download_state = AsyncStatus_FetchedFailed;
-                return;
-            }
             fs::remove(filename, ec);
             if (ec)
             {

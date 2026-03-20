@@ -556,6 +556,29 @@ void ToolsImGui(ToolsData& td)
 
     }
     ImGui::EndChild();
+
+    if (g_sysinfo.drop_active)
+    {
+        static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        float border = 0;
+        ImVec2 wp = { viewport->Pos.x + border, viewport->Pos.y + border };
+        ImVec2 ws = { viewport->Size.x - 2*border, viewport->Size.y - 2*border };
+        ImGui::SetNextWindowPos(wp);
+        ImGui::SetNextWindowSize(ws);
+
+        bool open = true;
+        ImVec4 bg_color = ImGui::ColorConvertU32ToFloat4(ImGui::GetColorU32(ImGuiCol_WindowBg));
+        bg_color.x = bg_color.y = bg_color.z = 0.8f;
+        bg_color.w = 0.25f;
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, bg_color);
+        if (ImGui::Begin("Example: Fullscreen window", &open, flags))
+        {
+        }
+        ImGui::End();
+        ImGui::PopStyleColor();
+    }
+
 #else
 
     ImGui::SameLine();

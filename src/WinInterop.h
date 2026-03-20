@@ -40,6 +40,9 @@ struct SystemInfo {
     std::unordered_map<u32, Key> keys;
     Mouse mouse = {};
     bool has_attention;
+    bool drop_active = false;
+    bool drop_complete = false;
+    Path drop_file;
 };
 extern SystemInfo g_sysinfo;
 

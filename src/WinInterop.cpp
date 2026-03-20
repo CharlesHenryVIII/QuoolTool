@@ -594,6 +594,7 @@ void SysProcessEvents()
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     ZoneScopedN("Poll Events");
+    g_sysinfo.drop_complete = false;
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -655,7 +656,19 @@ void SysProcessEvents()
             g_sysinfo.has_attention = false;
             break;
         }
-        //case SDL_EVENT_DROP_FILE:
+        case SDL_EVENT_DROP_BEGIN:
+            g_sysinfo.drop_active = true;
+            break;
+        case SDL_EVENT_DROP_COMPLETE:
+            g_sysinfo.drop_active = false;
+            g_sysinfo.drop_complete = true;
+            break;
+        case SDL_EVENT_DROP_FILE:
+            if (event.drop.data)
+            {
+                g_sysinfo.drop_file = event.drop.data;
+            }
+            break;
         //case SDL_EVENT_DROP_TEXT:
         //case SDL_EVENT_DROP_BEGIN:
         //case SDL_EVENT_DROP_COMPLETE:
