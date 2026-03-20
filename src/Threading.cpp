@@ -32,7 +32,8 @@ Threading::~Threading()
     m_semaphore.release(m_threads.size());
 
     for (std::thread& thread : m_threads)
-        thread.join();
+        if (thread.joinable())
+            thread.join();
 }
 
 [[nodiscard]] Job* Threading::AcquireJob()
@@ -78,6 +79,15 @@ i32 Threading::ThreadFunction(ThreadData data)
         delete job;
     }
     return 0;
+}
+
+void Threading::ForceQuit()
+{
+    for (auto& t : m_threads)
+    {
+        t.detach();
+        t.~thread();
+    }
 }
 
 std::thread::id mainThreadID = std::this_thread::get_id();

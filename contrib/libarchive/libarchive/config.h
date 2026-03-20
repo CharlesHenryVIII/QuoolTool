@@ -1313,7 +1313,7 @@ typedef uint64_t uintmax_t;
 #define HAVE__MKGMTIME 1
 
 /* Define as const if the declaration of iconv() needs const. */
-#define ICONV_CONST 
+#define ICONV_CONST
 
 /* Version number of libarchive as a single integer */
 #define LIBARCHIVE_VERSION_NUMBER "3008005"
@@ -1395,15 +1395,18 @@ typedef uint64_t uintmax_t;
 
 /* Define to control Windows SDK version */
 #ifndef NTDDI_VERSION
-#define NTDDI_VERSION 0x0A000000
+//0x0A000000
+#define NTDDI_VERSION 0x06010000
 #endif // NTDDI_VERSION
 
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0A00
+//0x0A00
+#define _WIN32_WINNT 0x0601
 #endif // _WIN32_WINNT
 
 #ifndef WINVER
-#define WINVER 0x0A00
+//0x0A00
+#define WINVER 0x0601
 #endif // WINVER
 
 /* Define to empty if `const' does not conform to ANSI C. */

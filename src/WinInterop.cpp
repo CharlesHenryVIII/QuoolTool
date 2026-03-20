@@ -10,12 +10,15 @@
 #include "resource.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
-//#include "Windows/resource.h"
 #include "Json.hpp"
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include "glfw/glfw3native.h"
 #include "Rendering.h"
 #include "Tracy.hpp"
+
+#include "SDL3/SDL.h"
+//#include "SDL3/SDL_events.h"
+#include "ImguiHelper.h"
+#include "ImGui/backends/imgui_impl_sdl3.h"
+#include "ImGui/backends/imgui_impl_sdlrenderer3.h"
 
 #include <fstream>
 #include <filesystem>
@@ -510,41 +513,24 @@ void RunProcessLogToFileJob::RunJob()
     }
 }
 
-HMODULE modh;
-HWND window_handle;
-
-void OSInit(GLFWwindow* window)
+void* OSGetWindowHandle(SDL_Window* window)
 {
-    modh = GetModuleHandle(NULL);
-    VALIDATE(modh != NULL);
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+    HWND hwnd = (HWND)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+    return hwnd;
+}
 
-    window_handle = glfwGetWin32Window(window);
-    VALIDATE(window_handle);
-    for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
+bool OSInit(SDL_Window* window)
+{
+    //HMODULE modh = GetModuleHandle(NULL);
+    //VALIDATE_V(modh != NULL, false);
+
+    HWND hwnd = (HWND)OSGetWindowHandle(window);
+    if (!hwnd)
     {
-        HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(icon_id), RT_RCDATA);
-        DWORD error = GetLastError();
-        VALIDATE(res);
-        HGLOBAL resh = LoadResource(nullptr, res);
-        VALIDATE(resh);
-        DWORD size = SizeofResource(nullptr, res);
-        void* data = LockResource(resh);
-        VALIDATE(data);
-
-        // ---- Decode PNG from memory ----
-        GLFWimage image{};
-        image.pixels = stbi_load_from_memory(
-            (const stbi_uc*)data,
-            size,
-            &image.width,
-            &image.height,
-            nullptr,
-            4
-        );
-        VALIDATE(image.pixels);
-
-        glfwSetWindowIcon(window, 1, &image);
-        stbi_image_free(image.pixels);
+        DebugPrint("Failed to get HWND: %s", SDL_GetError());
+        FAIL;
+        return false;
     }
 
     {
@@ -554,7 +540,7 @@ void OSInit(GLFWwindow* window)
         {
             DebugPrint("Failed to get Computer Name error: %i", GetLastError());
             FAIL;
-            return;
+            return false;
         }
         g_sysinfo.name.resize(name_size);
     }
@@ -566,7 +552,7 @@ void OSInit(GLFWwindow* window)
         {
             DebugPrint("Failed to get processor information error: %i", GetLastError());
             FAIL;
-            return;
+            return false;
         }
 
         i32 count = buffer_size / sizeof(_SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
@@ -592,6 +578,135 @@ void OSInit(GLFWwindow* window)
             DebugPrint("Error getting cpu and thread counts: %i %i", g_sysinfo.cores, g_sysinfo.threads);
         }
     }
+    return true;
+}
+
+void OSDestroy(SDL_Window* window)
+{
+    SDL_DestroyWindow(window);
+}
+
+void SysProcessEvents()
+{
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    ZoneScopedN("Poll Events");
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
+    {
+        ImguiProcessEvent(&event);
+        if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(gfx.window))
+            g_running = true;
+
+        switch (event.type)
+        {
+        case SDL_EVENT_QUIT:
+            g_running = false;
+            break;
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            g_running = !(event.window.windowID == SDL_GetWindowID(gfx.window));
+            break;
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+            g_sysinfo.keys[event.key.key].down = (event.type == SDL_EVENT_KEY_DOWN);
+            break;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            g_sysinfo.keys[event.button.button].down = event.button.down;
+            break;
+        case SDL_EVENT_MOUSE_MOTION:
+        {
+            ZoneScopedN("SDL_MOUSEMOTION");
+            Vec2 delta;
+            delta.x = ((event.motion.x) - g_sysinfo.mouse.p.x);
+            delta.y = ((event.motion.y) - g_sysinfo.mouse.p.y);
+
+            g_sysinfo.mouse.delta_p += delta;
+            g_sysinfo.mouse.p.x = event.motion.x;
+            g_sysinfo.mouse.p.y = event.motion.y;
+            break;
+        }
+        case SDL_EVENT_MOUSE_WHEEL:
+        {
+            g_sysinfo.mouse.wheel_instant.x = g_sysinfo.mouse.wheel.x = event.wheel.x;
+            g_sysinfo.mouse.wheel_instant.y = g_sysinfo.mouse.wheel.y = event.wheel.y;
+            break;
+        }
+        case SDL_EVENT_WINDOW_RESIZED:
+        {
+            gfx.window_size.x = event.window.data1;
+            gfx.window_size.y = event.window.data2;
+            break;
+        }
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        {
+            g_sysinfo.has_attention = true;
+            //g_sysinfo.mouse.delta_p = {};
+            //SDL_GetMouseState(&g_sysinfo.mouse.p.x, &g_sysinfo.mouse.p.y);
+            //g_sysinfo.mouse.p.y = g_settings.graphics.resolution.y - g_sysinfo.mouse.p.y;
+            //SetFocus(g_renderer.SDL_Context);
+            break;
+        }
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+        {
+            g_sysinfo.has_attention = false;
+            break;
+        }
+        //case SDL_EVENT_DROP_FILE:
+        //case SDL_EVENT_DROP_TEXT:
+        //case SDL_EVENT_DROP_BEGIN:
+        //case SDL_EVENT_DROP_COMPLETE:
+        //case SDL_EVENT_DROP_POSITION:
+        //{
+        //    if (event.drop.file)
+        //    {
+        //    }
+        //    break;
+        //}
+        }
+    }
+
+    for (auto& key : g_sysinfo.keys)
+    {
+        if (key.second.down)
+        {
+            key.second.upThisFrame = false;
+            if (key.second.downPrevFrame)
+            {
+                key.second.downThisFrame = false;
+            }
+            else
+            {
+                key.second.downThisFrame = true;
+            }
+        }
+        else
+        {
+            key.second.downThisFrame = false;
+            if (key.second.downPrevFrame)
+            {
+                key.second.upThisFrame = true;
+            }
+            else
+            {
+                key.second.upThisFrame = false;
+            }
+        }
+        key.second.downPrevFrame = key.second.down;
+    }
+
+    if (g_sysinfo.mouse.wheel_modified_last_frame)
+    {
+        g_sysinfo.mouse.wheel_instant.y = 0;
+        g_sysinfo.mouse.wheel_modified_last_frame = false;
+    }
+    else if (g_sysinfo.mouse.wheel_instant.y)
+    {
+        g_sysinfo.mouse.wheel_modified_last_frame = true;
+    }
 }
 
 bool ConsoleAttached()
@@ -603,24 +718,24 @@ bool DebuggerAttached()
     return IsDebuggerPresent();
 }
 
-class DebugStreamBuffer final : public std::streambuf
-{
-protected:
-    int overflow(int c) override
-    {
-        if (c != EOF)
-        {
-            OutputDebugStringA((char*)&c);
-        }
-        return c;
-    }
-};
-static DebugStreamBuffer g_debug_stream_buffer;
-void EnableOutputToDebugger()
-{
-    std::cerr.rdbuf(&g_debug_stream_buffer);
-    std::cout.rdbuf(&g_debug_stream_buffer);
-}
+//class DebugStreamBuffer final : public std::streambuf
+//{
+//protected:
+//    int overflow(int c) override
+//    {
+//        if (c != EOF)
+//        {
+//            OutputDebugStringA((char*)&c);
+//        }
+//        return c;
+//    }
+//};
+//static DebugStreamBuffer g_debug_stream_buffer;
+//void EnableOutputToDebugger()
+//{
+//    std::cerr.rdbuf(&g_debug_stream_buffer);
+//    std::cout.rdbuf(&g_debug_stream_buffer);
+//}
 
 void HideConsole()
 {
@@ -644,7 +759,14 @@ void SysSleep(u64 _ms)
 
 double SysGetTime()
 {
-    return glfwGetTime();
+    const static double freq = double(SDL_GetPerformanceFrequency()); //HZ
+    double time = SDL_GetPerformanceCounter() / freq;
+    return time;
+}
+float SysMonitorScale()
+{
+    const static float scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+    return scale;
 }
 
 i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
@@ -717,7 +839,7 @@ void ShowErrorWindow(const std::wstring& title, const std::wstring& text)
     switch (msgboxID)
     {
     case IDABORT:
-        glfwSetWindowShouldClose(gfx.window, GLFW_TRUE);
+        g_running = false;
         break;
     case IDRETRY:
         break;
@@ -754,11 +876,10 @@ void ShowErrorWindow(const std::wstring& title, const std::wstring& text)
     }
 #endif
 }
-
-void NotifyWindowBuildFinished()
+void SysFlashWindow(SDL_Window* window)
 {
     FLASHWINFO info = {};
-    info.hwnd = window_handle;
+    info.hwnd = (HWND)OSGetWindowHandle(window);
     info.dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG;
     info.uCount;
     info.dwTimeout;
@@ -875,7 +996,7 @@ bool GetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir)
     dir.resize(MAX_PATH);
     int imageIndex = 0;
     BROWSEINFO info = {
-        .hwndOwner = window_handle,
+        .hwndOwner = (HWND)OSGetWindowHandle(gfx.window),
         .pidlRoot = NULL,
         .pszDisplayName = NULL,//dir.data(),
         .lpszTitle = L"Select Config Directory",
@@ -1001,7 +1122,7 @@ void ToLower(std::string& s)
 #include <commctrl.h>
 #include <signal.h> // raise
 
-#if WINVER <= 0x0501
+#if WINVER <= _WIN32_WINNT_WINXP
 #define SRW_LOCK_INIT(_lock) 
 #define SRW_LOCK_ACQUIRE(_lock) _lock.lock()
 #define SRW_LOCK_RELASE(_lock) _lock.unlock()
@@ -1159,11 +1280,19 @@ void os_assert(bool expr, const char*, const char*, int)
 }
 #endif
 
+struct OS {
+    HMODULE hmod;
+    HWND hwnd;
+    Vec2I screen_size;
+};
+static OS s_os;
+
+
 int main(int argc, char** argv)
 {
     return Main(argc, argv);
 }
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR str, int val)
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR str, int val)
 {
     return Main(-1, &str);
 }
@@ -1327,17 +1456,24 @@ bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, st
     return true;
 }
 
+void* OsGetDataFromResource(i32* out_size, const i32 resource_id)
+{
+    HRSRC handle = FindResource(nullptr, MAKEINTRESOURCE(resource_id), RT_RCDATA);
+    DWORD error = GetLastError();
+    VALIDATE_V(handle, nullptr);
+    HGLOBAL res = LoadResource(nullptr, handle);
+    VALIDATE_V(res, nullptr);
+    DWORD size = SizeofResource(nullptr, handle);
+    if (out_size)
+        *out_size = (i32)size;
+    void* data = LockResource(res);
+    return data;
+}
+
 ImFont* LoadFontForImgui(int resource_id, float fontSize)
 {
-    HRSRC r = FindResource( nullptr, MAKEINTRESOURCE(resource_id), RT_RCDATA);
-    if (!r)
-        return nullptr;
-
-    HGLOBAL handle = LoadResource(nullptr, r);
-    if (!handle)
-        return nullptr;
-    DWORD size = SizeofResource(nullptr, r);
-    void* data = LockResource(handle);
+    i32 size;
+    void* data = OsGetDataFromResource(&size, resource_id);
     if (!data || size == 0)
         return nullptr;
 
@@ -1353,3 +1489,4 @@ ImFont* LoadFontForImgui(int resource_id, float fontSize)
         return nullptr;
     return font;
 }
+

@@ -64,6 +64,7 @@ private:
     Job* AcquireJob();
 
 public:
+    void ForceQuit();
     static Threading& GetInstance()
     {
         static Threading instance;
