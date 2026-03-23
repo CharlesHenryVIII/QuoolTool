@@ -381,6 +381,15 @@ bool ImGui_ImplSDL3_ProcessEvent(const SDL_Event* event)
 
     switch (event->type)
     {
+        case SDL_EVENT_DROP_POSITION:
+        {
+            if (ImGui_ImplSDL3_GetViewportForWindowID(event->motion.windowID) == nullptr)
+                return false;
+            ImVec2 mouse_pos(event->drop.x, event->drop.y);
+            io.AddMouseSourceEvent(event->motion.which == SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
+            io.AddMousePosEvent(mouse_pos.x, mouse_pos.y);
+            return true;
+        }
         case SDL_EVENT_MOUSE_MOTION:
         {
             if (ImGui_ImplSDL3_GetViewportForWindowID(event->motion.windowID) == nullptr)
