@@ -22,7 +22,7 @@ function Format-Bytes {
 }
 
 
-"Windows7 1" | Set-Content (Join-Path $OutDir "type.txt")
+"Windows\n7\n1" | Set-Content (Join-Path $OutDir "type.txt")
 
 
 # -----------------------------

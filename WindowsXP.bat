@@ -12,7 +12,7 @@ mkdir "%OUTDIR%" 2>nul
 echo Collecting data into %OUTDIR%
 echo.
 
-echo WindowsXP 1 > "%OUTDIR%\type.txt"
+echo Windows\nXP\n1 > "%OUTDIR%\type.txt"
 
 :: -----------------------------
 :: NETSTAT
