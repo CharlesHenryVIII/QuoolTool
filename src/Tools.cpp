@@ -340,7 +340,7 @@ void ToolsImGui(ToolsData& td)
     if (ImGui::BeginChild(FILES_TITLE, { 0, 90 }, true, section_flags))
     {
         ZoneScopedN(FILES_TITLE);
-        TextCentered(FILES_TITLE);
+        ImguiTextCentered(FILES_TITLE);
         ImGui::NewLine();
 
         {
@@ -362,7 +362,7 @@ void ToolsImGui(ToolsData& td)
     if (ImGui::BeginChild(SCRIPTS_TITLE, { 0, 125 }, true, section_flags))
     {
         ZoneScopedN(SCRIPTS_TITLE);
-        TextCentered(SCRIPTS_TITLE);
+        ImguiTextCentered(SCRIPTS_TITLE);
         ImGui::NewLine();
 
         std::error_code ec;
@@ -498,7 +498,7 @@ void ToolsImGui(ToolsData& td)
     if (ImGui::BeginChild(LOG_TITLE, progress_size, ImGuiChildFlags_Borders, section_flags))
     {
         ZoneScopedN(LOG_TITLE);
-        TextCentered(LOG_TITLE);
+        ImguiTextCentered(LOG_TITLE);
         //ImGui::Separator();
 
         float progress_bar_height = 50;
@@ -557,27 +557,59 @@ void ToolsImGui(ToolsData& td)
     }
     ImGui::EndChild();
 
-    if (g_sysinfo.drop_active)
-    {
-        static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        float border = 0;
-        ImVec2 wp = { viewport->Pos.x + border, viewport->Pos.y + border };
-        ImVec2 ws = { viewport->Size.x - 2*border, viewport->Size.y - 2*border };
-        ImGui::SetNextWindowPos(wp);
-        ImGui::SetNextWindowSize(ws);
 
-        bool open = true;
-        ImVec4 bg_color = ImGui::ColorConvertU32ToFloat4(ImGui::GetColorU32(ImGuiCol_WindowBg));
-        bg_color.x = bg_color.y = bg_color.z = 0.8f;
-        bg_color.w = 0.25f;
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, bg_color);
-        if (ImGui::Begin("Example: Fullscreen window", &open, flags))
+
+    const char* popup_name = "Drop Files";
+    if (g_sysinfo.drop_active && !ImGui::IsPopupOpen(popup_name))
+        ImGui::OpenPopup(popup_name);
+
+    ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.8f, 0.8f, 0.8f, 0.5f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 15.0f);
+    ImVec2 dnd_size = { 768.0f, 500.0f };//{ 1024, 600 }
+    ImGui::SetNextWindowSize(dnd_size);
+    ImGui::SetNextWindowPos((viewport->Size - dnd_size) / 2.0f);
+    if (ImGui::BeginPopupModal(popup_name, NULL, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+    {
+        if (!g_sysinfo.drop_active)
+            ImGui::CloseCurrentPopup();
+
+        ImVec2 pop_size = ImGui::GetWindowSize();
+        ImguiTextCentered("Drag and Drop Folders Here");
+        ImGui::Separator();
+
+        const char* cancel_button_text = "Cancel Drag and Drop";
+        float cancel_text_width = ImGui::CalcTextSize(cancel_button_text).x;
+        float cancel_button_height = 50.0f;
+        ImVec2 pad = ImGui::GetStyle().WindowPadding;
+
+        ImVec2 size(dnd_size.x - pad.x * 2, dnd_size.y - pad.y * 2 - ImGui::GetCursorPosY() - cancel_button_height);
+        ImVec2 min = ImGui::GetCursorScreenPos();
+        ImVec2 max = ImVec2(min.x + size.x, min.y + size.y);
+        ImGui::InvisibleButton("Drop Zone", size);
+        ImU32 bg_col = IM_COL32(50, 50, 50, 50);
+        if (g_frame_index == 1000)
+            i32 test = 1;
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
         {
+            bg_col = IM_COL32(100, 100, 100, 150);
+            DebugPrint("Hovered");
         }
-        ImGui::End();
-        ImGui::PopStyleColor();
+        ImU32 borderColor = IM_COL32(200, 200, 200, 255);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->AddRectFilled(min, max, bg_col);
+        ImguiDrawDashedRect(drawList, min, max, borderColor, 2.0f, 6.0f, 4.0f);
+
+        ImGui::SetCursorPosX((pop_size.x - cancel_text_width) / 2);
+        if (ImGui::Button(cancel_button_text, ImVec2(0, cancel_button_height))) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
 
 #else
 

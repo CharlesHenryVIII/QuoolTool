@@ -127,7 +127,7 @@ bool InputTextDynamicSize(const std::string& title, Path& path, ImGuiInputTextFl
     return r;
 }
 
-void TextCentered(std::string text)
+void ImguiTextCentered(std::string text)
 {
     float win_width = ImGui::GetWindowSize().x;
     float text_width = ImGui::CalcTextSize(text.c_str()).x;
@@ -394,4 +394,38 @@ void ImguiAlignForWidth(float width, float alignment)
     float off = (avail - width) * alignment;
     if (off > 0.0f)
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+}
+
+void ImguiDrawDashedLine(ImDrawList* drawList, ImVec2 p1, ImVec2 p2, ImU32 col, float thickness, float dash_len, float dash_gap)
+{
+    ImVec2 dir = ImVec2(p2.x - p1.x, p2.y - p1.y);
+    float len = sqrtf(dir.x * dir.x + dir.y * dir.y);
+    
+    // Normalize direction
+    if (len > 0.0f)
+    {
+        dir.x /= len; 
+        dir.y /= len;
+    }
+
+    for (float t = 0; t < len; t += dash_len + dash_gap)
+    {
+        float t_end = t + dash_len;
+        if (t_end > len) t_end = len; // Clamp to end of line
+        drawList->AddLine(
+            ImVec2(p1.x + dir.x * t, p1.y + dir.y * t),
+            ImVec2(p1.x + dir.x * t_end, p1.y + dir.y * t_end),
+            col, thickness);
+    }
+}
+
+void ImguiDrawDashedRect(ImDrawList* drawList, ImVec2 p_min, ImVec2 p_max, ImU32 col, float thickness, float dash_len, float dash_gap)
+{
+    ImVec2 tr(p_max.x, p_min.y); // Top Right
+    ImVec2 bl(p_min.x, p_max.y); // Bottom Left
+    
+    ImguiDrawDashedLine(drawList, p_min, tr, col, thickness, dash_len, dash_gap); // Top
+    ImguiDrawDashedLine(drawList, tr, p_max, col, thickness, dash_len, dash_gap); // Right
+    ImguiDrawDashedLine(drawList, p_max, bl, col, thickness, dash_len, dash_gap); // Bottom
+    ImguiDrawDashedLine(drawList, bl, p_min, col, thickness, dash_len, dash_gap); // Left
 }

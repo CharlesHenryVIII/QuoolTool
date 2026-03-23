@@ -153,6 +153,7 @@ int Main(int argc, char** argv)
     {
         {
             ZoneScopedN("Frame Update:");
+            ++g_frame_index;
             SysProcessEvents();
 
 #if _DEBUG

@@ -599,6 +599,7 @@ void SysProcessEvents()
     while (SDL_PollEvent(&event))
     {
         ImguiProcessEvent(&event);
+        DebugPrint("Event: %i", event.type);
         if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(gfx.window))
             g_running = true;
 

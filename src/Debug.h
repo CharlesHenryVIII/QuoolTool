@@ -167,4 +167,4 @@ struct ExitScopeHelp
 
 
 extern bool g_running;
-extern char* g_ClipboardTextData;
+extern uint64_t g_frame_index;

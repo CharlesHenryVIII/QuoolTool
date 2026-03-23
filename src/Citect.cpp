@@ -170,7 +170,7 @@ void CitectImGui(CitectData& cd)
     if (ImGui::BeginChild("File Paths", paths_size, true, sectionFlags))
     {
         ZoneScopedN("File Paths");
-        TextCentered("File Paths");
+        ImguiTextCentered("File Paths");
         ImGui::NewLine();
 
         {
@@ -265,7 +265,7 @@ void CitectImGui(CitectData& cd)
     if (ImGui::BeginChild(TITLE_NAME, videos_size, true, sectionFlags))
     {
         ZoneScopedN(TITLE_NAME);
-        TextCentered(TITLE_NAME);
+        ImguiTextCentered(TITLE_NAME);
         ImGui::NewLine();
 
         std::error_code ec;
