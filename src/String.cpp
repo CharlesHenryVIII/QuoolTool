@@ -201,11 +201,12 @@ std::vector<std::string> TextToStringArray(const char* text, const char* lineEnd
                 }
                 incrimenter++;
             }
-            if (tokenLength && (isLineEnd || text[i + 1] == 0))
+            bool next_is_end = text[i + 1] == 0;
+            if (tokenLength && (isLineEnd || next_is_end))
             {
 
                 std::string token;
-                token = sv.substr(i - tokenLength, tokenLength + 1);
+                token = sv.substr(i - tokenLength, tokenLength + (i32)next_is_end);
                 result.push_back(token);
                 tokenLength = 0;
                 i += incrimenter;
@@ -217,6 +218,41 @@ std::vector<std::string> TextToStringArray(const char* text, const char* lineEnd
 
     }
     //ASSERT(tokenLength == 0);
+    return result;
+}
+
+std::vector<std::string> TextCsvToStringArray(const char* text)
+{
+    VALIDATE_V(text, {});
+
+    std::string_view sv = text;
+    std::vector<std::string> result;
+
+    i32 prev = 0;
+    bool in_quote = false;
+    for (i32 i = 0; text[i] != 0; i++)
+    {
+        if (text[i] == '\"')
+        {
+            if (in_quote)
+            {
+                if (text[i + 1] == ',' ||
+                    text[i + 1] == '\r' ||
+                    text[i + 1] == '\n')
+                {
+                    result.push_back(std::string(sv.substr(prev, i - prev)));
+                    prev = i;
+                    in_quote = false;
+                    continue;
+                }
+            }
+            else
+            {
+                prev = i + 1;
+                in_quote = true;
+            }
+        }
+    }
     return result;
 }
 
@@ -578,4 +614,38 @@ void TuiProgressBar(u64 count, u64 max)
     printf("] %.2f%%", progress * 100);
 
     fflush(stdout);
+}
+
+u64 FileReadAll(std::string& out, const Path& filepath)
+{
+    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
+    if (!file)
+    {
+        DebugPrint("Error: Failed to open file: %s", filepath.string().c_str());
+        FAIL;
+        return 0;
+    }
+    const u64 file_size = (u64)file.tellg();
+    if (file_size > out.size())
+        out.resize(file_size);
+    file.seekg(0, std::ios::beg);
+    file.read((char*)out.data(), file_size);
+    return file_size;
+}
+
+u64 FileReadAll(std::wstring& out, const Path& filepath)
+{
+    std::wifstream file(filepath, std::ios::binary | std::ios::ate);
+    if (!file)
+    {
+        DebugPrint("Error: Failed to open file: %s", filepath.string().c_str());
+        FAIL;
+        return 0;
+    }
+    const u64 file_size = (u64)file.tellg();
+    if (file_size > out.size())
+        out.resize(file_size);
+    file.seekg(0, std::ios::beg);
+    file.read((wchar_t*)out.data(), file_size);
+    return file_size;
 }

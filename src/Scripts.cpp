@@ -1,6 +1,6 @@
 #include "Scripts.h"
 
-#define CSV_CONVERT_TEXT LR"term(ConvertTo-Csv -NoTypeInformation | ForEach-Object {$_ -replace '\"',''}")term"
+#define CSV_CONVERT_TEXT LR"term(ConvertTo-Csv -NoTypeInformation)term"// | ForEach-Object {$_ -replace '\"',''}")term"
 
 const wchar_t* g_script_netstat_tcp_text = LR"term(powershell -command "Get-NetTCPConnection | )term"
 L"Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,CreationTime,OwningProcess,@{Name='Process';Expression={(Get-Process -Id $_.OwningProcess).ProcessName}} | "
@@ -21,42 +21,19 @@ CSV_CONVERT_TEXT;
 const wchar_t* g_script_systeminfo_text = LR"term(powershell -command "Get-ComputerInfo | Select * | ForEach-Object { $_.PSObject.Properties } | Select Name,Value | )term"
 CSV_CONVERT_TEXT;
 
-#define __TEST__ 1
-
-#if __TEST__ == 1
 const wchar_t* g_script_ipconfig_text = LR"term(ipconfig /all)term";
-#endif
 
-#if __TEST__ == 2
-const wchar_t* g_script_ipconfig_text = LR"term(powershell -command "Get-NetIPConfiguration | )term"
-"Select-Object InterfaceAlias, InterfaceDescription,"
-    LR"term(@{Name=\"IPv4Address\";Expression={$_.IPv4Address.IPAddress}},)term"
-    LR"term(@{Name=\"IPv6Address\";Expression={$_.IPv6Address.IPAddress}},)term"
-    LR"term(@{Name=\"IPv4Gateway\";Expression={$_.IPv4DefaultGateway.NextHop}},)term"
-    LR"term(@{Name=\"DNSServers\";Expression={($_.DNSServer.ServerAddresses -join ';')}} | )term"
+#if 1
+//const wchar_t* g_script_disk_text = LR"term(powershell -NoProfile -Command "$DiskInfo = Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_; $partitions = 'ASSOCIATORS OF {Win32_DiskDrive.DeviceID=''' + $disk.DeviceID + '''} WHERE AssocClass = Win32_DiskDriveToDiskPartition'; Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_; $drives = 'ASSOCIATORS OF {Win32_DiskPartition.DeviceID=''' + $partition.DeviceID + '''} WHERE AssocClass = Win32_LogicalDiskToPartition'; Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ Disk = $disk.DeviceID; DiskSize = $disk.Size; DiskModel = $disk.Model; Partition = $partition.Name; RawSize = $partition.Size; DriveLetter = $_.DeviceID; VolumeName = $_.VolumeName; Size = $_.Size; FreeSpace = $_.FreeSpace; } } } }; $DiskInfo | Select-Object Disk, DiskModel, DiskSize, Partition, RawSize, DriveLetter, VolumeName, Size, FreeSpace | ConvertTo-Csv -NoTypeInformation ")term";
+const wchar_t* g_script_disk_text = LR"term(powershell -NoProfile -Command "function f($b){ if(!$b){return '0 B'}; $bytes=[uint64]$b; if($bytes -ge 1TB){return '{0:N2} TB' -f ($bytes/1TB)}elseif($bytes -ge 1GB){return '{0:N2} GB' -f ($bytes/1GB)}elseif($bytes -ge 1MB){return '{0:N2} MB' -f ($bytes/1MB)}else{return '{0} B' -f $bytes} }; $DiskInfo = Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_; $partitions = 'ASSOCIATORS OF {Win32_DiskDrive.DeviceID=''' + $disk.DeviceID + '''} WHERE AssocClass = Win32_DiskDriveToDiskPartition'; Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_; $drives = 'ASSOCIATORS OF {Win32_DiskPartition.DeviceID=''' + $partition.DeviceID + '''} WHERE AssocClass = Win32_LogicalDiskToPartition'; Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ Disk = $disk.DeviceID; DiskSize = f $disk.Size; DiskModel = $disk.Model; Partition = $partition.Name; RawSize = f $partition.Size; DriveLetter = $_.DeviceID; VolumeName = $_.VolumeName; Size = f $_.Size; FreeSpace = f $_.FreeSpace; } } } }; $DiskInfo | Select-Object Disk, DiskModel, DiskSize, Partition, RawSize, DriveLetter, VolumeName, Size, FreeSpace | ConvertTo-Csv -NoTypeInformation")term";
+//const wchar_t* g_script_disk_text =
+////LR"term($DiskInfo = Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_ $partitions = "ASSOCIATORS OF " + "{Win32_DiskDrive.DeviceID='$($disk.DeviceID)'} " + "WHERE AssocClass = Win32_DiskDriveToDiskPartition" Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_ $drives = "ASSOCIATORS OF " + "{Win32_DiskPartition.DeviceID='$($partition.DeviceID)'} " + "WHERE AssocClass = Win32_LogicalDiskToPartition" Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ Disk        = $disk.DeviceID DiskSize    = $disk.Size DiskModel   = $disk.Model Partition   = $partition.Name RawSize     = $partition.Size DriveLetter = $_.DeviceID VolumeName  = $_.VolumeName Size        = $_.Size FreeSpace   = $_.FreeSpace } } } } $DiskInfo | Select-Object Disk, DiskModel, DiskSize, Partition, RawSize, DriveLetter, VolumeName, Size, FreeSpace | ConvertTo-Csv -NoTypeInformation | ForEach-Object { $_ -replace '"','' } | Out-File -FilePath ".\disk_mapping.csv" -Encoding ASCII)term";
+//LR"term($DiskInfo = Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_ $partitions = "ASSOCIATORS OF " + "{Win32_DiskDrive.DeviceID='$($disk.DeviceID)'} " + "WHERE AssocClass = Win32_DiskDriveToDiskPartition" Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_ $drives = "ASSOCIATORS OF " + "{Win32_DiskPartition.DeviceID='$($partition.DeviceID)'} " + "WHERE AssocClass = Win32_LogicalDiskToPartition" Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ Disk        = $disk.DeviceID DiskSize    = $disk.Size DiskModel   = $disk.Model Partition   = $partition.Name RawSize     = $partition.Size DriveLetter = $_.DeviceID VolumeName  = $_.VolumeName Size        = $_.Size FreeSpace   = $_.FreeSpace } } } }; $DiskInfo | Select-Object Disk, DiskModel, DiskSize, Partition, RawSize, DriveLetter, VolumeName, Size, FreeSpace | ConvertTo-Csv -NoTypeInformation | ForEach-Object { $_ -replace '"','' })term";
+
+
+#else
+const wchar_t* g_script_disk_text = LR"term(powershell -command "Get-PhysicalDisk | Select FriendlyName, Size, MediaType, BusType | )term"
 CSV_CONVERT_TEXT;
-
-//const wchar_t* g_script_ipconfig_text = LR"term(powershell -command "Get-NetIPConfiguration | Select-Object InterfaceAlias, InterfaceDescription, @{Name="IPv4Address";Expression={$_.IPv4Address.IPAddress}}, @{Name="IPv6Address";Expression={$_.IPv6Address.IPAddress}}, @{Name="IPv4Gateway";Expression={$_.IPv4DefaultGateway.NextHop}}, @{Name="DNSServers";Expression={($_.DNSServer.ServerAddresses -join ';')}} | ConvertTo-Csv -NoTypeInformation")term";
-#endif
-
-#if __TEST__ == 3
-const wchar_t* g_script_ipconfig_text = LR"term(powershell -command "Get-NetIPConfiguration | )term"
-"Select-Object InterfaceAlias, InterfaceDescription, NetProfile.Name"
-    LR"term(@{Name="IPv4Address";Expression={$_.IPv4Address.IPAddress}},)term"
-    LR"term(@{Name="IPv4Gateway";Expression={$_.IPv4DefaultGateway.NextHop}},)term"
-    LR"term(@{Name="DNSServers";Expression={($_.DNSServer.ServerAddresses -join ';')}},)term"
-    LR"term(@{Name="DHCP";Expression={$_.NetAdapter.DhcpEnabled}},)term"
-    LR"term(@{Name="MAC";Expression={$_.NetAdapter.MacAddress}},)term"
-    LR"term(@{Name="LinkSpeed";Expression={$_.NetAdapter.LinkSpeed}} | )term"
-CSV_CONVERT_TEXT;
-#endif
-
-#if __TEST__ == 4
-const wchar_t* g_script_ipconfig_text = LR"term(powershell -command "Get-NetIPConfiguration | Select InterfaceAlias,InterfaceDescription,@{Name='IPv4Address';Expression={$_.IPv4Address.IPAddress}},@{Name='IPv6Address';Expression={$_.IPv6Address.IPAddress}},@{Name='IPv4Gateway';Expression={$_.IPv4DefaultGateway.NextHop}},@{Name='DNSServers';Expression={($_.DNSServer.ServerAddresses -join ';')}},@{Name='MAC';Expression={$_.NetAdapter.MacAddress}},@{Name='DHCP';Expression={$_.NetAdapter.DhcpEnabled}} | ConvertTo-Csv -NoTypeInformation | ForEach-Object {$_ -replace '\"',''}")term";
-#endif
-
-#if __TEST__ == 5
-const wchar_t* g_script_ipconfig_text = LR"term(powershell -command "$l=ipconfig /all;$r=@();$c=$null;$k=$null;foreach($line in $l){if($line -match 'adapter (.+):$'){if($c){$r+=[pscustomobject]$c};$c=@{Adapter=$Matches[1].Trim()};$k=$null;continue};if($line -match '^\s*([^:]+?)\s*:\s*(.*)$'){$key=($Matches[1]-replace '\.+','').Trim();$val=$Matches[2].Trim();if($c){$c[$key]=$val;$k=$key};continue};if($line -match '^\s+(\S.*)$' -and $k){$c[$k]+='; '+$Matches[1].Trim()}};if($c){$r+=[pscustomobject]$c};$r|ConvertTo-Csv -NoTypeInformation|ForEach-Object{$_ -replace '\"',''}")term";
 #endif
 
 #undef CSV_CONVERT_TEXT

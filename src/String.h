@@ -6,6 +6,7 @@
 
 #include <string>
 #include <filesystem>
+#include <fstream>
 
 namespace fs = std::filesystem;
 using Path = fs::path;
@@ -38,6 +39,7 @@ void TextRemoveAfter(std::string& string, const std::string& removalRef);
 void TextAddition(std::string& string, const std::string& additionalText, const std::string& after);
 std::vector<std::string> TextToStringArray(const char* text);
 std::vector<std::string> TextToStringArray(const char* text, const char* lineEnd);
+std::vector<std::string> TextCsvToStringArray(const char* text);
 std::vector<std::string> FileToStringArray(const char* fileName);
 std::vector<std::string> FileToStringArray(const char* fileName, const char* lineEnd);
 i32 NumberLengthInString(const std::string& string, i32& i);
@@ -77,5 +79,8 @@ void PathRemoveExtension(std::wstring& path);
 std::wstring PathAddEndSlash(const std::wstring& s);
 std::wstring PathConcat(const std::wstring& a, const std::wstring& b);
 void CreateParentDirectories(const Path& path);
+
+u64 FileReadAll(std::string& out, const Path& filepath);
+u64 FileReadAll(std::wstring& out, const Path& filepath);
 
 void TuiProgressBar(u64 count, u64 max);

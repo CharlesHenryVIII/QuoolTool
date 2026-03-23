@@ -5,10 +5,12 @@
 #include "LoadJson.h"
 #include "WinInterop.h"
 #include "Scripts.h"
+#include "Wininterop_file.h"
 
 #include "xlsxwriter.h"
 #include <vector>
 #include <array>
+#include <fstream>
 
 AsyncData<lxw_workbook*> s_workbook;
 
@@ -16,6 +18,7 @@ struct ScriptData {
     std::string name;
     std::string output;
     AsyncData<lxw_workbook*>* workbook;
+    bool using_quotes = true;
 };
 
 typedef void (*ScriptFunction)(ScriptData&);
@@ -139,7 +142,7 @@ void ExcelAutoSizeColumnWidth(lxw_worksheet* sheet, size_t column_widths[16])
     {
         if (column_widths[i] <= 0)
             continue;
-        double width = (double)column_widths[i];// / 10.0;
+        double width = (double)column_widths[i] + 1;// / 10.0;
         worksheet_set_column(sheet, i, i, width, NULL);
     }
 }
@@ -204,7 +207,7 @@ void ScriptCsv(ScriptData& data)
 {
     ZoneScoped;
     PowershellResponse array;
-    ParseCSV(array, data.output);
+    ParseCSV(array, data.output, data.using_quotes);
     if (!array.size())
     {
         FAIL;
@@ -231,7 +234,8 @@ void ScriptIpconfig(ScriptData& data)
     }
     TRACY_LOCK(data.workbook->lock);
     lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_worksheet* sheet = workbook_add_worksheet(data.workbook->data, data.name.c_str());
+    VALIDATE(sheet);
     lxw_format* title_format = CreateTitleFormat(book);
     lxw_format* data_format = CreateDataFormat(book);
     const size_t end_len = 2; //character count of "/r/n";
@@ -241,7 +245,7 @@ void ScriptIpconfig(ScriptData& data)
     for (i32 i = 0; i < rows.size(); i++)
     {
         const std::string& begin_row = rows[i];
-        if (begin_row == "\r\n")
+        if (begin_row == "\r\n" || begin_row == "\r\r")
             continue;
 
         if (begin_row.find(pad_end_s) == std::string::npos)
@@ -254,7 +258,7 @@ void ScriptIpconfig(ScriptData& data)
         else
         {
             //data
-            for (;i < rows.size() && rows[i] != "\r\n"; i++)
+            for (;i < rows.size() && rows[i] != "\r\n" && rows[i] != "\r\r"; i++)
             {
                 const std::string& row = rows[i];
                 const size_t key_len = row.find(" .");
@@ -270,6 +274,218 @@ void ScriptIpconfig(ScriptData& data)
     }
 }
 
+void ScriptXPDisks(ScriptData& data)
+{
+    ZoneScoped;
+    const std::vector<std::string> rows = TextToStringArray(data.output.c_str(), "\n");
+    if (!rows.size())
+    {
+        FAIL;
+        return;
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    const size_t end_len = 2; //character count of "/r/n";
+
+    i32 row_i = 0;
+    for (; row_i < rows.size(); row_i++)
+    {
+        const std::string& row = rows[row_i];
+        if (row.find_first_of("---") == 0)
+        {
+            std::string title = row.substr(0, row.size() - end_len);
+            StringRemoveLeading(title, '-');
+            StringRemoveTrailing(title, '-');
+            worksheet_merge_range(sheet, row_i, 0, row_i, 3, title.c_str(), title_format);
+            worksheet_set_row(sheet, row_i, 35, NULL);
+            ++row_i;
+
+            const std::string& title_row = rows[row_i];
+            const std::vector<std::string> titles = TextToStringArray(title_row.substr(0, title_row.size() - 1).c_str(), ",");
+            for (i32 j = 0; j < titles.size(); j++)
+            {
+                worksheet_write_string(sheet, row_i, j, titles[j].c_str(), title_format);
+            }
+            worksheet_set_row(sheet, row_i, 30, NULL);
+            ++row_i;
+
+            for (i32 j = 0; j < titles.size(); j++)
+            {
+                const std::string& data = rows[row_i];
+                const std::vector<std::string> d = TextToStringArray(data.c_str(), ",");
+                for (i32 k = 0; k < d.size(); k++)
+                {
+                    worksheet_write_string(sheet, row_i, k, d[k].c_str(), data_format);
+                }
+            }
+        }
+    }
+}
+
+void ConvertFolderToXLSX(const Path& path)
+{
+    ScannedFiles filenames;
+    ScanDirectoryForFileNames(path.wstring(), filenames, ScanDirectoryFlags_None);
+    bool valid = false;
+    for (const auto& n : filenames)
+    {
+        if (n.name == L"type.txt")
+        {
+            Path type_file = path / n.name;
+            std::string data;
+            if (FileReadAll(data, type_file))
+            {
+                i32 prev = 0;
+                std::vector<std::string_view> strings;
+                std::string_view cs = data;
+                for (i32 i = 0; i < data.size(); i++)
+                {
+                    if (cs[i] == ' ')
+                    {
+                        strings.push_back(cs.substr(prev, i - prev));
+                        prev = i + 1;
+                    }
+                }
+                VALIDATE(strings[0] == "Windows");
+                VALIDATE(strings[1] == "XP");
+                VALIDATE(strings[2] == "1");
+                valid = true;
+            }
+            break;
+        }
+    }
+    if (!valid)
+    {
+        DebugPrint("Error: Failed to convert folder to XLSX, couldn't get proper type.txt");
+        return;
+    }
+
+    if (filenames.size() != 12)
+    {
+        DebugPrint("Warning: Incorrect number of files in ConvertFolderToXLSX: %i", filenames.size());
+    }
+
+    const Path excel_file = path / "SystemInfo.xlsx";
+    {
+        TRACY_LOCK(s_workbook.lock);
+        s_workbook.data = workbook_new(excel_file.string().c_str());
+    }
+
+    //Processor
+    //--ipconfig
+    //Netstat UDP
+    //--Programs
+    //System Info
+    //Netstat TCP
+    //Disk
+    for (i32 i = 0; i < filenames.size(); i++)
+    {
+        const std::wstring& n = filenames[i].name;
+        if (n == L"bios.csv")
+        {
+
+        }
+        else if (n == L"computersystem.csv")
+        {
+
+        }
+        else if (n == L"disks.csv")
+        {
+            Path type_file = path / n;
+            std::string data;
+            if (FileReadAll(data, type_file))
+            {
+                ScriptData sd = {
+                    .name = "disks",
+                    .output = data,
+                    .workbook = &s_workbook,
+                };
+                ScriptXPDisks(sd);
+            }
+        }
+        else if (n == L"gpu.csv")
+        {
+
+        }
+        else if (n == L"ipconfig.txt")
+        {
+            Path type_file = path / n;
+            std::string data;
+            if (FileReadAll(data, type_file))
+            {
+                ScriptData sd = {
+                    .name = "ipconfig",
+                    .output = data,
+                    .workbook = &s_workbook,
+                };
+                ScriptIpconfig(sd);
+            }
+        }
+        else if (n == L"logical_disks.csv")
+        {
+
+        }
+        else if (n == L"netstat.txt")
+        {
+
+        }
+        else if (n == L"os.csv")
+        {
+
+        }
+        else if (n == L"physical_disks.csv")
+        {
+
+        }
+        else if (n == L"processor.csv")
+        {
+            std::wstring ws;
+            Path type_file = path / n;
+            File file(type_file.string(), FileMode_Read, false);
+            file.GetData();
+            if (file.m_binaryDataIsValid)
+            {
+                wchar_t* wc = (wchar_t*)file.m_dataBinary.data();
+                std::wstring ws = wc;
+                ws = ws.substr(1, ws.size() - 1 - 2);
+                std::string s;
+                ConvertWideCharToMultiByte(s, ws);
+                ScriptData sd = {
+                    .name = "Processor",
+                    .output = s,
+                    .workbook = &s_workbook,
+                    .using_quotes = false,
+                };
+                ScriptCsv(sd);
+            }
+        }
+        else if (n == L"programs.csv")
+        {
+            Path type_file = path / n;
+            std::string data;
+            if (FileReadAll(data, type_file))
+            {
+                ScriptData sd = {
+                    .name = "Programs",
+                    .output = data,
+                    .workbook = &s_workbook,
+                };
+                ScriptCsv(sd);
+            }
+        }
+        else if (n == L"timezone.csv")
+        {
+
+        }
+    }
+    TRACY_LOCK(s_workbook.lock);
+    workbook_close(s_workbook.data);
+}
+
 
 ScriptInfo s_scripts[] = {
     { .name = "System Info",.func = ScriptCsv,          .cmdline = g_script_systeminfo_text,    },
@@ -278,6 +494,7 @@ ScriptInfo s_scripts[] = {
     { .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
     { .name = "Programs",   .func = ScriptCsv,          .cmdline = g_script_programs_text,      },
     { .name = "Processor",  .func = ScriptCsv,          .cmdline = g_script_processor_text,     },
+    { .name = "Disk",       .func = ScriptCsv,          .cmdline = g_script_disk_text,          },
 };
 
 std::string s_log;
@@ -562,6 +779,11 @@ void ToolsImGui(ToolsData& td)
     const char* popup_name = "Drop Files";
     if (g_sysinfo.drop_active && !ImGui::IsPopupOpen(popup_name))
         ImGui::OpenPopup(popup_name);
+    if (!g_sysinfo.drop_file.empty())
+    {
+        ConvertFolderToXLSX(g_sysinfo.drop_file);
+        g_sysinfo.drop_file.clear();
+    }
 
     ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.8f, 0.8f, 0.8f, 0.5f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 15.0f);
@@ -590,10 +812,7 @@ void ToolsImGui(ToolsData& td)
         if (g_frame_index == 1000)
             i32 test = 1;
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
-        {
             bg_col = IM_COL32(100, 100, 100, 150);
-            DebugPrint("Hovered");
-        }
         ImU32 borderColor = IM_COL32(200, 200, 200, 255);
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();

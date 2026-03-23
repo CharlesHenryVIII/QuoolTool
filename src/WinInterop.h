@@ -41,7 +41,6 @@ struct SystemInfo {
     Mouse mouse = {};
     bool has_attention;
     bool drop_active = false;
-    bool drop_complete = false;
     Path drop_file;
 };
 extern SystemInfo g_sysinfo;
@@ -70,7 +69,7 @@ float SysMonitorScale();
 
 void ParsePowershell(PowershellResponse& out, const std::string& in);
 void ParseSysinfo(PowershellResponse& out, const std::string& in);
-void ParseCSV(PowershellResponse& out, const std::string& in);
+void ParseCSV(PowershellResponse& out, const std::string& in, bool using_quotes);
 
 static bool keepOpen = true;
 void ShowErrorWindow(const std::wstring& title, const std::wstring& text);
@@ -86,7 +85,8 @@ struct ScannedFile {
     std::wstring name;
     bool dir;
 };
-void ScanDirectoryForFileNames(const std::wstring& dir, std::vector<ScannedFile>& out, ScanDirectoryFlags flags);
+using ScannedFiles = std::vector<ScannedFile>;
+void ScanDirectoryForFileNames(const std::wstring& dir, ScannedFiles& out, ScanDirectoryFlags flags);
 bool GetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir);
 enum MessageBoxResponse : i32 {
     MessageBoxResponse_Invalid,

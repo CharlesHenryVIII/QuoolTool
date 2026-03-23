@@ -437,7 +437,7 @@ void ParseSysinfo(PowershellResponse& out, const std::string& in)
     }
 }
 
-void ParseCSV(PowershellResponse& out, const std::string& in)
+void ParseCSV(PowershellResponse& out, const std::string& in, bool using_quotes)
 {
     ZoneScoped;
     if (!in.size())
@@ -455,14 +455,23 @@ void ParseCSV(PowershellResponse& out, const std::string& in)
     for (i32 row_i = 0; row_i < rows.size(); row_i++)
     {
         const std::string& row = rows[row_i];
-        const std::vector<std::string> strings = TextToStringArray(row.c_str(), ",");
+        std::vector<std::string> strings;
+        if (using_quotes)
+            strings = TextCsvToStringArray(row.c_str());
+        else
+            strings = TextToStringArray(row.c_str(), ",");
+        if (!strings.size())
+            continue;
         out.push_back({});
         for (i32 i = 0; i < strings.size(); i++)
         {
             if (strings[i].size())
             {
-                std::string& s = out[row_i][i];
-#if 1
+                std::string& s = out[out.size() - 1][i];
+                s = strings[i];
+                if (using_quotes)
+                    continue;
+#if 0
                 //This seems to be marginally faster?
                 if (i == strings.size() - 1)
                     s = strings[i].substr(0, strings[i].size() - 2);
@@ -472,7 +481,8 @@ void ParseCSV(PowershellResponse& out, const std::string& in)
                 s = strings[i];
                 //TextRemoval(s, "\"");
                 TextRemoval(s, ",");
-                TextRemoval(s, "\r\n");
+                TextRemoval(s, "\r");
+                TextRemoval(s, "\n");
 #endif
             }
         }
@@ -594,12 +604,11 @@ void SysProcessEvents()
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     ZoneScopedN("Poll Events");
-    g_sysinfo.drop_complete = false;
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
         ImguiProcessEvent(&event);
-        DebugPrint("Event: %i", event.type);
+        //DebugPrint("Event: %i", event.type);
         if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(gfx.window))
             g_running = true;
 
@@ -662,7 +671,6 @@ void SysProcessEvents()
             break;
         case SDL_EVENT_DROP_COMPLETE:
             g_sysinfo.drop_active = false;
-            g_sysinfo.drop_complete = true;
             break;
         case SDL_EVENT_DROP_FILE:
             if (event.drop.data)
@@ -903,7 +911,7 @@ void SysFlashWindow(SDL_Window* window)
 }
 
 //TODO(CSH): Create filepath helper functions
-void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& dir, std::vector<ScannedFile>& out, ScanDirectoryFlags flags)
+void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& dir, ScannedFiles& out, ScanDirectoryFlags flags)
 {
     std::wstring d = root;
     if (d.size() < 2)
@@ -979,7 +987,7 @@ void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& di
     }
 }
 
-void ScanDirectoryForFileNames(const std::wstring& dir, std::vector<ScannedFile>& out, ScanDirectoryFlags flags)
+void ScanDirectoryForFileNames(const std::wstring& dir, ScannedFiles& out, ScanDirectoryFlags flags)
 {
     out.clear();
     _ScanDirectoryForFileNames(dir, L"", out, flags);
