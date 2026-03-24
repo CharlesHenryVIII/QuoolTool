@@ -326,6 +326,133 @@ void ScriptXPDisks(ScriptData& data)
     }
 }
 
+void ScriptNetstat(ScriptData& data)
+{
+    ZoneScoped;
+    const std::vector<std::string> rows = TextToStringArray(data.output.c_str(), "\n");
+    if (!rows.size())
+    {
+        FAIL;
+        return;
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    const i32 title_index = 3;
+    const i32 data_index = 4;
+    const std::string& titles = rows[title_index];
+    i32 len[PWSH_MAX_COLUMNS] = {};
+
+    static const std::string titles_text[] = { "Proto", "Local Address", "Foreign Address", "State", "PID" };
+    {
+        i32 prev = 0;
+        i32 len_i = 0;
+        const i32 start = (i32)titles.find_first_not_of(' ');
+        for (i32 i = start; i < titles.size(); i++)
+        {
+            const size_t r = titles.find(titles_text[len_i]);
+            if (r == std::string::npos)
+            {
+                FAIL;
+                continue;
+            }
+            i = (i32)r + (i32)titles_text[len_i].size();
+            while (titles[i] == ' ')
+                i++;
+
+            len[len_i++] = i - prev;
+            prev = i;
+        }
+    }
+
+    for (i32 i = 0; i < arrsize(titles_text); i++)
+    {
+        worksheet_write_string(sheet, 0, i, titles_text[i].c_str(), title_format);
+    }
+    worksheet_set_row(sheet, 0, 30, NULL);
+
+    for (i32 row_i = data_index; row_i < rows.size(); row_i++)
+    {
+        std::string_view row = rows[row_i];
+        row = row.substr(0, row.find_last_not_of('\r') + 1);
+        size_t prev = 0;
+        for (i32 col = 0; col < arrsize(len); col++)
+        {
+            if (!len[col])
+                break;
+            std::string_view sv = row.substr(prev, len[col]);
+            size_t final_char = sv.find_last_not_of(' ');
+            size_t first_char = sv.find_first_not_of(' ');
+            if (first_char == std::string::npos)
+                first_char = 0;
+            if (final_char == std::string::npos)
+                final_char = 0;
+            if (first_char > 0 && final_char > 0)
+                sv = sv.substr(first_char, final_char - first_char + 1);
+            std::string s(sv);
+            worksheet_write_string(sheet, row_i - title_index, col, s.c_str(), data_format);
+            prev = prev + len[col];
+        }
+    }
+}
+
+struct SysInfoPair {
+    std::string name;
+    std::string value;
+};
+void ScriptSystemInfoXP(const Path& full_filename, std::vector<SysInfoPair>& pairs)
+{
+    std::wstring ws;
+    File file(full_filename.string(), FileMode_Read, false);
+    file.GetData();
+    if (file.m_binaryDataIsValid)
+    {
+        wchar_t* wc = (wchar_t*)file.m_dataBinary.data();
+        std::wstring ws(wc, file.m_dataBinary.size() / 2);
+        size_t start_offset = 3;
+        ws = ws.substr(start_offset, ws.size() - start_offset);
+        std::string s;
+        ConvertWideCharToMultiByte(s, ws);
+        const std::vector<std::string> rows = TextToStringArray(s.c_str(), "\n");
+        if (rows.size() != 2)
+        {
+            FAIL;
+            return;
+        }
+        std::vector<std::string> names = TextToStringArray(rows[0].c_str(), ",");
+        std::vector<std::string> values= TextToStringArray(rows[1].c_str(), ",");
+        if (!names.size() || !values.size() || names.size() != values.size())
+        {
+            FAIL;
+            return;
+        }
+
+        auto CleanString = [](std::string _string)
+        {
+            TextRemoval(_string, ",");
+            TextRemoval(_string, "\r");
+            TextRemoval(_string, "\n");
+            StringRemoveTrailing(_string, ' ');
+            StringRemoveLeading(_string, ' ');
+        };
+
+        //offset becuase the first name/value is "node"
+        for (i32 i = 1; i < names.size(); i++)
+        {
+            CleanString(names[i]);
+            CleanString(values[i]);
+            SysInfoPair p = {
+                .name = names[i],
+                .value = values[i],
+            };
+            pairs.push_back(p);
+        }
+    }
+}
+
 void ConvertFolderToXLSX(const Path& path)
 {
     ScannedFiles filenames;
@@ -375,23 +502,24 @@ void ConvertFolderToXLSX(const Path& path)
         s_workbook.data = workbook_new(excel_file.string().c_str());
     }
 
-    //Processor
+    //--Processor
     //--ipconfig
-    //Netstat UDP
+    //--Netstat UDP
     //--Programs
     //System Info
-    //Netstat TCP
-    //Disk
+    //--Netstat TCP
+    //--Disk
+    std::vector<SysInfoPair> sysinfo_pairs;
     for (i32 i = 0; i < filenames.size(); i++)
     {
         const std::wstring& n = filenames[i].name;
         if (n == L"bios.csv")
         {
-
+            ScriptSystemInfoXP(path / n, sysinfo_pairs);
         }
         else if (n == L"computersystem.csv")
         {
-
+            ScriptSystemInfoXP(path / n, sysinfo_pairs);
         }
         else if (n == L"disks.csv")
         {
@@ -400,7 +528,7 @@ void ConvertFolderToXLSX(const Path& path)
             if (FileReadAll(data, type_file))
             {
                 ScriptData sd = {
-                    .name = "disks",
+                    .name = "Disks",
                     .output = data,
                     .workbook = &s_workbook,
                 };
@@ -409,7 +537,7 @@ void ConvertFolderToXLSX(const Path& path)
         }
         else if (n == L"gpu.csv")
         {
-
+            ScriptSystemInfoXP(path / n, sysinfo_pairs);
         }
         else if (n == L"ipconfig.txt")
         {
@@ -417,6 +545,7 @@ void ConvertFolderToXLSX(const Path& path)
             std::string data;
             if (FileReadAll(data, type_file))
             {
+
                 ScriptData sd = {
                     .name = "ipconfig",
                     .output = data,
@@ -431,11 +560,22 @@ void ConvertFolderToXLSX(const Path& path)
         }
         else if (n == L"netstat.txt")
         {
+            Path type_file = path / n;
+            std::string data;
+            if (FileReadAll(data, type_file))
+            {
 
+                ScriptData sd = {
+                    .name = "Netstat",
+                    .output = data,
+                    .workbook = &s_workbook,
+                };
+                ScriptNetstat(sd);
+            }
         }
         else if (n == L"os.csv")
         {
-
+            ScriptSystemInfoXP(path / n, sysinfo_pairs);
         }
         else if (n == L"physical_disks.csv")
         {
@@ -451,7 +591,8 @@ void ConvertFolderToXLSX(const Path& path)
             {
                 wchar_t* wc = (wchar_t*)file.m_dataBinary.data();
                 std::wstring ws = wc;
-                ws = ws.substr(1, ws.size() - 1 - 2);
+                size_t start_offset = 3;
+                ws = ws.substr(start_offset, ws.size() - 1 - start_offset - 1);
                 std::string s;
                 ConvertWideCharToMultiByte(s, ws);
                 ScriptData sd = {
@@ -479,10 +620,25 @@ void ConvertFolderToXLSX(const Path& path)
         }
         else if (n == L"timezone.csv")
         {
-
+            ScriptSystemInfoXP(path / n, sysinfo_pairs);
         }
     }
+
     TRACY_LOCK(s_workbook.lock);
+    lxw_format* title_format = CreateTitleFormat(s_workbook.data);
+    lxw_format* data_format = CreateDataFormat(s_workbook.data);
+    lxw_worksheet* sheet = workbook_add_worksheet(s_workbook.data, "System Info");
+    const i32 title_row_index = 0;
+    const i32 name_col_index = 0;
+    const i32 value_col_index = 1;
+    worksheet_set_row(sheet, title_row_index, 30, NULL);
+    worksheet_write_string(sheet, title_row_index, name_col_index, "Name", title_format);
+    worksheet_write_string(sheet, title_row_index, value_col_index, "Value", title_format);
+    for (i32 i = 0; i < sysinfo_pairs.size(); i++)
+    {
+        worksheet_write_string(sheet, i + 1, name_col_index,  sysinfo_pairs[i].name.c_str(),  data_format);
+        worksheet_write_string(sheet, i + 1, value_col_index, sysinfo_pairs[i].value.c_str(), data_format);
+    }
     workbook_close(s_workbook.data);
 }
 

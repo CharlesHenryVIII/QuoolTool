@@ -181,11 +181,9 @@ std::vector<std::string> TextToStringArray(const char* text, const char* lineEnd
     std::string_view sv = text;
     std::vector<std::string> result;
 
-    if (*text == '\n')
-        int test = 1;
-
     i32 tokenLength = 0;
-    for (i32 i = 0; text[i] != 0; i++)
+    i32 i = 0;
+    for (; text[i] != 0; i++)
     {
         bool isLineEnd = false;
         if (text[i] == lineEnd[0] || text[i + 1] == 0)
@@ -217,7 +215,11 @@ std::vector<std::string> TextToStringArray(const char* text, const char* lineEnd
             tokenLength++;
 
     }
-    //ASSERT(tokenLength == 0);
+    if (tokenLength)
+    {
+        std::string token(sv.substr(sv.size() - tokenLength, tokenLength));
+        result.push_back(token);
+    }
     return result;
 }
 

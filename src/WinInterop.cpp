@@ -463,6 +463,11 @@ void ParseCSV(PowershellResponse& out, const std::string& in, bool using_quotes)
         if (!strings.size())
             continue;
         out.push_back({});
+        if (strings.size() >= PWSH_MAX_COLUMNS)
+        {
+            FAIL;
+            continue;
+        }
         for (i32 i = 0; i < strings.size(); i++)
         {
             if (strings[i].size())
@@ -483,6 +488,8 @@ void ParseCSV(PowershellResponse& out, const std::string& in, bool using_quotes)
                 TextRemoval(s, ",");
                 TextRemoval(s, "\r");
                 TextRemoval(s, "\n");
+                StringRemoveTrailing(s, ' ');
+                StringRemoveLeading(s, ' ');
 #endif
             }
         }
