@@ -6,6 +6,7 @@
 #include "WinInterop.h"
 #include "Scripts.h"
 #include "Wininterop_file.h"
+#include "pugixml.hpp"
 
 #include "xlsxwriter.h"
 #include <vector>
@@ -453,6 +454,79 @@ void ScriptSystemInfoXP(const Path& full_filename, std::vector<SysInfoPair>& pai
     }
 }
 
+void ScriptProgramsXML(ScriptData& data)
+{
+    ZoneScoped;
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(data.output.c_str());
+    if (!result)
+    {
+        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", data.output.c_str(), doc.child("node").attribute("attr").value());
+        DebugPrint("Error description: %s", result.description());
+        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (data.output.c_str() + result.offset));
+        FAIL;
+        return;
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    worksheet_write_string(sheet, 0, 0, "Program", title_format);
+    worksheet_write_string(sheet, 0, 1, "Version", title_format);
+    worksheet_set_row(sheet, 0, 30, NULL);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    const pugi::xml_node programs = doc.child("Programs");
+    i32 i = 1;
+    for (pugi::xml_node program = programs.child("Program"); program; program = program.next_sibling("Program"))
+    {
+        const pugi::xml_node display_name = program.child("DisplayName");
+        const pugi::xml_node display_vers = program.child("DisplayVersion");
+        const std::string name = display_name.child_value();
+        const std::string vers = display_vers.child_value();
+        worksheet_write_string(sheet, i, 0, name.c_str(), data_format);
+        worksheet_write_string(sheet, i, 1, vers.c_str(), data_format);
+        ++i;
+    }
+}
+
+void ScriptProcessorXML(ScriptData& data)
+{
+    ZoneScoped;
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(data.output.c_str());
+    if (!result)
+    {
+        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", data.output.c_str(), doc.child("node").attribute("attr").value());
+        DebugPrint("Error description: %s", result.description());
+        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (data.output.c_str() + result.offset));
+        FAIL;
+        return;
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    //worksheet_write_string(sheet, 0, 0, "Program", title_format);
+    //worksheet_write_string(sheet, 0, 1, "Version", title_format);
+    //worksheet_set_row(sheet, 0, 30, NULL);
+
+    //const pugi::xml_node programs = doc.child("Programs");
+    //i32 i = 1;
+    //for (pugi::xml_node program = programs.child("Program"); program; program = program.next_sibling("Program"))
+    //{
+    //    const pugi::xml_node display_name = program.child("DisplayName");
+    //    const pugi::xml_node display_vers = program.child("DisplayVersion");
+    //    const std::string name = display_name.child_value();
+    //    const std::string vers = display_vers.child_value();
+    //    worksheet_write_string(sheet, i, 0, name.c_str(), data_format);
+    //    worksheet_write_string(sheet, i, 1, vers.c_str(), data_format);
+    //    ++i;
+    //}
+}
+
 void ConvertFolderToXLSX(const Path& path)
 {
     ScannedFiles filenames;
@@ -517,106 +591,139 @@ void ConvertFolderToXLSX(const Path& path)
         {
             ScriptSystemInfoXP(path / n, sysinfo_pairs);
         }
-        else if (n == L"computersystem.csv")
+        else if (n == L"computersystem.xml")
         {
-            ScriptSystemInfoXP(path / n, sysinfo_pairs);
+            //Path type_file = path / n;
+            //ScriptData sd = {
+            //    .name = "Computer",
+            //    .output = type_file.string(),
+            //    .workbook = &s_workbook,
+            //};
+            //ScriptProgramsXML(sd);
         }
-        else if (n == L"disks.csv")
-        {
-            Path type_file = path / n;
-            std::string data;
-            if (FileReadAll(data, type_file))
-            {
-                ScriptData sd = {
-                    .name = "Disks",
-                    .output = data,
-                    .workbook = &s_workbook,
-                };
-                ScriptXPDisks(sd);
-            }
-        }
-        else if (n == L"gpu.csv")
-        {
-            ScriptSystemInfoXP(path / n, sysinfo_pairs);
-        }
-        else if (n == L"ipconfig.txt")
-        {
-            Path type_file = path / n;
-            std::string data;
-            if (FileReadAll(data, type_file))
-            {
+        //else if (n == L"computersystem.csv")
+        //{
+        //    ScriptSystemInfoXP(path / n, sysinfo_pairs);
+        //}
+        //else if (n == L"disks.csv")
+        //{
+        //    Path type_file = path / n;
+        //    std::string data;
+        //    if (FileReadAll(data, type_file))
+        //    {
+        //        ScriptData sd = {
+        //            .name = "Disks",
+        //            .output = data,
+        //            .workbook = &s_workbook,
+        //        };
 
-                ScriptData sd = {
-                    .name = "ipconfig",
-                    .output = data,
-                    .workbook = &s_workbook,
-                };
-                ScriptIpconfig(sd);
-            }
-        }
-        else if (n == L"logical_disks.csv")
-        {
+        //        ScriptXPDisks(sd);
+        //    }
+        //}
+        //else if (n == L"gpu.csv")
+        //{
+        //    ScriptSystemInfoXP(path / n, sysinfo_pairs);
+        //}
+        //else if (n == L"ipconfig.txt")
+        //{
+        //    Path type_file = path / n;
+        //    std::string data;
+        //    if (FileReadAll(data, type_file))
+        //    {
 
-        }
-        else if (n == L"netstat.txt")
+        //        ScriptData sd = {
+        //            .name = "ipconfig",
+        //            .output = data,
+        //            .workbook = &s_workbook,
+        //        };
+        //        ScriptIpconfig(sd);
+        //    }
+        //}
+        //else if (n == L"logical_disks.csv")
+        //{
+
+        //}
+        //else if (n == L"netstat.txt")
+        //{
+        //    Path type_file = path / n;
+        //    std::string data;
+        //    if (FileReadAll(data, type_file))
+        //    {
+
+        //        ScriptData sd = {
+        //            .name = "Netstat",
+        //            .output = data,
+        //            .workbook = &s_workbook,
+        //        };
+        //        ScriptNetstat(sd);
+        //    }
+        //}
+        //else if (n == L"os.csv")
+        //{
+        //    ScriptSystemInfoXP(path / n, sysinfo_pairs);
+        //}
+        //else if (n == L"physical_disks.csv")
+        //{
+
+        //}
+        else if (n == L"processor.xml")
         {
             Path type_file = path / n;
-            std::string data;
-            if (FileReadAll(data, type_file))
-            {
+            ScriptData sd = {
+                .name = "Programs",
+                .output = type_file.string(),
+                .workbook = &s_workbook,
+            };
+            ScriptProcessorXML(sd);
+        }
+        //else if (n == L"processor.csv")
+        //{
+        //    std::wstring ws;
+        //    Path type_file = path / n;
+        //    File file(type_file.string(), FileMode_Read, false);
+        //    file.GetData();
+        //    if (file.m_binaryDataIsValid)
+        //    {
+        //        wchar_t* wc = (wchar_t*)file.m_dataBinary.data();
+        //        std::wstring ws = wc;
+        //        size_t start_offset = 3;
+        //        ws = ws.substr(start_offset, ws.size() - 1 - start_offset - 1);
+        //        std::string s;
+        //        ConvertWideCharToMultiByte(s, ws);
 
-                ScriptData sd = {
-                    .name = "Netstat",
-                    .output = data,
-                    .workbook = &s_workbook,
-                };
-                ScriptNetstat(sd);
-            }
-        }
-        else if (n == L"os.csv")
-        {
-            ScriptSystemInfoXP(path / n, sysinfo_pairs);
-        }
-        else if (n == L"physical_disks.csv")
-        {
+        //        ScriptData sd = {
+        //            .name = "Processor",
+        //            .output = s,
+        //            .workbook = &s_workbook,
+        //            .using_quotes = false,
+        //        };
+        //        ScriptCsv(sd);
+        //    }
+        //}
+        //else if (n == L"programs.csv")
+        //{
+        //    Path type_file = path / n;
+        //    std::string data;
+        //    if (FileReadAll(data, type_file))
+        //    {
+        //        ScriptData sd = {
+        //            .name = "Programs",
+        //            .output = data,
+        //            .workbook = &s_workbook,
+        //        };
 
-        }
-        else if (n == L"processor.csv")
-        {
-            std::wstring ws;
-            Path type_file = path / n;
-            File file(type_file.string(), FileMode_Read, false);
-            file.GetData();
-            if (file.m_binaryDataIsValid)
-            {
-                wchar_t* wc = (wchar_t*)file.m_dataBinary.data();
-                std::wstring ws = wc;
-                size_t start_offset = 3;
-                ws = ws.substr(start_offset, ws.size() - 1 - start_offset - 1);
-                std::string s;
-                ConvertWideCharToMultiByte(s, ws);
-                ScriptData sd = {
-                    .name = "Processor",
-                    .output = s,
-                    .workbook = &s_workbook,
-                    .using_quotes = false,
-                };
-                ScriptCsv(sd);
-            }
-        }
-        else if (n == L"programs.csv")
+        //        ScriptCsv(sd);
+        //    }
+        //}
+        else if (n == L"programs.xml")
         {
             Path type_file = path / n;
-            std::string data;
-            if (FileReadAll(data, type_file))
-            {
-                ScriptData sd = {
-                    .name = "Programs",
-                    .output = data,
-                    .workbook = &s_workbook,
-                };
-                ScriptCsv(sd);
-            }
+            ScriptData sd = {
+                .name = "Programs",
+                .output = type_file.string(),
+                .workbook = &s_workbook,
+            };
+            ScriptProgramsXML(sd);
         }
         else if (n == L"timezone.csv")
         {

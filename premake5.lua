@@ -105,6 +105,7 @@ project "QuoolTool"
         "contrib/tracy/public/tracy",
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
+        "contrib/pugixml/src",
         "resources",
     }
     defines {
@@ -121,6 +122,7 @@ project "QuoolTool"
         "contrib/json.hpp",
         "contrib/stb/**.h",
         "contrib/libarchive/*.h",
+        "contrib/pugixml/src/*.hpp",
         "resources/**",
     }
 
@@ -179,6 +181,8 @@ project "contrib"
         "contrib/libxlsxwriter/third_party/minizip/*.h",
         "contrib/libxlsxwriter/third_party/tmpfileplus/*.c",
         "contrib/libxlsxwriter/third_party/tmpfileplus/*.h",
+        "contrib/pugixml/src/*.hpp",
+        "contrib/pugixml/src/*.cpp",
     }
 
     removefiles {
