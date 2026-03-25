@@ -1519,3 +1519,40 @@ ImFont* LoadFontForImgui(int resource_id, float fontSize)
     return font;
 }
 
+static_assert(sizeof(GUID) == sizeof(Guid));
+Guid NewGuid()
+{
+    Guid id;
+    if (FAILED(CoCreateGuid((GUID*)&id)))
+    {
+        const DWORD error = GetLastError();
+        FAIL;
+        return {};
+    }
+    return id;
+}
+
+std::string Guid::ToString() const
+{
+    return ::ToString("%08X-%04X-%04X-%04X-%04X%08X", a, b >> 16, b & 0XFFFF, c >> 16, c & 0XFFFF, d);
+}
+
+Guid GuidFromString(const char* s)
+{
+    Guid r = {};
+    const size_t char_len = strnlen_s(s, 38);
+    if (char_len != 36)
+    {
+        FAIL;
+        return r;
+    }
+
+    char b[8] = { s[ 9], s[10], s[11], s[12], s[14], s[15], s[16], s[17] };
+    char c[8] = { s[19], s[20], s[21], s[22], s[24], s[25], s[26], s[27] };
+    r.a = (u32)strtoll(s,      nullptr, 16);
+    r.b = (u32)strtoll(b,      nullptr, 16);
+    r.c = (u32)strtoll(c,      nullptr, 16);
+    r.d = (u32)strtoll(&s[28], nullptr, 16);
+
+    return r;
+}

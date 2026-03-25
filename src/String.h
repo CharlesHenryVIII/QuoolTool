@@ -45,10 +45,12 @@ std::vector<std::string> FileToStringArray(const char* fileName, const char* lin
 i32 NumberLengthInString(const std::string& string, i32& i);
 i32 StringToInt(const std::string& string, i32 i, i32 length);
 i32 StringToInt(const std::string& string, i32 i);
+void StringGetReadableByteSize(std::string& out, const u64 v);
 bool StringRemoveLeading (std::string& string, const char remove);
 bool StringRemoveTrailing(std::string& string, const char remove);
 bool ContainsString(const std::wstring& source, const std::wstring& find, StringCase case_insensitive);
 bool StringCompare(StringCase case_sensitivity, const std::string& a, const std::string& b);
+bool StringCompare(StringCase case_sensitivity, const char* a, const char* b);
 bool CopyFile(const Path& source, const Path& dest);
 bool CopyFileRelative(const Path& source, const Path& dest, const Path& relative);
 bool CopyFolderRelative(const Path& source, const Path& dest, const Path& relative);

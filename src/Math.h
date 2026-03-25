@@ -36,15 +36,20 @@ using u64 = uint64_t;
 #define MilliFromMicroseconds(value)    ((value) / 1000LL)
 #define SecFromMicroseconds(value)      ((value) / 1000000LL)
 
-#define kilobytes(value) (         (value) * 1000L)
-#define Megabytes(value) (kilobytes(value) * 1000L)
-#define Gigabytes(value) (Megabytes(value) * 1000L)
-#define Terabytes(value) (Gigabytes(value) * 1000L)
+#define Kilobytes(value) (         (value) * 1000LL)
+#define Megabytes(value) (Kilobytes(value) * 1000LL)
+#define Gigabytes(value) (Megabytes(value) * 1000LL)
+#define Terabytes(value) (Gigabytes(value) * 1000LL)
 
-#define ToKilobytes(value) ((u64)(           (value) / 1000.0))
-#define ToMegabytes(value) ((u64)(ToKilobytes(value) / 1000.0))
-#define ToGigabytes(value) ((u64)(ToMegabytes(value) / 1000.0))
-#define ToTerabytes(value) ((u64)(ToGigabytes(value) / 1000.0))
+#define ToKilobytesInt(value) ((u64)(              (value) / 1000.0))
+#define ToMegabytesInt(value) ((u64)(ToKilobytesInt(value) / 1000.0))
+#define ToGigabytesInt(value) ((u64)(ToMegabytesInt(value) / 1000.0))
+#define ToTerabytesInt(value) ((u64)(ToGigabytesInt(value) / 1000.0))
+
+#define ToKilobytesFloat(value) (           (value) / 1000.0)
+#define ToMegabytesFloat(value) (ToKilobytesFloat(value) / 1000.0)
+#define ToGigabytesFloat(value) (ToMegabytesFloat(value) / 1000.0)
+#define ToTerabytesFloat(value) (ToGigabytesFloat(value) / 1000.0)
 
 #define Kibibyte(value)  (         (value) * 1024L)
 #define Mebibytes(value) (Kilobytes(value) * 1024L)

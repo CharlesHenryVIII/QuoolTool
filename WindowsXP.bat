@@ -23,7 +23,7 @@ netstat -ano > "%OUTDIR%\netstat.txt"
 :: -----------------------------
 :: Installed Programs
 :: -----------------------------
-echo 02/11 Gathering Installed Programs (THis may take a moment)...
+echo 02/11 Gathering Installed Programs (This may take a moment)...
 ::reg query "HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall" /s > "%OUTDIR%\programs.txt"
 
 REM Initialize the XML file with standard headers
@@ -93,7 +93,7 @@ echo 06/11 BIOS Info...
 wmic bios get Name,Manufacturer,SMBIOSBIOSVersion,SerialNumber,ReleaseDate /format:rawxml > "%OUTDIR%\bios.xml"
 
 echo 07/11 Timezone Info...
-wmic timezone get Caption,Bias /format:rawxml > "%OUTDIR%\timezone.xml"
+wmic timezone get Caption /format:rawxml > "%OUTDIR%\timezone.xml"
 
 :: -----------------------------
 :: GPU Info
@@ -163,7 +163,97 @@ REM del "%VBSFILE%"
 :: IP Config
 :: -----------------------------
 echo 11/11 Network Info...
-ipconfig /all > "%OUTDIR%\ipconfig.txt"
+REM ipconfig /all > "%OUTDIR%\ipconfig.txt"
+REM wmic nicconfig where "IPEnabled='TRUE'" get Description,MACAddress,IPAddress,IPSubnet,DefaultIPGateway,DHCPServer,DNSServerSearchOrder /format:rawxml > "%OUTDIR%\network.xml"
+REM wmic nicconfig get * /format:rawxml > "%OUTDIR%\network.xml"
+wmic nicconfig get Caption,Description,IPEnabled,SettingID,DHCPEnabled,MACAddress /format:rawxml > "%OUTDIR%\networks.xml"
+
+:: -----------------------------
+:: Saved IP Configurations (Pure Batch XML)
+:: -----------------------------
+echo 12/12 Extracting Complete Network Profile...
+
+:: 1. Write the standard XML header
+> "%OUTDIR%\network.xml" echo ^<?xml version="1.0" encoding="UTF-8"?^>
+>> "%OUTDIR%\network.xml" echo ^<NetworkInterfaces^>
+
+:: 2. Loop through every network interface GUID
+FOR /F "delims=" %%A IN ('reg query "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" ^| findstr "HKEY_"') DO (
+    
+    REM Extract just the {GUID} from the full registry path
+    set "fullPath=%%A"
+    set "guid=!fullPath:HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\=!"
+    
+    REM Reset all variables for this specific interface
+    set "val_EnableDHCP="
+    set "val_IPAddress="
+    set "val_SubnetMask="
+    set "val_DefaultGateway="
+    set "val_DefaultGatewayMetric="
+    set "val_DhcpIPAddress="
+    set "val_DhcpSubnetMask="
+    set "val_DhcpServer="
+    set "val_DhcpNameServer="
+    set "val_DhcpDefaultGateway="
+    set "val_DhcpDomain="
+    set "val_NameServer="
+    set "val_Domain="
+
+    REM 3. Query the entire folder at once. 
+    REM findstr "REG_" ensures we only parse valid registry keys (Name, Type, Data)
+    FOR /F "tokens=1,2,*" %%B IN ('reg query "%%A" 2^>nul ^| findstr "REG_"') DO (
+        
+        set "vName=%%B"
+        set "vData=%%D"
+        
+        REM Clean up multiple IPs (REG_MULTI_SZ) separated by null characters (\0)
+        if defined vData set "vData=!vData:\0=,!"
+
+        REM Map the data to our XML variables
+        if /I "!vName!"=="EnableDHCP" set "val_EnableDHCP=!vData!"
+        if /I "!vName!"=="IPAddress" set "val_IPAddress=!vData!"
+        if /I "!vName!"=="SubnetMask" set "val_SubnetMask=!vData!"
+        if /I "!vName!"=="DefaultGateway" set "val_DefaultGateway=!vData!"
+        if /I "!vName!"=="DefaultGatewayMetric" set "val_DefaultGatewayMetric=!vData!"
+        if /I "!vName!"=="DhcpIPAddress" set "val_DhcpIPAddress=!vData!"
+        if /I "!vName!"=="DhcpSubnetMask" set "val_DhcpSubnetMask=!vData!"
+        if /I "!vName!"=="DhcpServer" set "val_DhcpServer=!vData!"
+        if /I "!vName!"=="DhcpNameServer" set "val_DhcpNameServer=!vData!"
+        if /I "!vName!"=="DhcpDefaultGateway" set "val_DhcpDefaultGateway=!vData!"
+        if /I "!vName!"=="DhcpDomain" set "val_DhcpDomain=!vData!"
+        if /I "!vName!"=="NameServer" set "val_NameServer=!vData!"
+        if /I "!vName!"=="Domain" set "val_Domain=!vData!"
+    )
+
+    REM 4. Check if this is an actual configured interface. 
+    REM If EnableDHCP exists (even if it is 0x0), it's a real network card.
+    if defined val_EnableDHCP (
+        
+        >> "%OUTDIR%\network.xml" echo   ^<Interface GUID="!guid!"^>
+        
+        REM Only write the XML tag if the value actually exists in the registry
+        if defined val_EnableDHCP >> "%OUTDIR%\network.xml" echo     ^<EnableDHCP^>!val_EnableDHCP!^</EnableDHCP^>
+        if defined val_IPAddress >> "%OUTDIR%\network.xml" echo     ^<IPAddress^>!val_IPAddress!^</IPAddress^>
+        if defined val_SubnetMask >> "%OUTDIR%\network.xml" echo     ^<SubnetMask^>!val_SubnetMask!^</SubnetMask^>
+        if defined val_DefaultGateway >> "%OUTDIR%\network.xml" echo     ^<DefaultGateway^>!val_DefaultGateway!^</DefaultGateway^>
+        if defined val_DefaultGatewayMetric >> "%OUTDIR%\network.xml" echo     ^<DefaultGatewayMetric^>!val_DefaultGatewayMetric!^</DefaultGatewayMetric^>
+        if defined val_DhcpIPAddress >> "%OUTDIR%\network.xml" echo     ^<DhcpIPAddress^>!val_DhcpIPAddress!^</DhcpIPAddress^>
+        if defined val_DhcpSubnetMask >> "%OUTDIR%\network.xml" echo     ^<DhcpSubnetMask^>!val_DhcpSubnetMask!^</DhcpSubnetMask^>
+        if defined val_DhcpServer >> "%OUTDIR%\network.xml" echo     ^<DhcpServer^>!val_DhcpServer!^</DhcpServer^>
+        if defined val_DhcpNameServer >> "%OUTDIR%\network.xml" echo     ^<DhcpNameServer^>!val_DhcpNameServer!^</DhcpNameServer^>
+        if defined val_DhcpDefaultGateway >> "%OUTDIR%\network.xml" echo     ^<DhcpDefaultGateway^>!val_DhcpDefaultGateway!^</DhcpDefaultGateway^>
+        if defined val_DhcpDomain >> "%OUTDIR%\network.xml" echo     ^<DhcpDomain^>!val_DhcpDomain!^</DhcpDomain^>
+        if defined val_NameServer >> "%OUTDIR%\network.xml" echo     ^<NameServer^>!val_NameServer!^</NameServer^>
+        if defined val_Domain >> "%OUTDIR%\network.xml" echo     ^<Domain^>!val_Domain!^</Domain^>
+        
+        >> "%OUTDIR%\network.xml" echo   ^</Interface^>
+    )
+)
+
+>> "%OUTDIR%\network_settings.xml" echo ^</NetworkInterfaces^>
+echo Done! Network data saved to %OUTDIR%\network_settings.xml
+
+
 
 echo.
 echo Done.

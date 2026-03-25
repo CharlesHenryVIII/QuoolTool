@@ -106,6 +106,48 @@ bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, st
 ImFont* LoadFontForImgui(int resource_id, float fontSize);
 void* OsGetDataFromResource(i32* out_size, const i32 resource_id);
 
+union Guid {
+    uint64_t e[2];
+    //struct {
+    //    uint32_t data1;
+    //    uint16_t data2;
+    //    uint16_t data3;
+    //    uint8_t  data4[8];
+    //};
+    struct {
+        uint32_t a;
+        uint32_t b;
+        uint32_t c;
+        uint32_t d;
+    };
+    std::string ToString() const;
+};
+[[nodiscard]] Guid GuidFromString(const char* s);
+template<typename T> inline [[nodiscard]] T GuidFromString(const char* s) { Guid id = GuidFromString(s); return *(T*)&id; };
+inline constexpr [[nodiscard]] bool operator==(const Guid& a, const Guid& b) { return (a.e[0] == b.e[0]) && (a.e[1] == b.e[1]); }
+inline constexpr [[nodiscard]] bool operator<(const Guid& a, const Guid& b) { return (a.e[1] < b.e[1]) || ((a.e[1] == b.e[1]) && (a.e[0] < b.e[0])); }
+
+Guid NewGuid();
+
+#define STRONG_GUID_DEF(name)                                                                                     \
+union name {                                                                                                      \
+    uint64_t e[2];                                                                                                \
+    struct {                                                                                                      \
+        uint32_t a;                                                                                               \
+        uint32_t b;                                                                                               \
+        uint32_t c;                                                                                               \
+        uint32_t d;                                                                                               \
+    };                                                                                                            \
+    std::string ToString() const { Guid guid = *(Guid*)this; return guid.ToString(); };                           \
+    void FromString(const char* s) { *(Guid*)this = GuidFromString(s); };                                         \
+    void New() { *(Guid*)this = NewGuid(); };                                                                     \
+    static inline    [[nodiscard]] name GetNew() { name r; *(Guid*)&r = NewGuid(); return r; };                   \
+    inline constexpr [[nodiscard]] bool IsValid() const { return e[0] && e[1]; };                                 \
+};                                                                                                                \
+inline constexpr [[nodiscard]] bool operator==(const name& a, const name& b) { return *(Guid*)&a == *(Guid*)&b; };\
+inline constexpr [[nodiscard]] bool operator< (const name& a, const name& b) { return *(Guid*)&a <  *(Guid*)&b; };\
+enum {}
+
 struct RunProcessJob : Job
 {
     std::wstring path;

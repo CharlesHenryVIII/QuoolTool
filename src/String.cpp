@@ -313,6 +313,31 @@ i32 StringToInt(const std::string& string, i32 i)
     return StringToInt(string, i, NumberLengthInString(string, i));
 }
 
+void StringGetReadableByteSize(std::string& out, const u64 v)
+{
+    if (v > Terabytes(1LLU))
+    {
+        double tb = ToTerabytesFloat(v);
+        out = ToString("%.2fTB", tb);
+    }
+    else if (v > Gigabytes(1))
+    {
+        double tb = ToGigabytesFloat(v);
+        out = ToString("%.2fGB", tb);
+    }
+    else if (v > Megabytes(1))
+    {
+        double tb = ToMegabytesFloat(v);
+        out = ToString("%.2fMB", tb);
+    }
+    else if (v > Kilobytes(1))
+    {
+        double tb = ToKilobytesFloat(v);
+        out = ToString("%.2fKB", tb);
+    }
+}
+
+
 bool StringRemoveLeading(std::string& s, const char r)
 {
     i32 i = 0;
@@ -342,6 +367,22 @@ bool StringRemoveTrailing(std::string& s, const char r)
     {
         s = s.substr(0, i);
         return true;
+    }
+    return false;
+}
+
+bool StringCompare(StringCase case_sensitivity, const char* a, const char* b)
+{
+    switch (case_sensitivity)
+    {
+    case StringCase_Sensitive:
+        if (strcmp(a, b) == 0)
+            return true;
+        break;
+    case StringCase_Insensitive:
+        if (_stricmp(a, b) == 0)
+            return true;
+        break;
     }
     return false;
 }
