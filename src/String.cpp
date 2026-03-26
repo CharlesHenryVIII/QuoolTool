@@ -637,13 +637,16 @@ std::string PathConcat(const std::string& a, const std::string& b)
 
 void CreateParentDirectories(const Path& path)
 {
-    std::error_code ec;
-    fs::create_directories(path.parent_path(), ec);
-    if (ec)
+    if (!path.empty() && path.has_parent_path())
     {
-        DebugPrint("Failed to create directories for \"%s\"", path.string().c_str());
-        DebugPrint("create_directories Failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
-        FAIL;
+        std::error_code ec;
+        fs::create_directories(path.parent_path(), ec);
+        if (ec)
+        {
+            DebugPrint("Failed to create directories for \"%s\"", path.string().c_str());
+            DebugPrint("create_directories Failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
+            FAIL;
+        }
     }
 }
 
