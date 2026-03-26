@@ -12,7 +12,19 @@ mkdir "%OUTDIR%" 2>nul
 echo Collecting data into %OUTDIR%
 echo.
 
-echo Windows XP 1 > "%OUTDIR%\type.txt"
+REM echo Windows XP 1 > "%OUTDIR%\type.txt"
+set "SYS_FAMILY=Windows"
+set "SYS_TYPE=XP"
+set "SYS_VER=1"
+
+:: Write the structured XML file
+> "%OUTDIR%\quooltoolinfo.xml" echo ^<?xml version="1.0" encoding="UTF-8"?^>
+>> "%OUTDIR%\quooltoolinfo.xml" echo ^<SystemIdentity^>
+>> "%OUTDIR%\quooltoolinfo.xml" echo   ^<ComputerName^>%COMPUTERNAME%^</ComputerName^>
+>> "%OUTDIR%\quooltoolinfo.xml" echo   ^<Family^>%SYS_FAMILY%^</Family^>
+>> "%OUTDIR%\quooltoolinfo.xml" echo   ^<Type^>%SYS_TYPE%^</Type^>
+>> "%OUTDIR%\quooltoolinfo.xml" echo   ^<Version^>%SYS_VER%^</Version^>
+>> "%OUTDIR%\quooltoolinfo.xml" echo ^</SystemIdentity^>
 
 :: -----------------------------
 :: NETSTAT

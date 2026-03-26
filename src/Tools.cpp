@@ -1152,26 +1152,23 @@ void ScriptDisksXML(const ScriptData& data)
 void ConvertFolderToXLSX(const Path& path)
 {
     bool valid = false;
-    Path type_path = path / L"type.txt";
-    if (fs::exists(type_path))
+    Path quool_tool_info_path = path / L"quooltoolinfo.xml";
+    std::string computer_name;
+    if (fs::exists(quool_tool_info_path))
     {
-        std::string data;
-        if (FileReadAll(data, type_path))
+
+        pugi::xml_document doc = GetXmlDocFromFile(quool_tool_info_path.string().c_str());
+        if (!doc.empty())
         {
-            i32 prev = 0;
-            std::vector<std::string_view> strings;
-            std::string_view cs = data;
-            for (i32 i = 0; i < data.size(); i++)
-            {
-                if (cs[i] == ' ')
-                {
-                    strings.push_back(cs.substr(prev, i - prev));
-                    prev = i + 1;
-                }
-            }
-            VALIDATE(strings[0] == "Windows");
-            VALIDATE(strings[1] == "XP");
-            VALIDATE(strings[2] == "1");
+            const pugi::xml_node sys = doc.child("SystemIdentity");
+            computer_name = sys.child_value("ComputerName");
+            const char* family = sys.child_value("Family");
+            const char* type = sys.child_value("Type");
+            const char* version = sys.child_value("Version");
+
+            VALIDATE(StringCompare(StringCase_Insensitive, family, "Windows"));
+            VALIDATE(StringCompare(StringCase_Insensitive, type, "XP"));
+            VALIDATE(StringCompare(StringCase_Insensitive, version, "1"));
             valid = true;
         }
     }
@@ -1180,10 +1177,15 @@ void ConvertFolderToXLSX(const Path& path)
         DebugPrint("Error: Failed to convert folder to XLSX, couldn't get proper type.txt");
         return;
     }
+    if (!computer_name.size())
+    {
+        DebugPrint("Error: Failed to get computer name from quooltoolinfo.xml");
+        computer_name = "SystemInfo";
+    }
 
     //Path output_folder;
     //GetOutputFolder(output_folder, td);
-    const Path excel_file = path / (g_sysinfo.name + L".xlsx");
+    const Path excel_file = path / (computer_name + ".xlsx");
     {
         TRACY_LOCK(s_workbook.lock);
         s_workbook.data = workbook_new(excel_file.string().c_str());
