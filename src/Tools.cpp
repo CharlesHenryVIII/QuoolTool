@@ -412,17 +412,6 @@ void ScriptNetstat(ScriptData& data)
     }
 }
 
-enum VarType : u32 {
-    VarType_Invalid,
-    VarType_String,
-    VarType_u8,
-    VarType_u16,
-    VarType_u32,
-    VarType_u64,
-    VarType_Datetime,
-    VarType_Count,
-};
-
 struct KeyValPair {
     std::string name;
     std::string value;
@@ -479,177 +468,17 @@ void ScriptSystemInfoXP(const Path& full_filename, std::vector<KeyValPair>& pair
     }
 }
 
-void ScriptProgramsXML(ScriptData& data)
-{
-    ZoneScoped;
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(data.output.c_str());
-    if (!result)
-    {
-        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", data.output.c_str(), doc.child("node").attribute("attr").value());
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (data.output.c_str() + result.offset));
-        FAIL;
-        return;
-    }
-    TRACY_LOCK(data.workbook->lock);
-    lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
-    lxw_format* title_format = CreateTitleFormat(book);
-    worksheet_write_string(sheet, 0, 0, "Program", title_format);
-    worksheet_write_string(sheet, 0, 1, "Version", title_format);
-    worksheet_set_row(sheet, 0, 30, NULL);
-    lxw_format* data_format = CreateDataFormat(book);
-
-    const pugi::xml_node programs = doc.child("Programs");
-    i32 i = 1;
-    for (pugi::xml_node program = programs.child("Program"); program; program = program.next_sibling("Program"))
-    {
-        const pugi::xml_node display_name = program.child("DisplayName");
-        const pugi::xml_node display_vers = program.child("DisplayVersion");
-        const char* name = display_name.child_value();
-        const char* vers = display_vers.child_value();
-        worksheet_write_string(sheet, i, 0, name, data_format);
-        worksheet_write_string(sheet, i, 1, vers, data_format);
-        ++i;
-    }
-}
-
-void ScriptProcessorXML(ScriptData& data)
-{
-    ZoneScoped;
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(data.output.c_str());
-    if (!result)
-    {
-        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", data.output.c_str(), doc.child("node").attribute("attr").value());
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (data.output.c_str() + result.offset));
-        FAIL;
-        return;
-    }
-    TRACY_LOCK(data.workbook->lock);
-    lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
-    lxw_format* title_format = CreateTitleFormat(book);
-    lxw_format* data_format = CreateDataFormat(book);
-
-    const pugi::xml_node results = doc.child("COMMAND").child("RESULTS");
-    const pugi::xml_node inst = results.child("CIM").child("INSTANCE");
-
-    i32 i = 0;
-    for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
-    {
-        const char* key = prop.attribute("NAME").value();
-        const char* type = prop.attribute("TYPE").value();
-
-        worksheet_write_string(sheet, 0, i, key, data_format);
-        if (StringCompare(StringCase_Insensitive, type, "uint32"))
-        {
-            const char* v = prop.child_value("VALUE");
-            u32 value = (u32)atoi(v);
-            worksheet_write_number(sheet, 1, i, (double)value, data_format);
-        }
-        else// if (type == "string")
-        {
-            const char* value = prop.child_value("VALUE");
-            worksheet_write_string(sheet, 1, i, value, data_format);
-        }
-        ++i;
-    }
-}
-
-void ScriptComputerSystemXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pairs)
-{
-    ZoneScoped;
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(full_filename.string().c_str());
-    if (!result)
-    {
-        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", full_filename.string().c_str(), doc.child("node").attribute("attr").value());
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (full_filename.string().c_str() + result.offset));
-        FAIL;
-        return;
-    }
-    const pugi::xml_node results = doc.child("COMMAND").child("RESULTS");
-    const pugi::xml_node inst = results.child("CIM").child("INSTANCE");
-
-    i32 i = 1;
-    for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
-    {
-        KeyValPair p;
-        p.name = prop.attribute("NAME").value();
-        p.value = prop.child_value("VALUE");
-
-        if (StringCompare(StringCase_Insensitive, p.name.c_str(), "TotalPhysicalMemory"))
-        {
-            i64 size = _atoi64(p.value.c_str());
-            StringGetReadableByteSize(p.value, (u64)size);
-            p.val_type = VarType_String;
-        }
-        else
-        {
-            const char* type = prop.attribute("TYPE").value();
-            if (StringCompare(StringCase_Insensitive, type, "uint32"))
-                p.val_type = VarType_u32;
-            else if (StringCompare(StringCase_Insensitive, type, "uint64"))
-                p.val_type = VarType_u64;
-            else if (StringCompare(StringCase_Insensitive, type, "string"))
-                p.val_type = VarType_String;
-            else
-            {
-
-                p.val_type = VarType_Invalid;
-                FAIL;
-            }
-        }
-
-        sysinfo_pairs.push_back(p);
-        ++i;
-    }
-}
-
-void ScriptTimezoneXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pairs)
-{
-    ZoneScoped;
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(full_filename.string().c_str());
-    if (!result)
-    {
-        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", full_filename.string().c_str(), doc.child("node").attribute("attr").value());
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (full_filename.string().c_str() + result.offset));
-        FAIL;
-        return;
-    }
-    const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-
-    i32 i = 1;
-    for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
-    {
-        KeyValPair p;
-        p.name = prop.attribute("NAME").value();
-        p.value = prop.child_value("VALUE");
-
-        const char* type = prop.attribute("TYPE").value();
-        if (StringCompare(StringCase_Insensitive, type, "uint32"))
-            p.val_type = VarType_u32;
-        else if (StringCompare(StringCase_Insensitive, type, "uint64"))
-            p.val_type = VarType_u64;
-        else if (StringCompare(StringCase_Insensitive, type, "string"))
-            p.val_type = VarType_String;
-        else
-        {
-
-            p.val_type = VarType_Invalid;
-            FAIL;
-        }
-
-        sysinfo_pairs.push_back(p);
-        ++i;
-    }
-}
+enum VarType : u32 {
+    VarType_Invalid,
+    VarType_String,
+    VarType_u8,
+    VarType_u16,
+    VarType_u32,
+    VarType_u64,
+    VarType_Bool,
+    VarType_Datetime,
+    VarType_Count,
+};
 
 VarType GetVarTypeFromString(const char* s)
 {
@@ -673,19 +502,185 @@ VarType GetVarTypeFromString(const char* s)
     }
 }
 
-void ScriptBiosXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pairs)
+pugi::xml_document GetXmlDocFromFile(const char* filename)
 {
-    ZoneScoped;
     pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(full_filename.string().c_str());
+    pugi::xml_parse_result result = doc.load_file(filename);
     if (!result)
     {
-        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", full_filename.string().c_str(), doc.child("node").attribute("attr").value());
+        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", filename, doc.child("node").attribute("attr").value());
         DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (full_filename.string().c_str() + result.offset));
+        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (filename + result.offset));
         FAIL;
         return;
     }
+}
+
+lxw_datetime StringToDatetime(const char* s)
+{
+    std::string_view sv(s);
+    VALIDATE_V(sv.size() < 21, {});
+
+    std::string_view year = sv.substr(0, 4);
+    std::string_view month = sv.substr(4, 2);
+    std::string_view day = sv.substr(6, 2);
+    std::string_view hour = sv.substr(8, 2);
+    std::string_view min = sv.substr(10, 2);
+    std::string_view sec = sv.substr(12, 9);
+    lxw_datetime dt;
+    std::from_chars_result r;
+    r = std::from_chars(year.data(), year.data() + year.size(), dt.year);
+    r = std::from_chars(month.data(), month.data() + month.size(), dt.month);
+    r = std::from_chars(day.data(), day.data() + day.size(), dt.day);
+    r = std::from_chars(hour.data(), hour.data() + hour.size(), dt.hour);
+    r = std::from_chars(min.data(), min.data() + min.size(), dt.min);
+    r = std::from_chars(sec.data(), sec.data() + sec.size(), dt.sec);
+
+    return dt;
+}
+
+
+void ScriptProgramsXML(ScriptData& data)
+{
+    ZoneScoped;
+    pugi::xml_document doc;
+    pugi::xml_document doc = GetXmlDocFromFile(data.output.c_str());
+    if (doc.empty())
+        return;
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    worksheet_write_string(sheet, 0, 0, "Program", title_format);
+    worksheet_write_string(sheet, 0, 1, "Version", title_format);
+    worksheet_set_row(sheet, 0, 30, NULL);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    const pugi::xml_node programs = doc.child("Programs");
+    i32 i = 1;
+    for (pugi::xml_node program = programs.child("Program"); program; program = program.next_sibling("Program"))
+    {
+        const pugi::xml_node display_name = program.child("DisplayName");
+        const pugi::xml_node display_vers = program.child("DisplayVersion");
+        const char* name = display_name.child_value();
+        const char* vers = display_vers.child_value();
+        worksheet_write_string(sheet, i, 0, name, data_format);
+        worksheet_write_string(sheet, i, 1, vers, data_format);
+        ++i;
+    }
+}
+
+void WriteTypeToXLSX(lxw_worksheet* sheet, u32 row, u32 col, const char* s, const VarType type, lxw_format* format)
+{
+    switch (type)
+    {
+    case VarType_u8:  [[fallthrough]];
+    case VarType_u16: [[fallthrough]];
+    case VarType_u32: [[fallthrough]];
+    case VarType_u64: worksheet_write_number(sheet, row, col, (double)((u32)atoi(s)), format); break;
+    case VarType_Bool: worksheet_write_boolean(sheet, row, col, GetBoolFromString(s), format); break;
+    case VarType_Datetime:
+    {
+        lxw_datetime dt = StringToDatetime(s);
+        worksheet_write_datetime(sheet, row, col, &dt, format);
+        break;
+    }
+    default: FAIL; [[fallthrough]];
+    case VarType_String: worksheet_write_string(sheet, 1, i, v, data_format); break;
+    }
+}
+
+void ScriptProcessorXML(ScriptData& data)
+{
+    ZoneScoped;
+    pugi::xml_document doc;
+    pugi::xml_document doc = GetXmlDocFromFile(data.output.c_str());
+    if (doc.empty())
+        return;
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    const pugi::xml_node results = doc.child("COMMAND").child("RESULTS");
+    const pugi::xml_node inst = results.child("CIM").child("INSTANCE");
+
+    i32 i = 0;
+    for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+    {
+        const char* key = prop.attribute("NAME").value();
+        const char* type = prop.attribute("TYPE").value();
+
+        worksheet_write_string(sheet, 0, i, key, data_format);
+        const VarType t = GetVarTypeFromString(type);
+        const char* v = prop.child_value("VALUE");
+        WriteTypeToXLSX(sheet, 1, i, v, t, data_format);
+        ++i;
+    }
+}
+
+void ScriptComputerSystemXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pairs)
+{
+    ZoneScoped;
+    pugi::xml_document doc;
+    pugi::xml_document doc = GetXmlDocFromFile(full_filename.string().c_str());
+    if (doc.empty())
+        return;
+    const pugi::xml_node results = doc.child("COMMAND").child("RESULTS");
+    const pugi::xml_node inst = results.child("CIM").child("INSTANCE");
+
+    i32 i = 1;
+    for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+    {
+        KeyValPair p;
+        p.name = prop.attribute("NAME").value();
+        p.value = prop.child_value("VALUE");
+
+        if (StringCompare(StringCase_Insensitive, p.name.c_str(), "TotalPhysicalMemory"))
+        {
+            i64 size = _atoi64(p.value.c_str());
+            StringGetReadableByteSize(p.value, (u64)size);
+            p.val_type = VarType_String;
+        }
+        else
+        {
+            const char* type = prop.attribute("TYPE").value();
+            p.val_type = GetVarTypeFromString(type);
+        }
+
+        sysinfo_pairs.push_back(p);
+        ++i;
+    }
+}
+
+void ScriptTimezoneXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pairs)
+{
+    ZoneScoped;
+    pugi::xml_document doc = GetXmlDocFromFile(full_filename.string().c_str());
+    if (doc.empty())
+        return;
+    const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
+
+    i32 i = 1;
+    for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+    {
+        KeyValPair p;
+        p.name = prop.attribute("NAME").value();
+        p.value = prop.child_value("VALUE");
+        p.val_type = GetVarTypeFromString(prop.attribute("TYPE").value());
+        sysinfo_pairs.push_back(p);
+        ++i;
+    }
+}
+
+
+void ScriptBiosXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pairs)
+{
+    ZoneScoped;
+    pugi::xml_document doc = GetXmlDocFromFile(full_filename.string().c_str());
+    if (doc.empty())
+        return;
     const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
 
     i32 i = 1;
@@ -705,16 +700,9 @@ void ScriptBiosXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_p
 void ScriptGpuXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pairs)
 {
     ZoneScoped;
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(full_filename.string().c_str());
-    if (!result)
-    {
-        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", full_filename.string().c_str(), doc.child("node").attribute("attr").value());
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (full_filename.string().c_str() + result.offset));
-        FAIL;
+    pugi::xml_document doc = GetXmlDocFromFile(full_filename.string().c_str());
+    if (doc.empty())
         return;
-    }
     const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
 
     i32 i = 1;
@@ -738,51 +726,11 @@ bool GetBoolFromString(const char* s)
 }
 
 
-lxw_datetime StringToDatetime(const char* s)
-{
-    std::string_view sv(s);
-    if (sv.size() < 21)
-    {
-        return {};
-        FAIL;
-    }
-
-    lxw_datetime dt = {
-        //.year = , //Year     : 1900 - 9999
-        //.month = , //Month    : 1 - 12
-        //.day = , //Day      : 1 - 31
-        //.hour = ,//Hour     : 0 - 23
-        //.min = , //Minute   : 0 - 59
-        //.sec = ,//Seconds  : 0 - 59.999
-    };
-    std::from_chars_result r;
-    std::string_view year = sv.substr(0, 4);
-    std::string_view month = sv.substr(4, 2);
-    std::string_view day = sv.substr(6, 2);
-    std::string_view hour = sv.substr(8, 2);
-    std::string_view min = sv.substr(10, 2);
-    std::string_view sec = sv.substr(12, 9);
-    r = std::from_chars(year.data(), year.data() + year.size(), dt.year);
-    r = std::from_chars(month.data(), month.data() + month.size(), dt.month);
-    r = std::from_chars(day.data(), day.data() + day.size(), dt.day);
-    r = std::from_chars(hour.data(), hour.data() + hour.size(), dt.hour);
-    r = std::from_chars(min.data(), min.data() + min.size(), dt.min);
-    r = std::from_chars(sec.data(), sec.data() + sec.size(), dt.sec);
-
-    return dt;
-}
-
-union IPAddress {
-    struct { u8 a,b,c,d; };
-    u8 e[4];
-    IPAddress() = default;
-    IPAddress(u8 v) : a(v), b(v), c(v), d(v) {};
-};
 void ScriptNetworkXML(const ScriptData& data)
 {
     ZoneScoped;
-    const char* networks_filename = "networks.xml";
-    const char* network_settings_filename = "network_settings.xml";
+    const char* interfaces_filename = "networks.xml";
+    const char* settings_filename = "network_settings.xml";
 
     //1. load all the networks
     //2. fill out the data from network_settings that match
@@ -798,39 +746,24 @@ void ScriptNetworkXML(const ScriptData& data)
     };
 
     struct NetworkSettings {
-        Guid guid;
+        std::string guid; //GUID
         bool EnabledDHCP;
-        IPAddress IPaddress;
-        IPAddress SubnetMask;
-        IPAddress DefaultGateway;
+        std::string IPAddress;
+        std::string SubnetMask;
+        std::string DefaultGateway;
         i32 DefaultGatewayMetric;
-        IPAddress DhcpIPAddress;
-        IPAddress DhcpSubnetMask;
-        IPAddress DhcpServer;
-        std::vector<IPAddress> DhcpNameServer;
-        IPAddress DhcpDefaultGateway;
+        std::string DhcpIPAddress;
+        std::string DhcpSubnetMask;
+        std::string DhcpServer;
+        std::vector<std::string> DhcpNameServer;
+        std::string DhcpDefaultGateway;
         std::string DhcpDomain;
     };
 
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(data.output.c_str());
-    if (!result)
-    {
-        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", data.output.c_str(), doc.child("node").attribute("attr").value());
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (data.output.c_str() + result.offset));
-        FAIL;
-        return;
-    }
-
-    TRACY_LOCK(data.workbook->lock);
-    lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
-    lxw_format* title_format = CreateTitleFormat(book);
-    lxw_format* data_format = CreateDataFormat(book);
-    worksheet_write_string(sheet, 0, 0, "Name", title_format);
-    worksheet_write_string(sheet, 0, 1, "Value", title_format);
-    worksheet_set_row(sheet, 0, 30, NULL);
+    std::vector<NetworkInterface> interfaces;
+    pugi::xml_document interface_doc = GetXmlDocFromFile(interfaces_filename);
+    std::vector<NetworkSettings> settings;
+    pugi::xml_document setting_doc = GetXmlDocFromFile(settings_filename);
 
     const pugi::xml_node cim = doc.child("COMMAND").child("RESULTS").child("CIM");
     i32 j = 0;
@@ -874,6 +807,22 @@ void ScriptNetworkXML(const ScriptData& data)
         }
         ++j;
     }
+
+
+
+
+
+
+
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    lxw_format* data_format = CreateDataFormat(book);
+    worksheet_write_string(sheet, 0, 0, "Name", title_format);
+    worksheet_write_string(sheet, 0, 1, "Value", title_format);
+    worksheet_set_row(sheet, 0, 30, NULL);
+
 }
 
 void ConvertFolderToXLSX(const Path& path)
@@ -962,26 +911,6 @@ void ConvertFolderToXLSX(const Path& path)
         else if (n == L"gpu.xml")
         {
             ScriptGpuXML(path / n, sysinfo_pairs);
-        }
-        else if (n == L"networks.xml")
-        {
-            ScriptData sd = {
-                .name = "Network",
-                .output = (path / n).string(),
-                .workbook = &s_workbook,
-            };
-
-            ScriptNetworksXML(sd);
-        }
-        else if (n == L"networks.xml")
-        {
-            ScriptData sd = {
-                .name = "Network",
-                .output = (path / n).string(),
-                .workbook = &s_workbook,
-            };
-
-            ScriptNetworkXML(sd);
         }
         //else if (n == L"computersystem.csv")
         //{
