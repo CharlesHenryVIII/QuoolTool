@@ -412,6 +412,18 @@ void ScriptNetstat(ScriptData& data)
     }
 }
 
+enum VarType : u32 {
+    VarType_Invalid,
+    VarType_String,
+    VarType_u8,
+    VarType_u16,
+    VarType_u32,
+    VarType_u64,
+    VarType_Bool,
+    VarType_Datetime,
+    VarType_Count,
+};
+
 struct KeyValPair {
     std::string name;
     std::string value;
@@ -468,17 +480,10 @@ void ScriptSystemInfoXP(const Path& full_filename, std::vector<KeyValPair>& pair
     }
 }
 
-enum VarType : u32 {
-    VarType_Invalid,
-    VarType_String,
-    VarType_u8,
-    VarType_u16,
-    VarType_u32,
-    VarType_u64,
-    VarType_Bool,
-    VarType_Datetime,
-    VarType_Count,
-};
+bool GetBoolFromString(const char* s)
+{
+    return StringCompare(StringCase_Insensitive, s, "TRUE");
+}
 
 VarType GetVarTypeFromString(const char* s)
 {
@@ -508,12 +513,13 @@ pugi::xml_document GetXmlDocFromFile(const char* filename)
     pugi::xml_parse_result result = doc.load_file(filename);
     if (!result)
     {
-        DebugPrint("XML [%s] parsed with errors, attr value: [%s]", filename, doc.child("node").attribute("attr").value());
+        DebugPrint("Error XML [%s] parsed with errors", filename);
         DebugPrint("Error description: %s", result.description());
         DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (filename + result.offset));
         FAIL;
-        return;
+        return {};
     }
+    return doc;
 }
 
 lxw_datetime StringToDatetime(const char* s)
@@ -543,7 +549,6 @@ lxw_datetime StringToDatetime(const char* s)
 void ScriptProgramsXML(ScriptData& data)
 {
     ZoneScoped;
-    pugi::xml_document doc;
     pugi::xml_document doc = GetXmlDocFromFile(data.output.c_str());
     if (doc.empty())
         return;
@@ -586,14 +591,13 @@ void WriteTypeToXLSX(lxw_worksheet* sheet, u32 row, u32 col, const char* s, cons
         break;
     }
     default: FAIL; [[fallthrough]];
-    case VarType_String: worksheet_write_string(sheet, 1, i, v, data_format); break;
+    case VarType_String: worksheet_write_string(sheet, row, col, s, format); break;
     }
 }
 
 void ScriptProcessorXML(ScriptData& data)
 {
     ZoneScoped;
-    pugi::xml_document doc;
     pugi::xml_document doc = GetXmlDocFromFile(data.output.c_str());
     if (doc.empty())
         return;
@@ -623,7 +627,6 @@ void ScriptProcessorXML(ScriptData& data)
 void ScriptComputerSystemXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pairs)
 {
     ZoneScoped;
-    pugi::xml_document doc;
     pugi::xml_document doc = GetXmlDocFromFile(full_filename.string().c_str());
     if (doc.empty())
         return;
@@ -720,24 +723,14 @@ void ScriptGpuXML(const Path& full_filename, std::vector<KeyValPair>& sysinfo_pa
     }
 }
 
-bool GetBoolFromString(const char* s)
-{
-    return StringCompare(StringCase_Insensitive, s, "TRUE");
-}
-
-
 void ScriptNetworkXML(const ScriptData& data)
 {
     ZoneScoped;
-    const char* interfaces_filename = "networks.xml";
-    const char* settings_filename = "network_settings.xml";
-
     //1. load all the networks
     //2. fill out the data from network_settings that match
     //3. output data to excel in a reasonable format
 
     struct NetworkInterface {
-        std::string Caption;
         std::string Description;
         bool DHCPEnabled;
         bool IPEnabled;
@@ -760,69 +753,136 @@ void ScriptNetworkXML(const ScriptData& data)
         std::string DhcpDomain;
     };
 
+    const char* interfaces_filename = "networks.xml";
+    const char* settings_filename = "network_settings.xml";
+    pugi::xml_document interface_doc = GetXmlDocFromFile(PathConcat(data.output, interfaces_filename).c_str());
+    pugi::xml_document settings_doc = GetXmlDocFromFile(PathConcat(data.output, settings_filename).c_str());
     std::vector<NetworkInterface> interfaces;
-    pugi::xml_document interface_doc = GetXmlDocFromFile(interfaces_filename);
     std::vector<NetworkSettings> settings;
-    pugi::xml_document setting_doc = GetXmlDocFromFile(settings_filename);
 
-    const pugi::xml_node cim = doc.child("COMMAND").child("RESULTS").child("CIM");
-    i32 j = 0;
-    i32 i = 1;
+    const pugi::xml_node cim = interface_doc.child("COMMAND").child("RESULTS").child("CIM");
     for (pugi::xml_node inst = cim.child("INSTANCE"); inst; inst = inst.next_sibling("INSTANCE"))
     {
+        NetworkInterface net = {};
         for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
         {
             const char* key = prop.attribute("NAME").value();
             const char* type = prop.attribute("TYPE").value();
-            const char* v = prop.child_value("VALUE");
-            worksheet_write_string(sheet, i, 0, key, data_format);
-            if (v[0] == 0)
-                continue;
+            const char* value = prop.child_value("VALUE");
 
-            if (StringCompare(StringCase_Insensitive, type, "uint32") ||
-                StringCompare(StringCase_Insensitive, type, "uint64") ||
-                StringCompare(StringCase_Insensitive, type, "uint8" ) ||
-                StringCompare(StringCase_Insensitive, type, "uint16"))
+            if (StringCompare(StringCase_Insensitive, key, "Description"))
+                net.Description = value;
+            else if (StringCompare(StringCase_Insensitive, key, "DHCPEnabled"))
+                net.DHCPEnabled = GetBoolFromString(value);
+            else if (StringCompare(StringCase_Insensitive, key, "IPEnabled"))
+                net.IPEnabled = GetBoolFromString(value);
+            else if (StringCompare(StringCase_Insensitive, key, "MACAddress"))
+                net.MACAddress = value;
+            else if (StringCompare(StringCase_Insensitive, key, "SettingID"))
             {
-                u32 value = (u32)atoi(v);
-                worksheet_write_number(sheet, i, 1, (double)value, data_format);
-
-            }
-            else if (StringCompare(StringCase_Insensitive, type, "string"))
-            {
-                worksheet_write_string(sheet, i, 1, v, data_format);
-            }
-            else if (StringCompare(StringCase_Insensitive, type, "boolean"))
-            {
-                worksheet_write_boolean(sheet, i, 1, GetBoolFromString(v), data_format);
-            }
-            else if (StringCompare(StringCase_Insensitive, type, "datetime"))
-            {
-                lxw_datetime dt = StringToDatetime(v);
-                worksheet_write_datetime(sheet, i, 1, &dt, data_format);
+                if (value)
+                {
+                    net.SettingID = value;
+                    if (value[0] == '{')
+                    {
+                        net.SettingID = net.SettingID.substr(1, net.SettingID.size() - 2);
+                    }
+                }
             }
             else
                 FAIL;
-            ++i;
         }
-        ++j;
+        interfaces.push_back(net);
     }
 
-
-
-
-
-
+    const pugi::xml_node inters = settings_doc.child("NetworkInterfaces");
+    for (pugi::xml_node interface = inters.child("Interface"); interface; interface = interface.next_sibling("interfaceANCE"))
+    {
+        NetworkSettings set = {};
+        set.guid = interface.attribute("GUID").value();
+        if (set.guid.size() > 36)
+        {
+            //format the guid
+            //"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{4B0712E7-2915-47FE-943A-294969D41C69}"
+            set.guid = set.guid.substr(set.guid.size() - 36 - 1, 36);
+        }
+        set.EnabledDHCP = GetBoolFromString(interface.child_value("EnableDHCP"));
+        set.DefaultGatewayMetric = atoi(interface.child_value("DefaultGatewayMetric"));
+        set.IPAddress = interface.child_value("IPAddress");
+        set.SubnetMask = interface.child_value("SubnetMask");
+        set.DefaultGateway = interface.child_value("DefaultGateway");
+        set.DhcpIPAddress = interface.child_value("DhcpIPAddress");
+        set.DhcpSubnetMask = interface.child_value("DhcpSubnetMask");
+        set.DhcpServer = interface.child_value("DhcpServer");
+        set.DhcpDefaultGateway = interface.child_value("DhcpDefaultGateway");
+        set.DhcpDomain = interface.child_value("DhcpDomain");
+        set.DhcpNameServer = TextToStringArray(interface.child_value("DhcpNameServer"), " ");
+        settings.push_back(set);
+    }
 
     TRACY_LOCK(data.workbook->lock);
     lxw_workbook* book = data.workbook->data;
     lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
     lxw_format* title_format = CreateTitleFormat(book);
     lxw_format* data_format = CreateDataFormat(book);
-    worksheet_write_string(sheet, 0, 0, "Name", title_format);
-    worksheet_write_string(sheet, 0, 1, "Value", title_format);
-    worksheet_set_row(sheet, 0, 30, NULL);
+    //worksheet_write_string(sheet, 0, 0, "Name", title_format);
+    //worksheet_write_string(sheet, 0, 1, "Value", title_format);
+    //worksheet_set_row(sheet, 0, 30, NULL);
+#define WORKSHEET_WRITE_KEY_VAL_STRING(_name) \
+                worksheet_write_string(sheet, row_i, 0, #_name, data_format);\
+                worksheet_write_string(sheet, row_i, 1, set. ## _name ##.c_str(), data_format);\
+                ++row_i
+    i32 row_i = 0;
+    for (i32 i = 0; i < interfaces.size(); i++)
+    {
+        const NetworkInterface& inter = interfaces[i];
 
+        worksheet_merge_range(sheet, row_i, 0, row_i, 1, inter.Description.c_str(), title_format);
+        worksheet_set_row(sheet, row_i, 30, NULL);
+        ++row_i;
+        worksheet_write_string(sheet, row_i, 0, "MACAddress", data_format);
+        worksheet_write_string(sheet, row_i, 1, inter.MACAddress.c_str(), data_format);
+        ++row_i;
+        worksheet_write_string(sheet, row_i, 0, "DHCPEnabled", data_format);
+        worksheet_write_boolean(sheet, row_i, 1, inter.DHCPEnabled, data_format);
+        ++row_i;
+        worksheet_write_string(sheet, row_i, 0, "IPEnabled", data_format);
+        worksheet_write_boolean(sheet, row_i, 1, inter.IPEnabled, data_format);
+        ++row_i;
+
+        for (const auto& set : settings)
+        {
+            if (StringCompare(StringCase_Insensitive, set.guid, inter.SettingID))
+            {
+                ASSERT(set.EnabledDHCP == inter.DHCPEnabled); //bool EnabledDHCP;
+                WORKSHEET_WRITE_KEY_VAL_STRING(IPAddress);
+                WORKSHEET_WRITE_KEY_VAL_STRING(SubnetMask);
+                WORKSHEET_WRITE_KEY_VAL_STRING(DefaultGateway);
+                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpIPAddress);
+                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpSubnetMask);
+                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpServer);
+                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpDefaultGateway);
+                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpDomain);
+
+                worksheet_write_string(sheet, row_i, 0, "DefaultGatewayMetric", data_format);
+                worksheet_write_number(sheet, row_i, 1, set.DefaultGatewayMetric, data_format);
+                ++row_i;
+
+                for (i32 j = 0; j < set.DhcpNameServer.size(); ++j)
+                {
+                    const std::string& s = set.DhcpNameServer[j];
+                    const std::string name = ToString("DhcpNameServer %i", j);
+                    worksheet_write_string(sheet, row_i, 0, name.c_str(), data_format);
+                    worksheet_write_string(sheet, row_i, 1, s.c_str(), data_format);
+                    ++row_i;
+                }
+                break;
+            }
+        }
+        ++row_i;
+    }
+
+#undef WORKSHEET_WRITE_KEY_VAL
 }
 
 void ConvertFolderToXLSX(const Path& path)
@@ -884,6 +944,7 @@ void ConvertFolderToXLSX(const Path& path)
 
     ScriptData sd = {
         .name = "Network",
+        .output = path.string(),
         .workbook = &s_workbook,
     };
     ScriptNetworkXML(sd);

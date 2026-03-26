@@ -162,11 +162,11 @@ REM del "%VBSFILE%"
 :: -----------------------------
 :: IP Config
 :: -----------------------------
-echo 11/11 Network Info...
+echo 11/12 Network Info...
 REM ipconfig /all > "%OUTDIR%\ipconfig.txt"
 REM wmic nicconfig where "IPEnabled='TRUE'" get Description,MACAddress,IPAddress,IPSubnet,DefaultIPGateway,DHCPServer,DNSServerSearchOrder /format:rawxml > "%OUTDIR%\network.xml"
 REM wmic nicconfig get * /format:rawxml > "%OUTDIR%\network.xml"
-wmic nicconfig get Caption,Description,IPEnabled,SettingID,DHCPEnabled,MACAddress /format:rawxml > "%OUTDIR%\networks.xml"
+wmic nicconfig get Description,IPEnabled,SettingID,DHCPEnabled,MACAddress /format:rawxml > "%OUTDIR%\networks.xml"
 
 :: -----------------------------
 :: Saved IP Configurations (Pure Batch XML)
@@ -174,8 +174,8 @@ wmic nicconfig get Caption,Description,IPEnabled,SettingID,DHCPEnabled,MACAddres
 echo 12/12 Extracting Complete Network Profile...
 
 :: 1. Write the standard XML header
-> "%OUTDIR%\network.xml" echo ^<?xml version="1.0" encoding="UTF-8"?^>
->> "%OUTDIR%\network.xml" echo ^<NetworkInterfaces^>
+> "%OUTDIR%\network_settings.xml" echo ^<?xml version="1.0" encoding="UTF-8"?^>
+>> "%OUTDIR%\network_settings.xml" echo ^<NetworkInterfaces^>
 
 :: 2. Loop through every network interface GUID
 FOR /F "delims=" %%A IN ('reg query "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" ^| findstr "HKEY_"') DO (
@@ -229,24 +229,24 @@ FOR /F "delims=" %%A IN ('reg query "HKLM\SYSTEM\CurrentControlSet\Services\Tcpi
     REM If EnableDHCP exists (even if it is 0x0), it's a real network card.
     if defined val_EnableDHCP (
         
-        >> "%OUTDIR%\network.xml" echo   ^<Interface GUID="!guid!"^>
+        >> "%OUTDIR%\network_settings.xml" echo   ^<Interface GUID="!guid!"^>
         
         REM Only write the XML tag if the value actually exists in the registry
-        if defined val_EnableDHCP >> "%OUTDIR%\network.xml" echo     ^<EnableDHCP^>!val_EnableDHCP!^</EnableDHCP^>
-        if defined val_IPAddress >> "%OUTDIR%\network.xml" echo     ^<IPAddress^>!val_IPAddress!^</IPAddress^>
-        if defined val_SubnetMask >> "%OUTDIR%\network.xml" echo     ^<SubnetMask^>!val_SubnetMask!^</SubnetMask^>
-        if defined val_DefaultGateway >> "%OUTDIR%\network.xml" echo     ^<DefaultGateway^>!val_DefaultGateway!^</DefaultGateway^>
-        if defined val_DefaultGatewayMetric >> "%OUTDIR%\network.xml" echo     ^<DefaultGatewayMetric^>!val_DefaultGatewayMetric!^</DefaultGatewayMetric^>
-        if defined val_DhcpIPAddress >> "%OUTDIR%\network.xml" echo     ^<DhcpIPAddress^>!val_DhcpIPAddress!^</DhcpIPAddress^>
-        if defined val_DhcpSubnetMask >> "%OUTDIR%\network.xml" echo     ^<DhcpSubnetMask^>!val_DhcpSubnetMask!^</DhcpSubnetMask^>
-        if defined val_DhcpServer >> "%OUTDIR%\network.xml" echo     ^<DhcpServer^>!val_DhcpServer!^</DhcpServer^>
-        if defined val_DhcpNameServer >> "%OUTDIR%\network.xml" echo     ^<DhcpNameServer^>!val_DhcpNameServer!^</DhcpNameServer^>
-        if defined val_DhcpDefaultGateway >> "%OUTDIR%\network.xml" echo     ^<DhcpDefaultGateway^>!val_DhcpDefaultGateway!^</DhcpDefaultGateway^>
-        if defined val_DhcpDomain >> "%OUTDIR%\network.xml" echo     ^<DhcpDomain^>!val_DhcpDomain!^</DhcpDomain^>
-        if defined val_NameServer >> "%OUTDIR%\network.xml" echo     ^<NameServer^>!val_NameServer!^</NameServer^>
-        if defined val_Domain >> "%OUTDIR%\network.xml" echo     ^<Domain^>!val_Domain!^</Domain^>
+        if defined val_EnableDHCP >> "%OUTDIR%\network_settings.xml" echo     ^<EnableDHCP^>!val_EnableDHCP!^</EnableDHCP^>
+        if defined val_IPAddress >> "%OUTDIR%\network_settings.xml" echo     ^<IPAddress^>!val_IPAddress!^</IPAddress^>
+        if defined val_SubnetMask >> "%OUTDIR%\network_settings.xml" echo     ^<SubnetMask^>!val_SubnetMask!^</SubnetMask^>
+        if defined val_DefaultGateway >> "%OUTDIR%\network_settings.xml" echo     ^<DefaultGateway^>!val_DefaultGateway!^</DefaultGateway^>
+        if defined val_DefaultGatewayMetric >> "%OUTDIR%\network_settings.xml" echo     ^<DefaultGatewayMetric^>!val_DefaultGatewayMetric!^</DefaultGatewayMetric^>
+        if defined val_DhcpIPAddress >> "%OUTDIR%\network_settings.xml" echo     ^<DhcpIPAddress^>!val_DhcpIPAddress!^</DhcpIPAddress^>
+        if defined val_DhcpSubnetMask >> "%OUTDIR%\network_settings.xml" echo     ^<DhcpSubnetMask^>!val_DhcpSubnetMask!^</DhcpSubnetMask^>
+        if defined val_DhcpServer >> "%OUTDIR%\network_settings.xml" echo     ^<DhcpServer^>!val_DhcpServer!^</DhcpServer^>
+        if defined val_DhcpNameServer >> "%OUTDIR%\network_settings.xml" echo     ^<DhcpNameServer^>!val_DhcpNameServer!^</DhcpNameServer^>
+        if defined val_DhcpDefaultGateway >> "%OUTDIR%\network_settings.xml" echo     ^<DhcpDefaultGateway^>!val_DhcpDefaultGateway!^</DhcpDefaultGateway^>
+        if defined val_DhcpDomain >> "%OUTDIR%\network_settings.xml" echo     ^<DhcpDomain^>!val_DhcpDomain!^</DhcpDomain^>
+        if defined val_NameServer >> "%OUTDIR%\network_settings.xml" echo     ^<NameServer^>!val_NameServer!^</NameServer^>
+        if defined val_Domain >> "%OUTDIR%\network_settings.xml" echo     ^<Domain^>!val_Domain!^</Domain^>
         
-        >> "%OUTDIR%\network.xml" echo   ^</Interface^>
+        >> "%OUTDIR%\network_settings.xml" echo   ^</Interface^>
     )
 )
 

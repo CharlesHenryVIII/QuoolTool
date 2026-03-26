@@ -626,6 +626,15 @@ std::wstring PathConcat(const std::wstring& a, const std::wstring& b)
     return a + L"/" + b;
 }
 
+std::string PathConcat(const std::string& a, const std::string& b)
+{
+    if (a.back() == '/' || a.back() == '\\')
+    {
+        return a + b;
+    }
+    return a + "/" + b;
+}
+
 void CreateParentDirectories(const Path& path)
 {
     std::error_code ec;

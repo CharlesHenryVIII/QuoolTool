@@ -80,6 +80,7 @@ void PathCleanSlashs(std::wstring& s);
 void PathRemoveExtension(std::wstring& path);
 std::wstring PathAddEndSlash(const std::wstring& s);
 std::wstring PathConcat(const std::wstring& a, const std::wstring& b);
+std::string PathConcat(const std::string& a, const std::string& b);
 void CreateParentDirectories(const Path& path);
 
 u64 FileReadAll(std::string& out, const Path& filepath);
