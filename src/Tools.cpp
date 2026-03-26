@@ -655,7 +655,7 @@ void ScriptProcessorXML(ScriptData& data)
         const char* key = prop.attribute("NAME").value();
         const char* type = prop.attribute("TYPE").value();
 
-        worksheet_write_string(sheet, 0, i, key, data_format);
+        worksheet_write_string(sheet, 0, i, key, title_format);
         const VarType t = GetVarTypeFromString(type);
         const char* v = prop.child_value("VALUE");
         WriteTypeToXLSX(sheet, 1, i, v, t, data_format);
@@ -862,8 +862,8 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
             if (StringCompare(StringCase_Insensitive, p.name.c_str(), "TotalPhysicalMemory"))
             {
-                i64 size = _atoi64(p.value.c_str());
-                StringGetReadableByteSize(p.value, (u64)size);
+                u64 size = (u64)strtoull(p.value.c_str(), nullptr, 10);
+                StringGetReadableByteSize(p.value, size);
                 p.val_type = VarType_String;
             }
             else
@@ -960,6 +960,195 @@ void ScriptSystemInfoXML(const ScriptData& data)
     ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
+void ScriptDisksXML(const ScriptData& data)
+{
+    ZoneScoped;
+
+    struct PhysicalDisk {
+        std::string Description;
+        std::string DeviceID;
+        std::string FirmwareRevision;
+        std::string InterfaceType;
+        std::string Manufacturer;
+        std::string MediaType;
+        std::string Model;
+        std::string Name;
+        u32 Partitions;
+        std::string Size;//reformat
+        std::string Status;
+    };
+    const i32 physical_disk_member_count = 11;
+
+    struct LogicalDisk {
+        std::string Caption;
+        std::string Description;
+        std::string DeviceID;
+        std::string FileSystem;
+        std::string FreeSpace; //reformat
+        std::string Size; //reformat
+    };
+    const i32 logical_disk_member_count = 6;
+
+    std::vector<PhysicalDisk> physical_disks;
+    std::vector<LogicalDisk> logical_disks;
+    const pugi::xml_document physical_doc = GetXmlDocFromFile(PathConcat(data.output, "physical_disks.xml").c_str());
+    const pugi::xml_document logical_doc = GetXmlDocFromFile(PathConcat(data.output, "logical_disks.xml").c_str());
+    if (physical_doc.empty() || logical_doc.empty())
+        return;
+
+    {
+        const pugi::xml_node cim = physical_doc.child("COMMAND").child("RESULTS").child("CIM");
+        for (pugi::xml_node inst = cim.child("INSTANCE"); inst; inst = inst.next_sibling("INSTANCE"))
+        {
+            PhysicalDisk disk = {};
+            for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+            {
+                const char* key = prop.attribute("NAME").value();
+                const char* type = prop.attribute("TYPE").value();
+                const char* value = prop.child_value("VALUE");
+
+                if (StringCompare(StringCase_Insensitive, key, "Description"))
+                    disk.Description = value;
+                else if (StringCompare(StringCase_Insensitive, key, "DeviceID"))
+                    disk.DeviceID = value;
+                else if (StringCompare(StringCase_Insensitive, key, "FirmwareRevision"))
+                    disk.FirmwareRevision = value;
+                else if (StringCompare(StringCase_Insensitive, key, "InterfaceType"))
+                    disk.InterfaceType = value;
+                else if (StringCompare(StringCase_Insensitive, key, "Manufacturer"))
+                    disk.Manufacturer = value;
+                else if (StringCompare(StringCase_Insensitive, key, "MediaType"))
+                    disk.MediaType = value;
+                else if (StringCompare(StringCase_Insensitive, key, "Model"))
+                    disk.Model = value;
+                else if (StringCompare(StringCase_Insensitive, key, "Name"))
+                    disk.Name = value;
+                else if (StringCompare(StringCase_Insensitive, key, "Status"))
+                    disk.Status = value;
+                else if (StringCompare(StringCase_Insensitive, key, "Size"))
+                {
+                    u64 size = (u64)strtoull(value, nullptr, 10);
+                    StringGetReadableByteSize(disk.Size, size);
+                }
+                else if (StringCompare(StringCase_Insensitive, key, "Partitions"))
+                {
+                    u64 size = (u64)strtoull(value, nullptr, 10);
+                    disk.Partitions = (u32)size;
+                }
+                else
+                    FAIL;
+            }
+            physical_disks.push_back(disk);
+        }
+    }
+
+    {
+        const pugi::xml_node cim = logical_doc.child("COMMAND").child("RESULTS").child("CIM");
+        for (pugi::xml_node inst = cim.child("INSTANCE"); inst; inst = inst.next_sibling("INSTANCE"))
+        {
+            LogicalDisk disk = {};
+            for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+            {
+                const char* key = prop.attribute("NAME").value();
+                const char* type = prop.attribute("TYPE").value();
+                const char* value = prop.child_value("VALUE");
+
+
+                if (StringCompare(StringCase_Insensitive, key, "Caption"))
+                    disk.Caption = value;
+                else if (StringCompare(StringCase_Insensitive, key, "Description"))
+                    disk.Description = value;
+                else if (StringCompare(StringCase_Insensitive, key, "DeviceID"))
+                    disk.DeviceID = value;
+                else if (StringCompare(StringCase_Insensitive, key, "FileSystem"))
+                    disk.FileSystem = value;
+                else if (StringCompare(StringCase_Insensitive, key, "FreeSpace"))
+                {
+                    u64 size = (u64)strtoull(value, nullptr, 10);
+                    StringGetReadableByteSize(disk.FreeSpace, size);
+                }
+                else if (StringCompare(StringCase_Insensitive, key, "Size"))
+                {
+                    u64 size = (u64)strtoull(value, nullptr, 10);
+                    StringGetReadableByteSize(disk.Size, size);
+                }
+            }
+            logical_disks.push_back(disk);
+        }
+    }
+
+    TRACY_LOCK(s_workbook.lock);
+    lxw_worksheet* sheet = workbook_add_worksheet(s_workbook.data, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(s_workbook.data);
+    lxw_format* data_format = CreateDataFormat(s_workbook.data);
+
+    i32 row_i = 0;
+    worksheet_set_row(sheet, row_i, 35, NULL);
+    worksheet_merge_range(sheet, row_i, 0, row_i, physical_disk_member_count - 1, "Physical Disks", title_format);
+    ++row_i;
+
+    //I would kill for some meta programming
+    //                    struct PhysicalDisk vvvvvv
+    worksheet_write_string(sheet, row_i,  0, "Description",     title_format);
+    worksheet_write_string(sheet, row_i,  1, "DeviceID",        title_format);
+    worksheet_write_string(sheet, row_i,  2, "FirmwareRevision",title_format);
+    worksheet_write_string(sheet, row_i,  3, "InterfaceType",   title_format);
+    worksheet_write_string(sheet, row_i,  4, "Manufacturer",    title_format);
+    worksheet_write_string(sheet, row_i,  5, "MediaType",       title_format);
+    worksheet_write_string(sheet, row_i,  6, "Model",           title_format);
+    worksheet_write_string(sheet, row_i,  7, "Name",            title_format);
+    worksheet_write_string(sheet, row_i,  8, "Partitions",      title_format);
+    worksheet_write_string(sheet, row_i,  9, "Size",            title_format);
+    worksheet_write_string(sheet, row_i, 10, "Status",          title_format);
+
+    ++row_i;
+    for (i32 i = 0; i < physical_disks.size(); i++)
+    {
+        const PhysicalDisk& d = physical_disks[i];
+        worksheet_write_string(sheet, row_i,  0, d.Description.c_str(),     data_format);
+        worksheet_write_string(sheet, row_i,  1, d.DeviceID.c_str(),        data_format);
+        worksheet_write_string(sheet, row_i,  2, d.FirmwareRevision.c_str(),data_format);
+        worksheet_write_string(sheet, row_i,  3, d.InterfaceType.c_str(),   data_format);
+        worksheet_write_string(sheet, row_i,  4, d.Manufacturer.c_str(),    data_format);
+        worksheet_write_string(sheet, row_i,  5, d.MediaType.c_str(),       data_format);
+        worksheet_write_string(sheet, row_i,  6, d.Model.c_str(),           data_format);
+        worksheet_write_string(sheet, row_i,  7, d.Name.c_str(),            data_format);
+        worksheet_write_number(sheet, row_i,  8, (double)d.Partitions,      data_format);
+        worksheet_write_string(sheet, row_i,  9, d.Size.c_str(),            data_format);
+        worksheet_write_string(sheet, row_i, 10, d.Status.c_str(),          data_format);
+        ++row_i;
+    }
+    //adding space between the two sections
+    ++row_i;
+    ++row_i;
+
+
+    worksheet_set_row(sheet, row_i, 35, NULL);
+    worksheet_merge_range(sheet, row_i, 0, row_i, logical_disk_member_count - 1, "Logical Disks", title_format);
+    ++row_i;
+
+    //                   struct LogicalDisk  vvvvvv
+    worksheet_write_string(sheet, row_i,  0, "Caption",     title_format);
+    worksheet_write_string(sheet, row_i,  1, "Description", title_format);
+    worksheet_write_string(sheet, row_i,  2, "DeviceID",    title_format);
+    worksheet_write_string(sheet, row_i,  3, "FileSystem",  title_format);
+    worksheet_write_string(sheet, row_i,  4, "FreeSpace",   title_format);
+    worksheet_write_string(sheet, row_i,  5, "Size",        title_format);
+
+    ++row_i;
+    for (i32 i = 0; i < logical_disks.size(); i++)
+    {
+        const LogicalDisk& d = logical_disks[i];
+        worksheet_write_string(sheet, row_i,  0, d.Caption.c_str(),     data_format);
+        worksheet_write_string(sheet, row_i,  1, d.Description.c_str(), data_format);
+        worksheet_write_string(sheet, row_i,  2, d.DeviceID.c_str(),    data_format);
+        worksheet_write_string(sheet, row_i,  3, d.FileSystem.c_str(),  data_format);
+        worksheet_write_string(sheet, row_i,  4, d.FreeSpace.c_str(),   data_format);
+        worksheet_write_string(sheet, row_i,  5, d.Size.c_str(),        data_format);
+        ++row_i;
+    }
+}
+
 void ConvertFolderToXLSX(const Path& path)
 {
     bool valid = false;
@@ -1032,6 +1221,15 @@ void ConvertFolderToXLSX(const Path& path)
     }
 
     {
+        ScriptData sd = {
+            .name = "Disks",
+            .output = path.string(),
+            .workbook = &s_workbook,
+        };
+        ScriptDisksXML(sd);
+    }
+
+    {
         Path file = path / L"programs.xml";
         if (fs::exists(file))
         {
@@ -1041,6 +1239,25 @@ void ConvertFolderToXLSX(const Path& path)
                 .workbook = &s_workbook,
             };
             ScriptProgramsXML(sd);
+        }
+    }
+
+    {
+        Path filepath = path / L"netstat.txt";
+        std::string data;
+        FileReadAll(data, filepath);
+        if (data.size())
+        {
+            ScriptData sd = {
+                .name = "Netstat",
+                .output = data,
+                .workbook = &s_workbook,
+            };
+            ScriptNetstat(sd);
+        }
+        else
+        {
+            DebugPrint("Warning: Couldn't locate/load netstat.txt: %s", filepath.string().c_str());
         }
     }
 

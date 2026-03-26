@@ -113,7 +113,7 @@ wmic logicaldisk get /format:rawxml > "%OUTDIR%\logical_disks.xml"
 :: -----------------------------
 echo 10/11 Physical Disk Info...
 ::wmic diskdrive get Model,InterfaceType,Size,SerialNumber /format:csv > "%OUTDIR%\physical_disks.csv"
-wmic diskdrive get /format:rawxml > "%OUTDIR%\physical_disks.xml"
+wmic diskdrive get Model,MediaType,Name,Description,Size,Manufacturer,Partitions,Status,InterfaceType,FirmwareRevision,DeviceID /format:rawxml > "%OUTDIR%\physical_disks.xml"
 
 REM :: Define a temporary VBScript file
 REM set "VBSFILE=%TEMP%\get_disks_safe.vbs"
