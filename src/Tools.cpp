@@ -414,6 +414,10 @@ void ScriptNetstat(ScriptData& data)
 enum VarType : u32 {
     VarType_Invalid,
     VarType_String,
+    VarType_i8,
+    VarType_i16,
+    VarType_i32,
+    VarType_i64,
     VarType_u8,
     VarType_u16,
     VarType_u32,
@@ -498,6 +502,16 @@ VarType GetVarTypeFromString(const char* s)
         return VarType_String;
     else if (StringCompare(StringCase_Insensitive, s, "datetime"))
         return VarType_Datetime;
+    else if (StringCompare(StringCase_Insensitive, s, "boolean"))
+        return VarType_Bool;
+    else if (StringCompare(StringCase_Insensitive, s, "sint8"))
+        return VarType_i8;
+    else if (StringCompare(StringCase_Insensitive, s, "sint16"))
+        return VarType_i16;
+    else if (StringCompare(StringCase_Insensitive, s, "sint32"))
+        return VarType_i32;
+    else if (StringCompare(StringCase_Insensitive, s, "sint64"))
+        return VarType_i64;
     else
     {
 
@@ -576,12 +590,36 @@ void ScriptProgramsXML(ScriptData& data)
 
 void WriteTypeToXLSX(lxw_worksheet* sheet, u32 row, u32 col, const char* s, const VarType type, lxw_format* format)
 {
+
+#define FROM_UCHARS_AND_ERROR_OR_WRITE(_type)                   \
+{                                                               \
+    _type v = (_type)strtoull(s, nullptr, 10);                         \
+    worksheet_write_number(sheet, row, col, (double)v, format); \
+    break;                                                      \
+}REQUIRE_SEMICOLON
+
+#define FROM_ICHARS_AND_ERROR_OR_WRITE(_type)                   \
+{                                                               \
+    _type v = (_type)strtoll(s, nullptr, 10);                         \
+    worksheet_write_number(sheet, row, col, (double)v, format); \
+    break;                                                      \
+}REQUIRE_SEMICOLON
+
+    if (!s || !s[0])
+        return;
+
+    const char* s_end = s + std::strlen(s);
+
     switch (type)
     {
-    case VarType_u8:  [[fallthrough]];
-    case VarType_u16: [[fallthrough]];
-    case VarType_u32: [[fallthrough]];
-    case VarType_u64: worksheet_write_number(sheet, row, col, (double)((u32)atoi(s)), format); break;
+    case VarType_i8:    FROM_ICHARS_AND_ERROR_OR_WRITE(i8);
+    case VarType_i16:   FROM_ICHARS_AND_ERROR_OR_WRITE(i16);
+    case VarType_i32:   FROM_ICHARS_AND_ERROR_OR_WRITE(i32);
+    case VarType_i64:   FROM_ICHARS_AND_ERROR_OR_WRITE(i64);
+    case VarType_u8:    FROM_UCHARS_AND_ERROR_OR_WRITE(u8);
+    case VarType_u16:   FROM_UCHARS_AND_ERROR_OR_WRITE(u16);
+    case VarType_u32:   FROM_UCHARS_AND_ERROR_OR_WRITE(u32);
+    case VarType_u64:   FROM_UCHARS_AND_ERROR_OR_WRITE(u64);
     case VarType_Bool: worksheet_write_boolean(sheet, row, col, GetBoolFromString(s), format); break;
     case VarType_Datetime:
     {
@@ -592,6 +630,8 @@ void WriteTypeToXLSX(lxw_worksheet* sheet, u32 row, u32 col, const char* s, cons
     default: FAIL; [[fallthrough]];
     case VarType_String: worksheet_write_string(sheet, row, col, s, format); break;
     }
+#undef FROM_UCHARS_AND_ERROR_OR_WRITE
+#undef FROM_ICHARS_AND_ERROR_OR_WRITE
 }
 
 void ScriptProcessorXML(ScriptData& data)
@@ -786,6 +826,27 @@ void ScriptSystemInfoXML(const ScriptData& data)
 {
     std::vector<KeyValPair> sysinfo_pairs;
     size_t column_widths[PWSH_MAX_COLUMNS] = {};
+
+    {
+        ZoneScopedN("os.xml");
+        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "os.xml").c_str());
+        if (doc.empty())
+            return;
+        const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
+        i32 i = 1;
+        for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+        {
+            KeyValPair p;
+            p.name = prop.attribute("NAME").value();
+            p.value = prop.child_value("VALUE");
+            p.val_type = GetVarTypeFromString(prop.attribute("TYPE").value());
+            sysinfo_pairs.push_back(p);
+            column_widths[0] = Max(column_widths[0], p.name.size() + 1);
+            column_widths[1] = Max(column_widths[0], p.value.size() + 1);
+            ++i;
+        }
+    }
+
     {
         ZoneScopedN("computersystem.xml");
         pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "computersystem.xml").c_str());
@@ -931,7 +992,9 @@ void ConvertFolderToXLSX(const Path& path)
         return;
     }
 
-    const Path excel_file = path / g_sysinfo.name;
+    //Path output_folder;
+    //GetOutputFolder(output_folder, td);
+    const Path excel_file = path / (g_sysinfo.name + L".xlsx");
     {
         TRACY_LOCK(s_workbook.lock);
         s_workbook.data = workbook_new(excel_file.string().c_str());
