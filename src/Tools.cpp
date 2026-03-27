@@ -791,7 +791,6 @@ void ScriptNetworkXML(const ScriptData& data)
         {
             if (StringCompare(StringCase_Insensitive, set.guid, inter.SettingID))
             {
-                ASSERT(set.EnabledDHCP == inter.DHCPEnabled); //bool EnabledDHCP;
                 WORKSHEET_WRITE_KEY_VAL_STRING(IPAddress);
                 WORKSHEET_WRITE_KEY_VAL_STRING(SubnetMask);
                 WORKSHEET_WRITE_KEY_VAL_STRING(DefaultGateway);
@@ -1266,10 +1265,103 @@ void ConvertFolderToXLSX(const Path& path)
     workbook_close(s_workbook.data);
 }
 
+void ScriptNetworkXML(ScriptData& data)
+{
+    //ZoneScoped;
+    //PowershellResponse array;
+    //ParseCSV(array, data.output, data.using_quotes);
+    //if (!array.size())
+    //{
+    //    FAIL;
+    //    return;
+    //}
+    //TRACY_LOCK(data.workbook->lock);
+    //lxw_workbook* book = data.workbook->data;
+    //lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    //size_t column_widths[16] = {};
+    //ExcelWriteTitles(book, sheet, column_widths, array);
+    //ExcelWriteData(book, sheet, column_widths, array);
+    //ExcelAutoSizeColumnWidth(sheet, column_widths);
+    ZoneScoped;
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_string(data.output.c_str());
+    if (!result)
+    {
+        DebugPrint("Error description: %s", result.description());
+        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset);
+        FAIL;
+        return;
+    }
+    if (doc.empty())
+    {
+        DebugPrint("Error %s, failed to get data from doc.load_string(): %s", data.name.c_str(), data.output.c_str());
+        FAIL;
+        return;
+    }
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    struct NetworkInfo {
+        const char* Description;
+        const char* IPEnabled;
+        const char* IPAddress;
+        const char* IPSubnet;
+        const char* SettingID;
+        const char* DefaultIPGateway;
+        const char* DHCPEnabled;
+        const char* DHCPServer;
+        const char* DNSDomain;
+        const char* DNSDomainSuffixSearchOrder;
+        const char* DNSHostName;
+        const char* DomainDNSRegistrationEnabled;
+        const char* MACAddres;
+    };
+
+    const pugi::xml_node objects = doc.child("Objects");
+    i32 i = 1;
+    for (pugi::xml_node object = objects.child("Object"); object; object = object.next_sibling("Object"))
+    {
+        NetworkInfo net = {};
+        for (pugi::xml_node prop = object.child("Property"); prop; prop = prop.next_sibling("Property"))
+        {
+            const char* name = prop.attribute("Name").value();
+            const char* value = prop.child_value();
+            //if (StringCompare(StringCase_Insensitive, key, "Description"))
+               // net.Description = value;
+            //else if (StringCompare(StringCase_Insensitive, key, "DeviceID"))
+            //    net.DeviceID = value;
+            //else if (StringCompare(StringCase_Insensitive, key, "FirmwareRevision"))
+            //    net.FirmwareRevision = value;
+            //else if (StringCompare(StringCase_Insensitive, key, "InterfaceType"))
+            //    net.InterfaceType = value;
+            //else if (StringCompare(StringCase_Insensitive, key, "Manufacturer"))
+            //    net.Manufacturer = value;
+            //else if (StringCompare(StringCase_Insensitive, key, "MediaType"))
+            //    net.MediaType = value;
+            //else if (StringCompare(StringCase_Insensitive, key, "Model"))
+            //    net.Model = value;
+            //else if (StringCompare(StringCase_Insensitive, key, "Name"))
+            //    net.Name = value;
+            //else if (StringCompare(StringCase_Insensitive, key, "Status"))
+            //    net.Status = value;
+
+            //const pugi::xml_node display_vers = prop.child("DisplayVersion");
+            //const char* name = display_name.child_value();
+            //const char* vers = display_vers.child_value();
+            //worksheet_write_string(sheet, i, 0, name, data_format);
+            //worksheet_write_string(sheet, i, 1, vers, data_format);
+            ++i;
+        }
+    }
+}
 
 ScriptInfo s_scripts[] = {
     { .name = "System Info",.func = ScriptCsv,          .cmdline = g_script_systeminfo_text,    },
     { .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },
+    { .name = "Network",    .func = ScriptNetworkXML,   .cmdline = g_script_network_text,       },
     { .name = "Netstat TCP",.func = ScriptCsv,          .cmdline = g_script_netstat_tcp_text,   },
     { .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
     { .name = "Programs",   .func = ScriptCsv,          .cmdline = g_script_programs_text,      },

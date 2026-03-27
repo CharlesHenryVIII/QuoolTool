@@ -6,4 +6,5 @@ extern const wchar_t* g_script_programs_text;
 extern const wchar_t* g_script_processor_text;
 extern const wchar_t* g_script_systeminfo_text;
 extern const wchar_t* g_script_ipconfig_text;
+extern const wchar_t* g_script_network_text;
 extern const wchar_t* g_script_disk_text;

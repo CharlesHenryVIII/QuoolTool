@@ -22,6 +22,9 @@ const wchar_t* g_script_systeminfo_text = LR"term(powershell -command "Get-Compu
 CSV_CONVERT_TEXT;
 
 const wchar_t* g_script_ipconfig_text = LR"term(ipconfig /all)term";
+const wchar_t* g_script_network_text = LR"term(powershell -NoProfile -Command "Get-CimInstance Win32_NetworkAdapterConfiguration | )term"
+LR"term(Select-Object Description, IPEnabled, IPAddress, IPSubnet, SettingID, DefaultIPGateway, DHCPEnabled, DHCPServer, DNSDomain, DNSDomainSuffixSearchOrder, DNSHostName, DomainDNSRegistrationEnabled, MACAddress | )term"
+LR"term(ConvertTo-Xml -As String")term";
 
 #if 1
 //const wchar_t* g_script_disk_text = LR"term(powershell -NoProfile -Command "$DiskInfo = Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_; $partitions = 'ASSOCIATORS OF {Win32_DiskDrive.DeviceID=''' + $disk.DeviceID + '''} WHERE AssocClass = Win32_DiskDriveToDiskPartition'; Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_; $drives = 'ASSOCIATORS OF {Win32_DiskPartition.DeviceID=''' + $partition.DeviceID + '''} WHERE AssocClass = Win32_LogicalDiskToPartition'; Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ Disk = $disk.DeviceID; DiskSize = $disk.Size; DiskModel = $disk.Model; Partition = $partition.Name; RawSize = $partition.Size; DriveLetter = $_.DeviceID; VolumeName = $_.VolumeName; Size = $_.Size; FreeSpace = $_.FreeSpace; } } } }; $DiskInfo | Select-Object Disk, DiskModel, DiskSize, Partition, RawSize, DriveLetter, VolumeName, Size, FreeSpace | ConvertTo-Csv -NoTypeInformation ")term";
