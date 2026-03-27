@@ -194,7 +194,8 @@ void ScriptNetstat(ScriptData& data)
     lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
     lxw_format* title_format = CreateTitleFormat(book);
     lxw_format* data_format = CreateDataFormat(book);
-
+    size_t column_widths[16] = {};
+    
     const i32 title_index = 3;
     const i32 data_index = 4;
     const std::string& titles = rows[title_index];
@@ -225,6 +226,7 @@ void ScriptNetstat(ScriptData& data)
     for (i32 i = 0; i < arrsize(titles_text); i++)
     {
         worksheet_write_string(sheet, 0, i, titles_text[i].c_str(), title_format);
+        column_widths[i] = Max(column_widths[i], titles_text[i].size());
     }
     worksheet_set_row(sheet, 0, 30, NULL);
 
@@ -248,9 +250,11 @@ void ScriptNetstat(ScriptData& data)
                 sv = sv.substr(first_char, final_char - first_char + 1);
             std::string s(sv);
             worksheet_write_string(sheet, row_i - title_index, col, s.c_str(), data_format);
+            column_widths[col] = Max(column_widths[col], s.size());
             prev = prev + len[col];
         }
     }
+    ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
 enum VarType : u32 {
@@ -361,8 +365,11 @@ void ScriptProgramsXML(ScriptData& data)
     lxw_workbook* book = data.workbook->data;
     lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
     lxw_format* title_format = CreateTitleFormat(book);
+    size_t column_widths[16] = {};
     worksheet_write_string(sheet, 0, 0, "Program", title_format);
+    column_widths[0] = Max(column_widths[0], strlen("Program"));
     worksheet_write_string(sheet, 0, 1, "Version", title_format);
+    column_widths[1] = Max(column_widths[1], strlen("Version"));
     worksheet_set_row(sheet, 0, 30, NULL);
     lxw_format* data_format = CreateDataFormat(book);
 
@@ -375,9 +382,13 @@ void ScriptProgramsXML(ScriptData& data)
         const char* name = display_name.child_value();
         const char* vers = display_vers.child_value();
         worksheet_write_string(sheet, i, 0, name, data_format);
+        column_widths[0] = Max(column_widths[0], strlen(name));
         worksheet_write_string(sheet, i, 1, vers, data_format);
+        column_widths[1] = Max(column_widths[1], strlen(vers));
         ++i;
     }
+
+    ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
 void WriteTypeToXLSX(lxw_worksheet* sheet, u32 row, u32 col, const char* s, const VarType type, lxw_format* format)
@@ -653,7 +664,7 @@ void ScriptNetworkXML(const ScriptData& data)
         ++row_i;
     }
 
-#undef WORKSHEET_WRITE_KEY_VAL
+    ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
 void ScriptSystemInfoXML(const ScriptData& data)
@@ -664,121 +675,147 @@ void ScriptSystemInfoXML(const ScriptData& data)
     {
         ZoneScopedN("os.xml");
         pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "os.xml").c_str());
-        if (doc.empty())
-            return;
-        const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-        i32 i = 1;
-        for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+        if (!doc.empty())
         {
-            KeyValPair p;
-            p.name = prop.attribute("NAME").value();
-            p.value = prop.child_value("VALUE");
-            p.val_type = GetVarTypeFromString(prop.attribute("TYPE").value());
-            sysinfo_pairs.push_back(p);
-            column_widths[0] = Max(column_widths[0], p.name.size() + 1);
-            column_widths[1] = Max(column_widths[0], p.value.size() + 1);
-            ++i;
+            const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
+            i32 i = 1;
+            for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+            {
+                KeyValPair p;
+                p.name = prop.attribute("NAME").value();
+                p.value = prop.child_value("VALUE");
+                p.val_type = GetVarTypeFromString(prop.attribute("TYPE").value());
+                sysinfo_pairs.push_back(p);
+                column_widths[0] = Max(column_widths[0], p.name.size() + 1);
+                column_widths[1] = Max(column_widths[0], p.value.size() + 1);
+                ++i;
+            }
         }
     }
 
     {
         ZoneScopedN("computersystem.xml");
         pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "computersystem.xml").c_str());
-        if (doc.empty())
-            return;
-        const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-        i32 i = 1;
-        for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+        if (!doc.empty())
         {
-            KeyValPair p;
-            p.name = prop.attribute("NAME").value();
-            p.value = prop.child_value("VALUE");
-
-            if (StringCompare(StringCase_Insensitive, p.name.c_str(), "TotalPhysicalMemory"))
+            const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
+            i32 i = 1;
+            for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
             {
-                u64 size = (u64)strtoull(p.value.c_str(), nullptr, 10);
-                StringGetReadableByteSize(p.value, size);
-                p.val_type = VarType_String;
-            }
-            else
-            {
-                const char* type = prop.attribute("TYPE").value();
-                p.val_type = GetVarTypeFromString(type);
-            }
+                KeyValPair p;
+                p.name = prop.attribute("NAME").value();
+                p.value = prop.child_value("VALUE");
 
-            column_widths[0] = Max(column_widths[0], p.name.size() + 1);
-            column_widths[1] = Max(column_widths[0], p.value.size() + 1);
-            sysinfo_pairs.push_back(p);
-            ++i;
+                if (StringCompare(StringCase_Insensitive, p.name.c_str(), "TotalPhysicalMemory"))
+                {
+                    u64 size = (u64)strtoull(p.value.c_str(), nullptr, 10);
+                    StringGetReadableByteSize(p.value, size);
+                    p.val_type = VarType_String;
+                }
+                else
+                {
+                    const char* type = prop.attribute("TYPE").value();
+                    p.val_type = GetVarTypeFromString(type);
+                }
+
+                column_widths[0] = Max(column_widths[0], p.name.size() + 1);
+                column_widths[1] = Max(column_widths[0], p.value.size() + 1);
+                sysinfo_pairs.push_back(p);
+                ++i;
+            }
         }
     }
 
     {
         ZoneScopedN("timezone.xml");
         pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "timezone.xml").c_str());
-        if (doc.empty())
-            return;
-        const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-        i32 i = 1;
-        for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+        if (!doc.empty())
         {
-            KeyValPair p;
-            p.name = prop.attribute("NAME").value();
-            p.value = prop.child_value("VALUE");
-            p.val_type = GetVarTypeFromString(prop.attribute("TYPE").value());
-            sysinfo_pairs.push_back(p);
-            column_widths[0] = Max(column_widths[0], p.name.size() + 1);
-            column_widths[1] = Max(column_widths[0], p.value.size() + 1);
-            ++i;
+            const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
+            i32 i = 1;
+            for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+            {
+                KeyValPair p;
+                p.name = prop.attribute("NAME").value();
+                p.value = prop.child_value("VALUE");
+                p.val_type = GetVarTypeFromString(prop.attribute("TYPE").value());
+                sysinfo_pairs.push_back(p);
+                column_widths[0] = Max(column_widths[0], p.name.size() + 1);
+                column_widths[1] = Max(column_widths[0], p.value.size() + 1);
+                ++i;
+            }
         }
     }
 
     {
         ZoneScopedN("bios.xml");
         pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "bios.xml").c_str());
-        if (doc.empty())
-            return;
-        const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-        i32 i = 1;
-        for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+        if (!doc.empty())
         {
-            KeyValPair p;
-            p.name = ToString("Bios %s", prop.attribute("NAME").value());
-            p.value = prop.child_value("VALUE");
-            const char* type = prop.attribute("TYPE").value();
-            p.val_type = GetVarTypeFromString(type);
-            sysinfo_pairs.push_back(p);
-            column_widths[0] = Max(column_widths[0], p.name.size() + 1);
-            column_widths[1] = Max(column_widths[0], p.value.size() + 1);
-            ++i;
+            const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
+            i32 i = 1;
+            for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+            {
+                KeyValPair p;
+                p.name = ToString("Bios %s", prop.attribute("NAME").value());
+                p.value = prop.child_value("VALUE");
+                const char* type = prop.attribute("TYPE").value();
+                p.val_type = GetVarTypeFromString(type);
+                sysinfo_pairs.push_back(p);
+                column_widths[0] = Max(column_widths[0], p.name.size() + 1);
+                column_widths[1] = Max(column_widths[0], p.value.size() + 1);
+                ++i;
+            }
         }
     }
 
     {
         ZoneScopedN("gpu.xml");
         pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "gpu.xml").c_str());
-        if (doc.empty())
-            return;
-        const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-        i32 i = 1;
-        for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+        if (!doc.empty())
         {
-            KeyValPair p;
-            p.name = ToString("Gpu %s", prop.attribute("NAME").value());
-            p.value = prop.child_value("VALUE");
-            const char* type = prop.attribute("TYPE").value();
-            p.val_type = GetVarTypeFromString(type);
-            column_widths[0] = Max(column_widths[0], p.name.size() + 1);
-            column_widths[1] = Max(column_widths[0], p.value.size() + 1);
-            sysinfo_pairs.push_back(p);
-            ++i;
+            const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
+            i32 i = 1;
+            for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+            {
+                KeyValPair p;
+                p.name = ToString("Gpu %s", prop.attribute("NAME").value());
+                p.value = prop.child_value("VALUE");
+                const char* type = prop.attribute("TYPE").value();
+                p.val_type = GetVarTypeFromString(type);
+                column_widths[0] = Max(column_widths[0], p.name.size() + 1);
+                column_widths[1] = Max(column_widths[0], p.value.size() + 1);
+                sysinfo_pairs.push_back(p);
+                ++i;
+            }
+        }
+    }
+
+    {
+        ZoneScopedN("processor.xml");
+        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "processor.xml").c_str());
+        if (!doc.empty())
+        {
+            const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
+            i32 i = 0;
+            for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
+            {
+                KeyValPair p;
+                p.name = prop.attribute("NAME").value();
+                p.val_type = GetVarTypeFromString(prop.attribute("TYPE").value());
+                p.value = prop.child_value("VALUE");
+                column_widths[0] = Max(column_widths[0], p.name.size() + 1);
+                column_widths[1] = Max(column_widths[0], p.value.size() + 1);
+                sysinfo_pairs.push_back(p);
+                ++i;
+            }
         }
     }
 
     TRACY_LOCK(s_workbook.lock);
     lxw_format* title_format = CreateTitleFormat(s_workbook.data);
     lxw_format* data_format = CreateDataFormat(s_workbook.data);
-    lxw_worksheet* sheet = workbook_add_worksheet(s_workbook.data, "System Info");
+    lxw_worksheet* sheet = workbook_add_worksheet(s_workbook.data, data.name.c_str());
     const i32 title_row_index = 0;
     const i32 name_col_index = 0;
     const i32 value_col_index = 1;
@@ -791,6 +828,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
         worksheet_write_string(sheet, i + 1, name_col_index, p.name.c_str(), data_format);
         WriteTypeToXLSX(sheet, i + 1, value_col_index, p.value.c_str(), p.val_type, data_format);
     }
+
     ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
@@ -915,41 +953,67 @@ void ScriptDisksXML(const ScriptData& data)
     lxw_worksheet* sheet = workbook_add_worksheet(s_workbook.data, data.name.c_str());
     lxw_format* title_format = CreateTitleFormat(s_workbook.data);
     lxw_format* data_format = CreateDataFormat(s_workbook.data);
+    size_t column_widths[PWSH_MAX_COLUMNS] = {};
 
     i32 row_i = 0;
     worksheet_set_row(sheet, row_i, 35, NULL);
     worksheet_merge_range(sheet, row_i, 0, row_i, physical_disk_member_count - 1, "Physical Disks", title_format);
     ++row_i;
 
+#define DISK_WRITE_TITLE_MACRO(_col, _name)\
+    worksheet_write_string(sheet, row_i, _col, #_name, title_format);\
+    column_widths[_col] = Max(column_widths[_col], strlen(#_name))
+
     //I would kill for some meta programming
     //                    struct PhysicalDisk vvvvvv
-    worksheet_write_string(sheet, row_i,  0, "Description",     title_format);
-    worksheet_write_string(sheet, row_i,  1, "DeviceID",        title_format);
-    worksheet_write_string(sheet, row_i,  2, "FirmwareRevision",title_format);
-    worksheet_write_string(sheet, row_i,  3, "InterfaceType",   title_format);
-    worksheet_write_string(sheet, row_i,  4, "Manufacturer",    title_format);
-    worksheet_write_string(sheet, row_i,  5, "MediaType",       title_format);
-    worksheet_write_string(sheet, row_i,  6, "Model",           title_format);
-    worksheet_write_string(sheet, row_i,  7, "Name",            title_format);
-    worksheet_write_string(sheet, row_i,  8, "Partitions",      title_format);
-    worksheet_write_string(sheet, row_i,  9, "Size",            title_format);
-    worksheet_write_string(sheet, row_i, 10, "Status",          title_format);
+    DISK_WRITE_TITLE_MACRO( 0, Description);
+    DISK_WRITE_TITLE_MACRO( 1, DeviceID);
+    DISK_WRITE_TITLE_MACRO( 2, FirmwareRevision);
+    DISK_WRITE_TITLE_MACRO( 3, InterfaceType);
+    DISK_WRITE_TITLE_MACRO( 4, Manufacturer);
+    DISK_WRITE_TITLE_MACRO( 5, MediaType);
+    DISK_WRITE_TITLE_MACRO( 6, Model);
+    DISK_WRITE_TITLE_MACRO( 7, Name);
+    DISK_WRITE_TITLE_MACRO( 8, Partition);
+    DISK_WRITE_TITLE_MACRO( 9, Size);
+    DISK_WRITE_TITLE_MACRO(10, Status);
 
     ++row_i;
     for (i32 i = 0; i < physical_disks.size(); i++)
     {
         const PhysicalDisk& d = physical_disks[i];
         worksheet_write_string(sheet, row_i,  0, d.Description.c_str(),     data_format);
+        column_widths[0] = Max(column_widths[0], d.Description.size());
+        //
         worksheet_write_string(sheet, row_i,  1, d.DeviceID.c_str(),        data_format);
+        column_widths[1] = Max(column_widths[1], d.DeviceID.size());
+        //
         worksheet_write_string(sheet, row_i,  2, d.FirmwareRevision.c_str(),data_format);
+        column_widths[2] = Max(column_widths[2], d.FirmwareRevision.size());
+        //
         worksheet_write_string(sheet, row_i,  3, d.InterfaceType.c_str(),   data_format);
+        column_widths[3] = Max(column_widths[3], d.InterfaceType.size());
+        //
         worksheet_write_string(sheet, row_i,  4, d.Manufacturer.c_str(),    data_format);
+        column_widths[4] = Max(column_widths[4], d.Manufacturer.size());
+        //
         worksheet_write_string(sheet, row_i,  5, d.MediaType.c_str(),       data_format);
+        column_widths[5] = Max(column_widths[5], d.MediaType.size());
+        //
         worksheet_write_string(sheet, row_i,  6, d.Model.c_str(),           data_format);
+        column_widths[6] = Max(column_widths[6], d.Model.size());
+        //
         worksheet_write_string(sheet, row_i,  7, d.Name.c_str(),            data_format);
+        column_widths[7] = Max(column_widths[7], d.Name.size());
+        //
         worksheet_write_number(sheet, row_i,  8, (double)d.Partitions,      data_format);
+        column_widths[8] = Max(column_widths[8], ToString("%f", ((double)d.Partitions)).size());
+        //
         worksheet_write_string(sheet, row_i,  9, d.Size.c_str(),            data_format);
-        worksheet_write_string(sheet, row_i, 10, d.Status.c_str(),          data_format);
+        column_widths[9] = Max(column_widths[9], d.Size.size());
+        //
+        worksheet_write_string(sheet, row_i,  10,  d.Status.c_str(),          data_format);
+        column_widths[10] = Max(column_widths[10], d.Status.size());
         ++row_i;
     }
     //adding space between the two sections
@@ -962,25 +1026,38 @@ void ScriptDisksXML(const ScriptData& data)
     ++row_i;
 
     //                   struct LogicalDisk  vvvvvv
-    worksheet_write_string(sheet, row_i,  0, "Caption",     title_format);
-    worksheet_write_string(sheet, row_i,  1, "Description", title_format);
-    worksheet_write_string(sheet, row_i,  2, "DeviceID",    title_format);
-    worksheet_write_string(sheet, row_i,  3, "FileSystem",  title_format);
-    worksheet_write_string(sheet, row_i,  4, "FreeSpace",   title_format);
-    worksheet_write_string(sheet, row_i,  5, "Size",        title_format);
+    DISK_WRITE_TITLE_MACRO(0, Caption);
+    DISK_WRITE_TITLE_MACRO(1, Description);
+    DISK_WRITE_TITLE_MACRO(2, DeviceID);
+    DISK_WRITE_TITLE_MACRO(3, FileSystem);
+    DISK_WRITE_TITLE_MACRO(4, FreeSpace);
+    DISK_WRITE_TITLE_MACRO(5, Size);
 
     ++row_i;
     for (i32 i = 0; i < logical_disks.size(); i++)
     {
         const LogicalDisk& d = logical_disks[i];
         worksheet_write_string(sheet, row_i,  0, d.Caption.c_str(),     data_format);
+        column_widths[0] = Max(column_widths[0], d.Caption.size());
+        //
         worksheet_write_string(sheet, row_i,  1, d.Description.c_str(), data_format);
+        column_widths[1] = Max(column_widths[1], d.Description.size());
+        //
         worksheet_write_string(sheet, row_i,  2, d.DeviceID.c_str(),    data_format);
+        column_widths[2] = Max(column_widths[2], d.DeviceID.size());
+        //
         worksheet_write_string(sheet, row_i,  3, d.FileSystem.c_str(),  data_format);
+        column_widths[3] = Max(column_widths[3], d.FileSystem.size());
+        //
         worksheet_write_string(sheet, row_i,  4, d.FreeSpace.c_str(),   data_format);
+        column_widths[4] = Max(column_widths[4], d.FreeSpace.size());
+        //
         worksheet_write_string(sheet, row_i,  5, d.Size.c_str(),        data_format);
+        column_widths[5] = Max(column_widths[5], d.Size.size());
         ++row_i;
     }
+    ExcelAutoSizeColumnWidth(sheet, column_widths);
+#undef DISK_WRITE_TITLE_MACRO
 }
 
 void ConvertFolderToXLSX(const Path& path)
@@ -1041,19 +1118,6 @@ void ConvertFolderToXLSX(const Path& path)
             .workbook = &s_workbook,
         };
         ScriptNetworkXML(sd);
-    }
-
-    {
-        Path file = path / L"processor.xml";
-        if (fs::exists(file))
-        {
-            ScriptData sd = {
-                .name = "Processor",
-                .output = file.string(),
-                .workbook = &s_workbook,
-            };
-            ScriptProcessorXML(sd);
-        }
     }
 
     {
