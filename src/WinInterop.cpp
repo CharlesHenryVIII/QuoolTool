@@ -30,6 +30,7 @@
 #include <fstream>
 #include <iostream>
 #include <chrono>
+#include <charconv>
 
 #include "libarchive/libarchive/archive.h"
 #include "libarchive/libarchive/archive_entry.h"
@@ -608,8 +609,10 @@ void OSDestroy(SDL_Window* window)
 
 //#pragma comment(lib, "iphlpapi.lib")
 //#pragma comment(lib, "ws2_32.lib")
-bool OSGetNetworkAdapters()
+
+bool OSGetNetworkAdapters(std::vector<OSNetworkAdapterInfo>& adapters)
 {
+    ZoneScoped;
     WSADATA wsa_data;
     if (WSAStartup(MAKEWORD(2, 2), &wsa_data))
     {
@@ -617,7 +620,7 @@ bool OSGetNetworkAdapters()
         return false;
     }
 
-    ULONG buf_len = 15000;
+    ULONG buf_len = Kilobytes(15);
     std::vector<u8> buffer(buf_len);
     PIP_ADAPTER_ADDRESSES adapter_addresses = (PIP_ADAPTER_ADDRESSES)buffer.data();
 
@@ -629,78 +632,158 @@ bool OSGetNetworkAdapters()
         adapter_addresses = (PIP_ADAPTER_ADDRESSES)buffer.data();
         r = GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, adapter_addresses, &buf_len);
     }
-    if (!ERROR_SUCCESS(r))
+    if (r != ERROR_SUCCESS)
     {
         DebugPrint("Error Failed to GetAdaptersAddresses()");
         return false;
     }
 
-    struct OSAdapterData
-    {
-        std::string name;
-        std::wstring friendly_name;
-        std::wstring description;
-        std::string status;
-        std::vector<std::string> ipv4_ips;
-        std::vector<std::string> ipv6_ips;
-        std::vector<std::string> ipv4_dns;
-        std::vector<std::string> ipv6_dns;
-    };
-    std::vector<OSAdapterData> adapters;
-
-    // Iterate through the linked list of adapters
     PIP_ADAPTER_ADDRESSES adapter = adapter_addresses;
     while (adapter)
     {
-//IPEnabled, IPSubnet, SettingID, DefaultIPGateway, DHCPEnabled, DHCPServer, DNSDomain, DNSDomainSuffixSearchOrder, DNSHostName, DomainDNSRegistrationEnabled, MACAddress | )term"
-        OSAdapterData ad = {};
+        OSNetworkAdapterInfo ad = {};
         ad.name = adapter->AdapterName;
         ad.friendly_name = adapter->FriendlyName;
         ad.description = adapter->Description;
         ad.status = adapter->OperStatus == IfOperStatusUp ? "Up" : "Down";
+        ad.ipv4_enabled = adapter->Ipv4Enabled;
+        ad.ipv6_enabled = adapter->Ipv6Enabled;
+        ad.dhcpv4_enabled = adapter->Dhcpv4Enabled;
+        ad.ipv4_metric = adapter->Ipv4Metric;
+        ad.ipv6_metric = adapter->Ipv6Metric;
+        ad.ddns_enabled = adapter->DdnsEnabled;
+        ad.domain_dns_register_enabled = adapter->RegisterAdapterSuffix;
+        ad.receive_only = adapter->ReceiveOnly;
+        ad.multicast_enabled = !adapter->NoMulticast;
 
-        // --- Get IP Addresses (Unicast) ---
+        if (adapter->PhysicalAddressLength != 0)
+        {
+            for (ULONG i = 0; i < adapter->PhysicalAddressLength; i++)
+            {
+                char s[4] = {};
+                sprintf(s, "%.2X%s", adapter->PhysicalAddress[i], (i == (adapter->PhysicalAddressLength - 1)) ? "" : "-");
+                ad.mac_address = ad.mac_address + s;
+            }
+        }
+
+        // Get IP Addresses (Unicast)
         PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress;
         while (unicast)
         {
+            OSIPAndSubnet ips = {};
             char ip_str[INET6_ADDRSTRLEN] = {};
             sockaddr* sa = unicast->Address.lpSockaddr;
-            if (sa->sa_family == AF_INET) //IPv4
-            { 
-                sockaddr_in* sa_in = (sockaddr_in*)sa;
-                inet_ntop(AF_INET, &(sa_in->sin_addr), ip_str, sizeof(ip_str));
-                ad.ipv4_ips.push_back(ip_str);
-            }
-            else if (sa->sa_family == AF_INET6) //IPv6
+            const u8 prefix_len = unicast->OnLinkPrefixLength;
+            if (sa)
             {
-                sockaddr_in6* sa_in = (sockaddr_in6*)sa;
-                inet_ntop(AF_INET6, &(sa_in->sin6_addr), ip_str, sizeof(ip_str));
-                ad.ipv6_ips.push_back(ip_str);
+                if (sa->sa_family == AF_INET) //IPv4
+                {
+                    sockaddr_in* sa_in = (sockaddr_in*)sa;
+                    inet_ntop(AF_INET, &(sa_in->sin_addr), ip_str, sizeof(ip_str));
+                    ips.ip = ip_str;
+
+                    //Bitwise math to create the mask like 255.255.255.0
+                    const u32 mask = (prefix_len == 0) ? 0 : (~0UL << (32 - prefix_len));
+
+                    in_addr mask_addr;
+                    mask_addr.s_addr = htonl(mask);
+                    char mask_s[INET_ADDRSTRLEN] = {};
+                    inet_ntop(AF_INET, &mask_addr, mask_s, sizeof(mask_s));
+                    ips.subnet = ToString("%s(/%i)", mask_s, prefix_len);
+
+                    ad.ipv4_ips.push_back(ips);
+                }
+                else if (sa->sa_family == AF_INET6) //IPv6
+                {
+                    sockaddr_in6* sa_in = (sockaddr_in6*)sa;
+                    inet_ntop(AF_INET6, &(sa_in->sin6_addr), ip_str, sizeof(ip_str));
+                    ips.ip = ip_str;
+                    ips.subnet = ToString("/%i", prefix_len);
+                    ad.ipv6_ips.push_back(ips);
+                }
             }
+
             unicast = unicast->Next;
         }
 
-        // --- Get DNS Servers ---
+        // Get DNS Servers
         PIP_ADAPTER_DNS_SERVER_ADDRESS dns = adapter->FirstDnsServerAddress;
         while (dns)
         {
             char dns_str[INET6_ADDRSTRLEN] = {};
             sockaddr* sa = dns->Address.lpSockaddr;
 
-            if (sa->sa_family == AF_INET) //IPv4
+            if (sa)
             {
-                sockaddr_in* sa_in = (sockaddr_in*)sa;
-                inet_ntop(AF_INET, &(sa_in->sin_addr), dns_str, sizeof(dns_str));
-                ad.ipv4_dns.push_back(dns_str);
-            }
-            else if (sa->sa_family == AF_INET6) //IPv6
-            {
-                sockaddr_in6* sa_in = (sockaddr_in6*)sa;
-                inet_ntop(AF_INET, &(sa_in->sin6_addr), dns_str, sizeof(dns_str));
-                ad.ipv6_dns.push_back(dns_str);
+                if (sa->sa_family == AF_INET) //IPv4
+                {
+                    sockaddr_in* sa_in = (sockaddr_in*)sa;
+                    inet_ntop(AF_INET, &(sa_in->sin_addr), dns_str, sizeof(dns_str));
+                    ad.ipv4_dns.push_back(dns_str);
+                }
+                else if (sa->sa_family == AF_INET6) //IPv6
+                {
+                    sockaddr_in6* sa_in = (sockaddr_in6*)sa;
+                    inet_ntop(AF_INET6, &(sa_in->sin6_addr), dns_str, sizeof(dns_str));
+                    ad.ipv6_dns.push_back(dns_str);
+                }
             }
             dns = dns->Next;
         }
+
+        // Get DNS Domain/Suffix
+        if (wcslen(adapter->DnsSuffix) > 0)
+        {
+            ad.dns_domain = adapter->DnsSuffix;
+        }
+
+        // Get Default Gateways
+        PIP_ADAPTER_GATEWAY_ADDRESS gateway = adapter->FirstGatewayAddress;
+        while (gateway)
+        {
+            char g_s[INET6_ADDRSTRLEN] = { };
+            sockaddr* sa = gateway->Address.lpSockaddr;
+            if (sa)
+            {
+                if (sa->sa_family == AF_INET)
+                {
+                    sockaddr_in* sa_in = (sockaddr_in*)sa;
+                    inet_ntop(AF_INET, &(sa_in->sin_addr), g_s, sizeof(g_s));
+                    ad.ipv4_gateways.push_back(g_s);
+                }
+                else if (sa->sa_family == AF_INET6)
+                {
+                    sockaddr_in6* sa_in = (sockaddr_in6*)sa;
+                    inet_ntop(AF_INET6, &(sa_in->sin6_addr), g_s, sizeof(g_s));
+                    ad.ipv6_gateways.push_back(g_s);
+                }
+            }
+            gateway = gateway->Next;
+        }
+
+        // Get DHCP
+        ASSERT(ad.dhcpv4_enabled == !!(adapter->Flags & IP_ADAPTER_DHCP_ENABLED));
+        if (adapter->Flags & IP_ADAPTER_DHCP_ENABLED)
+        {
+            char dhcp_s[INET6_ADDRSTRLEN] = {};
+            sockaddr* sa = adapter->Dhcpv4Server.lpSockaddr;
+            if (sa)
+            {
+                if (sa->sa_family == AF_INET)
+                {
+                    sockaddr_in* sa_in = (sockaddr_in*)sa;
+                    inet_ntop(AF_INET, &(sa_in->sin_addr), dhcp_s, sizeof(dhcp_s));
+                    ad.ipv4_dhcp = dhcp_s;
+                }
+                else if (sa->sa_family == AF_INET6)
+                {
+                    sockaddr_in6* sa_in = (sockaddr_in6*)sa;
+                    inet_ntop(AF_INET6, &(sa_in->sin6_addr), dhcp_s, sizeof(dhcp_s));
+                    ad.ipv6_dhcp = dhcp_s;
+                }
+            }
+        }
+
         adapters.push_back(ad);
         adapter = adapter->Next;
     }

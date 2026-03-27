@@ -11,6 +11,7 @@ extern Atomic<float> g_download_update_progress;
 //union IPAddress {
 //    struct { u8 a,b,c,d; };
 //    u8 e[4];
+//    u64 addr;
 //    IPAddress() = default;
 //    IPAddress(u8 v) : a(v), b(v), c(v), d(v) {};
 //};

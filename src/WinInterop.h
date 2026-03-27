@@ -45,6 +45,39 @@ struct SystemInfo {
 };
 extern SystemInfo g_sysinfo;
 
+struct OSIPAndSubnet {
+    std::string ip;
+    std::string subnet;
+};
+
+struct OSNetworkAdapterInfo
+{
+    std::string name;
+    std::string status;
+    std::string mac_address;
+    std::string ipv4_dhcp;
+    std::string ipv6_dhcp;
+    std::wstring friendly_name;
+    std::wstring description;
+    std::wstring dns_domain;
+    std::vector<OSIPAndSubnet> ipv4_ips;
+    std::vector<OSIPAndSubnet> ipv6_ips;
+    std::vector<std::string> ipv4_dns;
+    std::vector<std::string> ipv6_dns;
+    std::vector<std::string> ipv4_gateways;
+    std::vector<std::string> ipv6_gateways;
+
+    u32 ipv4_metric;
+    u32 ipv6_metric;
+    bool ipv4_enabled;
+    bool ipv6_enabled;
+    bool dhcpv4_enabled;
+    bool ddns_enabled;
+    bool domain_dns_register_enabled;
+    bool receive_only;
+    bool multicast_enabled;
+};
+
 void DebugPrint(const char* fmt, ...);
 void DebugPrint(const wchar_t* fmt, ...);
 std::string ToString(const char* fmt, ...);
@@ -55,6 +88,7 @@ struct SDL_Window;
 bool OSInit(SDL_Window* window);
 void OSDestroy(SDL_Window* window);
 void* OSGetWindowHandle(SDL_Window* window);
+bool OSGetNetworkAdapters(std::vector<OSNetworkAdapterInfo>& out_adapters);
 int Main(int, char**);
 bool ConsoleAttached();
 bool DebuggerAttached();

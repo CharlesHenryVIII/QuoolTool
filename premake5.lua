@@ -96,6 +96,8 @@ project "QuoolTool"
         "contrib",
         "curl-lib",
         "SDL3-lib",
+        "iphlpapi",
+        "ws2_32",
     }
 
     includedirs {

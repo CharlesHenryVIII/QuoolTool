@@ -46,8 +46,11 @@ struct ScriptJob : Job
     {
         ZoneScopedN("ScriptJob");
 
-        i32 r = RunProcess(path, args, &data.output);
-        bool success = !r;
+        if (!path.empty() || !args.empty())
+        {
+            i32 r = RunProcess(path, args, &data.output);
+            bool success = !r;
+        }
 
         if (func)
         {
@@ -671,6 +674,19 @@ void ScriptProcessorXML(ScriptData& data)
         ++i;
     }
 }
+
+void WriteKeyValueBoolXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const bool value)
+{
+    worksheet_write_string(sheet, row_i, 0, key, format);
+    worksheet_write_boolean(sheet, row_i, 1, value, format);
+    ++row_i;
+}
+void WriteKeyValueNumberXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const double value)
+{
+    worksheet_write_string(sheet, row_i, 0, key, format);
+    worksheet_write_number(sheet, row_i, 1, value, format);
+    ++row_i;
+}
 void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const char* value)
 {
     worksheet_write_string(sheet, row_i, 0, key, format);
@@ -681,7 +697,15 @@ void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_
 {
     WriteKeyValueStringXlsx(sheet, format, row_i, key.c_str(), value.c_str());
 }
+void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const std::wstring& value)
+{
+    std::string s;
+    ConvertWideCharToMultiByte(s, value);
+    WriteKeyValueStringXlsx(sheet, format, row_i, key, s.c_str());
+}
 #define WORKSHEET_WRITE_KEY_VAL_STRING(_struct, _name) WriteKeyValueStringXlsx(sheet, data_format, row_i, #_name, _struct ## . ## _name)
+#define WORKSHEET_WRITE_KEY_VAL_NUMBER(_struct, _name) WriteKeyValueNumberXlsx(sheet, data_format, row_i, #_name, (double) ## _struct ## . ## _name)
+#define WORKSHEET_WRITE_KEY_VAL_BOOL(_struct, _name) WriteKeyValueBoolXlsx(sheet, data_format, row_i, #_name, _struct ## . ## _name)
 
 void ScriptNetworkXML(const ScriptData& data)
 {
@@ -1279,73 +1303,12 @@ void ConvertFolderToXLSX(const Path& path)
     workbook_close(s_workbook.data);
 }
 
-void ScriptNetworkXML(ScriptData& data)
+void ScriptNetwork(ScriptData& data)
 {
     ZoneScoped;
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_string(data.output.c_str());
-    if (!result)
-    {
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset);
-        FAIL;
-        return;
-    }
-    if (doc.empty())
-    {
-        DebugPrint("Error %s, failed to get data from doc.load_string(): %s", data.name.c_str(), data.output.c_str());
-        FAIL;
-        return;
-    }
-    struct NetworkInfo {
-        const char* Description;
-        const char* IPEnabled;
-        const char* IPAddress;
-        const char* IPSubnet;
-        const char* SettingID;
-        const char* DefaultIPGateway;
-        const char* DHCPEnabled;
-        const char* DHCPServer;
-        const char* DNSDomain;
-        const char* DNSDomainSuffixSearchOrder;
-        const char* DNSHostName;
-        const char* DomainDNSRegistrationEnabled;
-        const char* MACAddress;
-    };
 
-#define XML_COMPARE_AND_SET(_struct, _name, _value, _var) \
-    else if (StringCompare(StringCase_Insensitive, _name, #_var))\
-    {\
-        _struct ## . ## _var = _value;\
-    }
-
-    std::vector<NetworkInfo> networks;
-    const pugi::xml_node objects = doc.child("Objects");
-    for (pugi::xml_node object = objects.child("Object"); object; object = object.next_sibling("Object"))
-    {
-        NetworkInfo net = {};
-        for (pugi::xml_node prop = object.child("Property"); prop; prop = prop.next_sibling("Property"))
-        {
-            const char* name = prop.attribute("Name").value();
-            const char* value = prop.child_value();
-
-            if (false) continue;
-            XML_COMPARE_AND_SET(net, name, value, Description)
-            XML_COMPARE_AND_SET(net, name, value, IPEnabled)
-            XML_COMPARE_AND_SET(net, name, value, IPAddress)
-            XML_COMPARE_AND_SET(net, name, value, IPSubnet)
-            XML_COMPARE_AND_SET(net, name, value, SettingID)
-            XML_COMPARE_AND_SET(net, name, value, DefaultIPGateway)
-            XML_COMPARE_AND_SET(net, name, value, DHCPEnabled)
-            XML_COMPARE_AND_SET(net, name, value, DHCPServer)
-            XML_COMPARE_AND_SET(net, name, value, DNSDomain)
-            XML_COMPARE_AND_SET(net, name, value, DNSDomainSuffixSearchOrder)
-            XML_COMPARE_AND_SET(net, name, value, DNSHostName)
-            XML_COMPARE_AND_SET(net, name, value, DomainDNSRegistrationEnabled)
-            XML_COMPARE_AND_SET(net, name, value, MACAddress)
-        }
-        networks.push_back(net);
-    }
+    std::vector<OSNetworkAdapterInfo> adapters;
+    OSGetNetworkAdapters(adapters);
 
     TRACY_LOCK(data.workbook->lock);
     lxw_workbook* book = data.workbook->data;
@@ -1354,34 +1317,84 @@ void ScriptNetworkXML(ScriptData& data)
     lxw_format* data_format = CreateDataFormat(book);
 
     i32 row_i = 0;
-    for (i32 i = 0; i < networks.size(); i++)
+    for (i32 i = 0; i < adapters.size(); i++)
     {
-        const NetworkInfo& net = networks[i];
-
-        worksheet_merge_range(sheet, row_i, 0, row_i, 1, net.Description, title_format);
+        const OSNetworkAdapterInfo& net = adapters[i];
+        std::string friendly_name;
+        ConvertWideCharToMultiByte(friendly_name, net.friendly_name);
+        worksheet_merge_range(sheet, row_i, 0, row_i, 1, friendly_name.c_str(), title_format);
         worksheet_set_row(sheet, row_i, 30, NULL);
         ++row_i;
 
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, IPEnabled);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, IPAddress);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, IPSubnet);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, SettingID);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, DefaultIPGateway);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, DHCPEnabled);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, DHCPServer);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, DNSDomain);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, DNSDomainSuffixSearchOrder);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, DNSHostName);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, DomainDNSRegistrationEnabled);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, MACAddress);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, name);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, status);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, mac_address);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, ipv4_dhcp);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, ipv6_dhcp);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, description);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, dns_domain);
+
+        for (i32 i = 0; i < net.ipv4_ips.size(); i++)
+        {
+            const OSIPAndSubnet& ips = net.ipv4_ips[i];
+            std::string ip_key_name = ToString("IPv4 %i", i + 1);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip);
+            std::string sub_key_name = ToString("IPv4 Subnet %i", i + 1);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, ips.subnet);
+        }
+        for (i32 i = 0; i < net.ipv6_ips.size(); i++)
+        {
+            const OSIPAndSubnet& ips = net.ipv6_ips[i];
+            std::string ip_key_name = ToString("IPv6 %i", i + 1);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip);
+            std::string sub_key_name = ToString("IPv6 Subnet %i", i + 1);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, ips.subnet);
+        }
+
+        for (i32 i = 0; i < net.ipv4_dns.size(); i++)
+        {
+            const std::string& dns = net.ipv4_dns[i];
+            std::string key_name = ToString("IPv4 DNS %i", i + 1);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, dns);
+        }
+        for (i32 i = 0; i < net.ipv6_dns.size(); i++)
+        {
+            const std::string& dns = net.ipv6_dns[i];
+            std::string key_name = ToString("IPv6 DNS %i", i + 1);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, dns);
+        }
+
+        for (i32 i = 0; i < net.ipv4_gateways.size(); i++)
+        {
+            const std::string& gateway = net.ipv4_gateways[i];
+            std::string key_name = ToString("IPv4 Gateway %i", i + 1);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, gateway);
+        }
+        for (i32 i = 0; i < net.ipv6_gateways.size(); i++)
+        {
+            const std::string& gateway = net.ipv6_gateways[i];
+            std::string key_name = ToString("IPv6 Gateway %i", i + 1);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, gateway);
+        }
+
+        WORKSHEET_WRITE_KEY_VAL_NUMBER(net, ipv4_metric);
+        WORKSHEET_WRITE_KEY_VAL_NUMBER(net, ipv6_metric);
+        WORKSHEET_WRITE_KEY_VAL_BOOL(net, ipv4_enabled);
+        WORKSHEET_WRITE_KEY_VAL_BOOL(net, ipv6_enabled);
+        WORKSHEET_WRITE_KEY_VAL_BOOL(net, dhcpv4_enabled);
+        WORKSHEET_WRITE_KEY_VAL_BOOL(net, ddns_enabled);
+        WORKSHEET_WRITE_KEY_VAL_BOOL(net, domain_dns_register_enabled);
+        WORKSHEET_WRITE_KEY_VAL_BOOL(net, receive_only);
+        WORKSHEET_WRITE_KEY_VAL_BOOL(net, multicast_enabled);
+
         ++row_i;
     }
 }
 
 ScriptInfo s_scripts[] = {
     { .name = "System Info",.func = ScriptCsv,          .cmdline = g_script_systeminfo_text,    },
-    { .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },
-    { .name = "Network",    .func = ScriptNetworkXML,   .cmdline = g_script_network_text,       },
+    //{ .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },
+    { .name = "Network",    .func = ScriptNetwork,                                              },
     { .name = "Netstat TCP",.func = ScriptCsv,          .cmdline = g_script_netstat_tcp_text,   },
     { .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
     { .name = "Programs",   .func = ScriptCsv,          .cmdline = g_script_programs_text,      },
