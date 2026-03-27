@@ -15,6 +15,15 @@
 #include <fstream>
 #include <charconv>
 
+////need autosize
+//--programs.xml
+//--processor.xml
+//--networks.xml
+//--network_settings.xml
+//--netstat.txt
+//--physical_disks.xml
+//--logical_disks.xml
+
 AsyncData<lxw_workbook*> s_workbook;
 
 struct ScriptData {
@@ -662,6 +671,17 @@ void ScriptProcessorXML(ScriptData& data)
         ++i;
     }
 }
+void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const char* value)
+{
+    worksheet_write_string(sheet, row_i, 0, key, format);
+    worksheet_write_string(sheet, row_i, 1, value, format);
+    ++row_i;
+}
+void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const std::string& key, const std::string& value)
+{
+    WriteKeyValueStringXlsx(sheet, format, row_i, key.c_str(), value.c_str());
+}
+#define WORKSHEET_WRITE_KEY_VAL_STRING(_struct, _name) WriteKeyValueStringXlsx(sheet, data_format, row_i, #_name, _struct ## . ## _name)
 
 void ScriptNetworkXML(const ScriptData& data)
 {
@@ -765,10 +785,6 @@ void ScriptNetworkXML(const ScriptData& data)
     lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
     lxw_format* title_format = CreateTitleFormat(book);
     lxw_format* data_format = CreateDataFormat(book);
-#define WORKSHEET_WRITE_KEY_VAL_STRING(_name) \
-                worksheet_write_string(sheet, row_i, 0, #_name, data_format);\
-                worksheet_write_string(sheet, row_i, 1, set. ## _name ##.c_str(), data_format);\
-                ++row_i
     i32 row_i = 0;
     for (i32 i = 0; i < interfaces.size(); i++)
     {
@@ -777,9 +793,7 @@ void ScriptNetworkXML(const ScriptData& data)
         worksheet_merge_range(sheet, row_i, 0, row_i, 1, inter.Description.c_str(), title_format);
         worksheet_set_row(sheet, row_i, 30, NULL);
         ++row_i;
-        worksheet_write_string(sheet, row_i, 0, "MACAddress", data_format);
-        worksheet_write_string(sheet, row_i, 1, inter.MACAddress.c_str(), data_format);
-        ++row_i;
+        WORKSHEET_WRITE_KEY_VAL_STRING(inter, MACAddress);
         worksheet_write_string(sheet, row_i, 0, "DHCPEnabled", data_format);
         worksheet_write_boolean(sheet, row_i, 1, inter.DHCPEnabled, data_format);
         ++row_i;
@@ -791,14 +805,14 @@ void ScriptNetworkXML(const ScriptData& data)
         {
             if (StringCompare(StringCase_Insensitive, set.guid, inter.SettingID))
             {
-                WORKSHEET_WRITE_KEY_VAL_STRING(IPAddress);
-                WORKSHEET_WRITE_KEY_VAL_STRING(SubnetMask);
-                WORKSHEET_WRITE_KEY_VAL_STRING(DefaultGateway);
-                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpIPAddress);
-                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpSubnetMask);
-                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpServer);
-                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpDefaultGateway);
-                WORKSHEET_WRITE_KEY_VAL_STRING(DhcpDomain);
+                WORKSHEET_WRITE_KEY_VAL_STRING(set, IPAddress);
+                WORKSHEET_WRITE_KEY_VAL_STRING(set, SubnetMask);
+                WORKSHEET_WRITE_KEY_VAL_STRING(set, DefaultGateway);
+                WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpIPAddress);
+                WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpSubnetMask);
+                WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpServer);
+                WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpDefaultGateway);
+                WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpDomain);
 
                 worksheet_write_string(sheet, row_i, 0, "DefaultGatewayMetric", data_format);
                 worksheet_write_number(sheet, row_i, 1, set.DefaultGatewayMetric, data_format);
@@ -1267,21 +1281,6 @@ void ConvertFolderToXLSX(const Path& path)
 
 void ScriptNetworkXML(ScriptData& data)
 {
-    //ZoneScoped;
-    //PowershellResponse array;
-    //ParseCSV(array, data.output, data.using_quotes);
-    //if (!array.size())
-    //{
-    //    FAIL;
-    //    return;
-    //}
-    //TRACY_LOCK(data.workbook->lock);
-    //lxw_workbook* book = data.workbook->data;
-    //lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
-    //size_t column_widths[16] = {};
-    //ExcelWriteTitles(book, sheet, column_widths, array);
-    //ExcelWriteData(book, sheet, column_widths, array);
-    //ExcelAutoSizeColumnWidth(sheet, column_widths);
     ZoneScoped;
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(data.output.c_str());
@@ -1298,12 +1297,6 @@ void ScriptNetworkXML(ScriptData& data)
         FAIL;
         return;
     }
-    TRACY_LOCK(data.workbook->lock);
-    lxw_workbook* book = data.workbook->data;
-    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
-    lxw_format* title_format = CreateTitleFormat(book);
-    lxw_format* data_format = CreateDataFormat(book);
-
     struct NetworkInfo {
         const char* Description;
         const char* IPEnabled;
@@ -1317,11 +1310,17 @@ void ScriptNetworkXML(ScriptData& data)
         const char* DNSDomainSuffixSearchOrder;
         const char* DNSHostName;
         const char* DomainDNSRegistrationEnabled;
-        const char* MACAddres;
+        const char* MACAddress;
     };
 
+#define XML_COMPARE_AND_SET(_struct, _name, _value, _var) \
+    else if (StringCompare(StringCase_Insensitive, _name, #_var))\
+    {\
+        _struct ## . ## _var = _value;\
+    }
+
+    std::vector<NetworkInfo> networks;
     const pugi::xml_node objects = doc.child("Objects");
-    i32 i = 1;
     for (pugi::xml_node object = objects.child("Object"); object; object = object.next_sibling("Object"))
     {
         NetworkInfo net = {};
@@ -1329,32 +1328,53 @@ void ScriptNetworkXML(ScriptData& data)
         {
             const char* name = prop.attribute("Name").value();
             const char* value = prop.child_value();
-            //if (StringCompare(StringCase_Insensitive, key, "Description"))
-               // net.Description = value;
-            //else if (StringCompare(StringCase_Insensitive, key, "DeviceID"))
-            //    net.DeviceID = value;
-            //else if (StringCompare(StringCase_Insensitive, key, "FirmwareRevision"))
-            //    net.FirmwareRevision = value;
-            //else if (StringCompare(StringCase_Insensitive, key, "InterfaceType"))
-            //    net.InterfaceType = value;
-            //else if (StringCompare(StringCase_Insensitive, key, "Manufacturer"))
-            //    net.Manufacturer = value;
-            //else if (StringCompare(StringCase_Insensitive, key, "MediaType"))
-            //    net.MediaType = value;
-            //else if (StringCompare(StringCase_Insensitive, key, "Model"))
-            //    net.Model = value;
-            //else if (StringCompare(StringCase_Insensitive, key, "Name"))
-            //    net.Name = value;
-            //else if (StringCompare(StringCase_Insensitive, key, "Status"))
-            //    net.Status = value;
 
-            //const pugi::xml_node display_vers = prop.child("DisplayVersion");
-            //const char* name = display_name.child_value();
-            //const char* vers = display_vers.child_value();
-            //worksheet_write_string(sheet, i, 0, name, data_format);
-            //worksheet_write_string(sheet, i, 1, vers, data_format);
-            ++i;
+            if (false) continue;
+            XML_COMPARE_AND_SET(net, name, value, Description)
+            XML_COMPARE_AND_SET(net, name, value, IPEnabled)
+            XML_COMPARE_AND_SET(net, name, value, IPAddress)
+            XML_COMPARE_AND_SET(net, name, value, IPSubnet)
+            XML_COMPARE_AND_SET(net, name, value, SettingID)
+            XML_COMPARE_AND_SET(net, name, value, DefaultIPGateway)
+            XML_COMPARE_AND_SET(net, name, value, DHCPEnabled)
+            XML_COMPARE_AND_SET(net, name, value, DHCPServer)
+            XML_COMPARE_AND_SET(net, name, value, DNSDomain)
+            XML_COMPARE_AND_SET(net, name, value, DNSDomainSuffixSearchOrder)
+            XML_COMPARE_AND_SET(net, name, value, DNSHostName)
+            XML_COMPARE_AND_SET(net, name, value, DomainDNSRegistrationEnabled)
+            XML_COMPARE_AND_SET(net, name, value, MACAddress)
         }
+        networks.push_back(net);
+    }
+
+    TRACY_LOCK(data.workbook->lock);
+    lxw_workbook* book = data.workbook->data;
+    lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
+    lxw_format* title_format = CreateTitleFormat(book);
+    lxw_format* data_format = CreateDataFormat(book);
+
+    i32 row_i = 0;
+    for (i32 i = 0; i < networks.size(); i++)
+    {
+        const NetworkInfo& net = networks[i];
+
+        worksheet_merge_range(sheet, row_i, 0, row_i, 1, net.Description, title_format);
+        worksheet_set_row(sheet, row_i, 30, NULL);
+        ++row_i;
+
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, IPEnabled);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, IPAddress);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, IPSubnet);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, SettingID);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, DefaultIPGateway);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, DHCPEnabled);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, DHCPServer);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, DNSDomain);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, DNSDomainSuffixSearchOrder);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, DNSHostName);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, DomainDNSRegistrationEnabled);
+        WORKSHEET_WRITE_KEY_VAL_STRING(net, MACAddress);
+        ++row_i;
     }
 }
 

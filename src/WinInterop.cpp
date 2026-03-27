@@ -2,6 +2,9 @@
 #include <Windows.h>
 #include <shellapi.h>
 #include <combaseapi.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
 
 #include "WinInterop.h"
 #include "WinInterop_File.h"
@@ -601,6 +604,109 @@ bool OSInit(SDL_Window* window)
 void OSDestroy(SDL_Window* window)
 {
     SDL_DestroyWindow(window);
+}
+
+//#pragma comment(lib, "iphlpapi.lib")
+//#pragma comment(lib, "ws2_32.lib")
+bool OSGetNetworkAdapters()
+{
+    WSADATA wsa_data;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa_data))
+    {
+        DebugPrint("Error: WSAStartup failed");
+        return false;
+    }
+
+    ULONG buf_len = 15000;
+    std::vector<u8> buffer(buf_len);
+    PIP_ADAPTER_ADDRESSES adapter_addresses = (PIP_ADAPTER_ADDRESSES)buffer.data();
+
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_WINS_INFO | GAA_FLAG_INCLUDE_GATEWAYS;
+    DWORD r = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, adapter_addresses, &buf_len);
+    if (r == ERROR_BUFFER_OVERFLOW)
+    {
+        buffer.resize(buf_len);
+        adapter_addresses = (PIP_ADAPTER_ADDRESSES)buffer.data();
+        r = GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, adapter_addresses, &buf_len);
+    }
+    if (!ERROR_SUCCESS(r))
+    {
+        DebugPrint("Error Failed to GetAdaptersAddresses()");
+        return false;
+    }
+
+    struct OSAdapterData
+    {
+        std::string name;
+        std::wstring friendly_name;
+        std::wstring description;
+        std::string status;
+        std::vector<std::string> ipv4_ips;
+        std::vector<std::string> ipv6_ips;
+        std::vector<std::string> ipv4_dns;
+        std::vector<std::string> ipv6_dns;
+    };
+    std::vector<OSAdapterData> adapters;
+
+    // Iterate through the linked list of adapters
+    PIP_ADAPTER_ADDRESSES adapter = adapter_addresses;
+    while (adapter)
+    {
+//IPEnabled, IPSubnet, SettingID, DefaultIPGateway, DHCPEnabled, DHCPServer, DNSDomain, DNSDomainSuffixSearchOrder, DNSHostName, DomainDNSRegistrationEnabled, MACAddress | )term"
+        OSAdapterData ad = {};
+        ad.name = adapter->AdapterName;
+        ad.friendly_name = adapter->FriendlyName;
+        ad.description = adapter->Description;
+        ad.status = adapter->OperStatus == IfOperStatusUp ? "Up" : "Down";
+
+        // --- Get IP Addresses (Unicast) ---
+        PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress;
+        while (unicast)
+        {
+            char ip_str[INET6_ADDRSTRLEN] = {};
+            sockaddr* sa = unicast->Address.lpSockaddr;
+            if (sa->sa_family == AF_INET) //IPv4
+            { 
+                sockaddr_in* sa_in = (sockaddr_in*)sa;
+                inet_ntop(AF_INET, &(sa_in->sin_addr), ip_str, sizeof(ip_str));
+                ad.ipv4_ips.push_back(ip_str);
+            }
+            else if (sa->sa_family == AF_INET6) //IPv6
+            {
+                sockaddr_in6* sa_in = (sockaddr_in6*)sa;
+                inet_ntop(AF_INET6, &(sa_in->sin6_addr), ip_str, sizeof(ip_str));
+                ad.ipv6_ips.push_back(ip_str);
+            }
+            unicast = unicast->Next;
+        }
+
+        // --- Get DNS Servers ---
+        PIP_ADAPTER_DNS_SERVER_ADDRESS dns = adapter->FirstDnsServerAddress;
+        while (dns)
+        {
+            char dns_str[INET6_ADDRSTRLEN] = {};
+            sockaddr* sa = dns->Address.lpSockaddr;
+
+            if (sa->sa_family == AF_INET) //IPv4
+            {
+                sockaddr_in* sa_in = (sockaddr_in*)sa;
+                inet_ntop(AF_INET, &(sa_in->sin_addr), dns_str, sizeof(dns_str));
+                ad.ipv4_dns.push_back(dns_str);
+            }
+            else if (sa->sa_family == AF_INET6) //IPv6
+            {
+                sockaddr_in6* sa_in = (sockaddr_in6*)sa;
+                inet_ntop(AF_INET, &(sa_in->sin6_addr), dns_str, sizeof(dns_str));
+                ad.ipv6_dns.push_back(dns_str);
+            }
+            dns = dns->Next;
+        }
+        adapters.push_back(ad);
+        adapter = adapter->Next;
+    }
+
+    WSACleanup();
+    return true;
 }
 
 void SysProcessEvents()
