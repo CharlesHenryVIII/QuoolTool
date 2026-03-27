@@ -675,37 +675,58 @@ void ScriptProcessorXML(ScriptData& data)
     }
 }
 
-void WriteKeyValueBoolXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const bool value)
+void WriteKeyValueBoolXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const bool value, size_t* column_widths)
 {
     worksheet_write_string(sheet, row_i, 0, key, format);
     worksheet_write_boolean(sheet, row_i, 1, value, format);
     ++row_i;
+    if (column_widths)
+    {
+        size_t key_len = strlen(key);
+        size_t val_len = strlen(value ? "TRUE" : "FALSE");
+        column_widths[0] = Max(column_widths[0], key_len);
+        column_widths[1] = Max(column_widths[1], val_len);
+    }
 }
-void WriteKeyValueNumberXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const double value)
+void WriteKeyValueNumberXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const double value, size_t* column_widths)
 {
     worksheet_write_string(sheet, row_i, 0, key, format);
     worksheet_write_number(sheet, row_i, 1, value, format);
     ++row_i;
+    if (column_widths)
+    {
+        size_t key_len = strlen(key);
+        const std::string val = ToString("%f", value);
+        column_widths[0] = Max(column_widths[0], key_len);
+        column_widths[1] = Max(column_widths[1], val.size());
+    }
 }
-void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const char* value)
+void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const char* value, size_t* column_widths)
 {
     worksheet_write_string(sheet, row_i, 0, key, format);
     worksheet_write_string(sheet, row_i, 1, value, format);
     ++row_i;
+    if (column_widths)
+    {
+        size_t key_len = strlen(key);
+        size_t val_len = strlen(value);
+        column_widths[0] = Max(column_widths[0], key_len);
+        column_widths[1] = Max(column_widths[1], val_len);
+    }
 }
-void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const std::string& key, const std::string& value)
+void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const std::string& key, const std::string& value, size_t* column_widths)
 {
-    WriteKeyValueStringXlsx(sheet, format, row_i, key.c_str(), value.c_str());
+    WriteKeyValueStringXlsx(sheet, format, row_i, key.c_str(), value.c_str(), column_widths);
 }
-void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const std::wstring& value)
+void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const std::wstring& value, size_t* column_widths)
 {
     std::string s;
     ConvertWideCharToMultiByte(s, value);
-    WriteKeyValueStringXlsx(sheet, format, row_i, key, s.c_str());
+    WriteKeyValueStringXlsx(sheet, format, row_i, key, s.c_str(), column_widths);
 }
-#define WORKSHEET_WRITE_KEY_VAL_STRING(_struct, _name) WriteKeyValueStringXlsx(sheet, data_format, row_i, #_name, _struct ## . ## _name)
-#define WORKSHEET_WRITE_KEY_VAL_NUMBER(_struct, _name) WriteKeyValueNumberXlsx(sheet, data_format, row_i, #_name, (double) ## _struct ## . ## _name)
-#define WORKSHEET_WRITE_KEY_VAL_BOOL(_struct, _name) WriteKeyValueBoolXlsx(sheet, data_format, row_i, #_name, _struct ## . ## _name)
+#define WORKSHEET_WRITE_KEY_VAL_STRING(_struct, _name) WriteKeyValueStringXlsx(sheet, data_format, row_i, #_name, _struct ## . ## _name, column_widths)
+#define WORKSHEET_WRITE_KEY_VAL_NUMBER(_struct, _name) WriteKeyValueNumberXlsx(sheet, data_format, row_i, #_name, (double) ## _struct ## . ## _name, column_widths)
+#define WORKSHEET_WRITE_KEY_VAL_BOOL(_struct, _name) WriteKeyValueBoolXlsx(sheet, data_format, row_i, #_name, _struct ## . ## _name, column_widths)
 
 void ScriptNetworkXML(const ScriptData& data)
 {
@@ -809,6 +830,8 @@ void ScriptNetworkXML(const ScriptData& data)
     lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
     lxw_format* title_format = CreateTitleFormat(book);
     lxw_format* data_format = CreateDataFormat(book);
+    size_t column_widths[PWSH_MAX_COLUMNS] = {};
+
     i32 row_i = 0;
     for (i32 i = 0; i < interfaces.size(); i++)
     {
@@ -818,12 +841,8 @@ void ScriptNetworkXML(const ScriptData& data)
         worksheet_set_row(sheet, row_i, 30, NULL);
         ++row_i;
         WORKSHEET_WRITE_KEY_VAL_STRING(inter, MACAddress);
-        worksheet_write_string(sheet, row_i, 0, "DHCPEnabled", data_format);
-        worksheet_write_boolean(sheet, row_i, 1, inter.DHCPEnabled, data_format);
-        ++row_i;
-        worksheet_write_string(sheet, row_i, 0, "IPEnabled", data_format);
-        worksheet_write_boolean(sheet, row_i, 1, inter.IPEnabled, data_format);
-        ++row_i;
+        WORKSHEET_WRITE_KEY_VAL_BOOL(inter, DHCPEnabled);
+        WORKSHEET_WRITE_KEY_VAL_BOOL(inter, IPEnabled);
 
         for (const auto& set : settings)
         {
@@ -837,9 +856,7 @@ void ScriptNetworkXML(const ScriptData& data)
                 WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpServer);
                 WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpDefaultGateway);
                 WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpDomain);
-
-                worksheet_write_string(sheet, row_i, 0, "DefaultGatewayMetric", data_format);
-                worksheet_write_number(sheet, row_i, 1, set.DefaultGatewayMetric, data_format);
+                WORKSHEET_WRITE_KEY_VAL_NUMBER(set, DefaultGatewayMetric);
                 ++row_i;
 
                 for (i32 j = 0; j < set.DhcpNameServer.size(); ++j)
@@ -1315,6 +1332,7 @@ void ScriptNetwork(ScriptData& data)
     lxw_worksheet* sheet = workbook_add_worksheet(book, data.name.c_str());
     lxw_format* title_format = CreateTitleFormat(book);
     lxw_format* data_format = CreateDataFormat(book);
+    size_t column_widths[PWSH_MAX_COLUMNS] = {};
 
     i32 row_i = 0;
     for (i32 i = 0; i < adapters.size(); i++)
@@ -1338,43 +1356,43 @@ void ScriptNetwork(ScriptData& data)
         {
             const OSIPAndSubnet& ips = net.ipv4_ips[i];
             std::string ip_key_name = ToString("IPv4 %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip, column_widths);
             std::string sub_key_name = ToString("IPv4 Subnet %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, ips.subnet);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, ips.subnet, column_widths);
         }
         for (i32 i = 0; i < net.ipv6_ips.size(); i++)
         {
             const OSIPAndSubnet& ips = net.ipv6_ips[i];
             std::string ip_key_name = ToString("IPv6 %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip, column_widths);
             std::string sub_key_name = ToString("IPv6 Subnet %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, ips.subnet);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, ips.subnet, column_widths);
         }
 
         for (i32 i = 0; i < net.ipv4_dns.size(); i++)
         {
             const std::string& dns = net.ipv4_dns[i];
             std::string key_name = ToString("IPv4 DNS %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, dns);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, dns, column_widths);
         }
         for (i32 i = 0; i < net.ipv6_dns.size(); i++)
         {
             const std::string& dns = net.ipv6_dns[i];
             std::string key_name = ToString("IPv6 DNS %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, dns);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, dns, column_widths);
         }
 
         for (i32 i = 0; i < net.ipv4_gateways.size(); i++)
         {
             const std::string& gateway = net.ipv4_gateways[i];
             std::string key_name = ToString("IPv4 Gateway %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, gateway);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, gateway, column_widths);
         }
         for (i32 i = 0; i < net.ipv6_gateways.size(); i++)
         {
             const std::string& gateway = net.ipv6_gateways[i];
             std::string key_name = ToString("IPv6 Gateway %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, gateway);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, gateway, column_widths);
         }
 
         WORKSHEET_WRITE_KEY_VAL_NUMBER(net, ipv4_metric);
@@ -1389,16 +1407,15 @@ void ScriptNetwork(ScriptData& data)
 
         ++row_i;
     }
+    ExcelAutoSizeColumnWidth(sheet, column_widths);
 }
 
 ScriptInfo s_scripts[] = {
     { .name = "System Info",.func = ScriptCsv,          .cmdline = g_script_systeminfo_text,    },
-    //{ .name = "ipconfig",   .func = ScriptIpconfig,     .cmdline = g_script_ipconfig_text,      },
     { .name = "Network",    .func = ScriptNetwork,                                              },
     { .name = "Netstat TCP",.func = ScriptCsv,          .cmdline = g_script_netstat_tcp_text,   },
     { .name = "Netstat UPD",.func = ScriptCsv,          .cmdline = g_script_netstat_udp_text,   },
     { .name = "Programs",   .func = ScriptCsv,          .cmdline = g_script_programs_text,      },
-    { .name = "Processor",  .func = ScriptCsv,          .cmdline = g_script_processor_text,     },
     { .name = "Disk",       .func = ScriptCsv,          .cmdline = g_script_disk_text,          },
 };
 

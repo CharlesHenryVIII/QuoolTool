@@ -14,11 +14,13 @@ const wchar_t* g_script_programs_text = LR"term(powershell -command "Get-ItemPro
 "Where {$_.DisplayName} | Select DisplayName,DisplayVersion | "
 CSV_CONVERT_TEXT;
 
-const wchar_t* g_script_processor_text = LR"term(powershell -command "Get-CimInstance Win32_Processor | )term"
-"Select-Object Name, NumberOfCores, NumberOfEnabledCore, NumberOfLogicalProcessors, ThreadCount, MaxClockSpeed | "
-CSV_CONVERT_TEXT;
-
-const wchar_t* g_script_systeminfo_text = LR"term(powershell -command "Get-ComputerInfo | Select * | ForEach-Object { $_.PSObject.Properties } | Select Name,Value | )term"
+const wchar_t* g_script_systeminfo_text = 
+LR"term(powershell -command "$()term"
+LR"term(Get-ComputerInfo | Select-Object )term"
+LR"term(WindowsBuildLabEx, WindowsCurrentVersion, WindowsEditionId, WindowsInstallationType, WindowsInstallDateFromRegistry, WindowsProductId, WindowsProductName, WindowsSystemRoot, WindowsVersion, OSDisplayVersion, BiosBuildNumber, BiosCaption, BiosCodeSet, BiosCurrentLanguage, BiosDescription, BiosEmbeddedControllerMajorVersion, BiosEmbeddedControllerMinorVersion, BiosFirmwareType, BiosIdentificationCode, BiosInstallableLanguages, BiosInstallDate, BiosManufacturer, BiosName, BiosPrimaryBIOS, BiosReleaseDate, BiosSeralNumber, BiosSMBIOSBIOSVersion, BiosSMBIOSMajorVersion, BiosSMBIOSMinorVersion, BiosSMBIOSPresent, BiosSoftwareElementState, BiosStatus, BiosSystemBiosMajorVersion, BiosSystemBiosMinorVersion, BiosVersion, CsAutomaticManagedPagefile, CsAutomaticResetBootOption, CsAutomaticResetCapability, CsBootROMSupported, CsBootStatus, CsBootupState, CsCaption, CsChassisBootupState, CsChassisSKUNumber, CsCurrentTimeZone, CsDaylightInEffect, CsDescription, CsDNSHostName, CsDomain, CsDomainRole, CsEnableDaylightSavingsTime, CsFrontPanelResetStatus, CsHypervisorPresent, CsInfraredSupported, CsKeyboardPasswordStatus, CsManufacturer, CsModel, CsName, CsNetworkAdapters, CsNetworkServerModeEnabled, CsNumberOfLogicalProcessors, CsNumberOfProcessors, CsProcessors, CsOEMStringArray, CsPartOfDomain, CsPauseAfterReset, CsPCSystemType, CsPCSystemTypeEx, CsPowerManagementCapabilities, CsPowerManagementSupported, CsPowerOnPasswordStatus, CsPowerState, CsPowerSupplyState, CsPrimaryOwnerContact, CsPrimaryOwnerName | )term"
+LR"term(ForEach-Object { $_.PSObject.Properties } | Select Name,Value; )term"
+LR"term(Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfEnabledCore, NumberOfLogicalProcessors, ThreadCount, MaxClockSpeed | )term"
+LR"term(ForEach-Object { $_.PSObject.Properties } | Select Name,Value) | )term"
 CSV_CONVERT_TEXT;
 
 const wchar_t* g_script_ipconfig_text = LR"term(ipconfig /all)term";
