@@ -88,12 +88,12 @@ void DownloadUpdateJob::RunJob()
     struct curl_slist* headers = nullptr;
     if (s_network.env.github_api_key.size() > 10)
     {
-        std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
-        headers = curl_slist_append(headers, "Accept: application/octet-stream");
+        const std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
         headers = curl_slist_append(headers, auth.c_str());
-        headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
-        CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
     }
+    headers = curl_slist_append(headers, "Accept: application/octet-stream");
+    headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
 
     ResponseData<std::vector<char>> response = {
         .progress = &g_download_update_progress,
@@ -113,13 +113,13 @@ void DownloadUpdateJob::RunJob()
     }
     curl_easy_cleanup(curl);
     g_download_update_progress = -1.0f;
-    std::string filename = ToString("QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
+    std::string zip_filename = ToString("QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
     if (response.data.size() > Megabytes(1))
     {
-        std::fstream file(filename, std::ios_base::out | std::ios_base::binary);
+        std::fstream file(zip_filename, std::ios_base::out | std::ios_base::binary);
         if (!file.good())
         {
-            DebugPrint("Failed to open file for write: %s", filename.c_str());
+            DebugPrint("Failed to open file for write: %s", zip_filename.c_str());
             FAIL;
             g_download_state = AsyncStatus_FetchedFailed;
             return;
@@ -138,17 +138,17 @@ void DownloadUpdateJob::RunJob()
     }
 
     std::vector<std::string> filenames;
-    UnzipArchive(filename, "", filenames);
-    if (filenames.size())
+    UnzipArchive(zip_filename, "", filenames);
+    for (const auto& f : filenames)
     {
-        if (filenames[0].find("QuoolTool") != std::string::npos)
+        if (f.find("QuoolTool") != std::string::npos)
         {
-            Path fe = filename;
+            Path fe = zip_filename;
             std::error_code ec;
-            fs::remove(filename, ec);
+            fs::remove(zip_filename, ec);
             if (ec)
             {
-                DebugPrint("Error: failed to remove file: \"%s\"", filename.c_str());
+                DebugPrint("Error: failed to remove file: \"%s\"", zip_filename.c_str());
                 DebugPrint("\"remove\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
                 FAIL;
                 g_download_state = AsyncStatus_FetchedFailed;
@@ -198,7 +198,7 @@ void GetOnlineVersionJob::RunJob()
         DebugPrint("Error: failed to get tag_name, url: %s", s_network.url.c_str());
         DebugPrint("    json response vvvvvv");
         DebugPrint("%s", response.c_str());
-        g_download_state = AsyncStatus_FetchedFailed;
+        g_version_state = AsyncStatus_FetchedFailed;
         return;
     }
 
@@ -212,7 +212,7 @@ void GetOnlineVersionJob::RunJob()
         s_network.download_url = asset["url"];
         s_network.download_size = asset["size"];
     }
-    g_download_state = AsyncStatus_FetchedSuccess;
+    g_version_state = AsyncStatus_FetchedSuccess;
 }
 
 void NetworkingInit()

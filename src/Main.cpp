@@ -27,7 +27,7 @@ int Main(int argc, char** argv)
 {
     DebugPrint("====================");
     DebugPrint("     Quool Tool     ");
-    DebugPrint("====================");
+    DebugPrint("====================\n");
 #if 0
     //ERROR: Threading will not work correctly unless InitOS() is called before
     //argc will always be 1 in console mode
