@@ -35,54 +35,79 @@ netstat -ano > "%OUTDIR%\netstat.txt"
 :: -----------------------------
 :: Installed Programs
 :: -----------------------------
-call :LogStep "Gathering Installed Programs (This may take a while)..."
-::reg query "HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall" /s > "%OUTDIR%\programs.txt"
+call :LogStep "Gathering Installed Programs (Optimized)..."
 
-REM Initialize the XML file with standard headers
+REM Initialize the XML file
 > "%OUTDIR%\programs.xml" echo ^<?xml version="1.0" encoding="UTF-8"?^>
 >> "%OUTDIR%\programs.xml" echo ^<Programs^>
 
-REM Step 1: Loop through all subkeys in the Uninstall registry path
-FOR /F "delims=" %%A IN ('reg query "HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall" ^| findstr "HKEY_"') DO (
+set "appName="
+set "appVer="
+
+REM Step 1: Run ONE query (/s) and parse the text output in memory
+REM tokens 1=Name (DisplayName), 2=Type (REG_SZ), 3*=Value (The actual program name)
+FOR /F "tokens=1,2,*" %%A IN ('reg query "HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall" /s 2^>nul') DO (
     
-    set "appName="
-    set "appVer="
+    set "key=%%A"
     
-REM Step 2: Query the DisplayName. (Tokens 1=DisplayName, 2=REG_SZ, 3*=The actual name)
-    FOR /F "tokens=2,*" %%B IN ('reg query "%%A" /v DisplayName 2^>nul ^| findstr /I "DisplayName"') DO (
+    REM Step 2: If the line starts with HKEY_, we entered a new program's folder
+    if /I "!key:~0,5!"=="HKEY_" (
+        
+        REM If the previous folder had a DisplayName, write it out before moving on!
+        if defined appName call :WriteProgramXML
+        
+        REM Reset variables for this newly discovered folder
+        set "appName="
+        set "appVer="
+        
+    ) else if /I "!key!"=="DisplayName" (
+        REM Step 3: Capture the DisplayName
         set "appName=%%C"
-    )
-    
-REM Step 3: If the program has a DisplayName, get the version and write the XML block
-    if defined appName (
-        
-REM Get DisplayVersion (Silently hide errors if a program doesn't have a version)
-        FOR /F "tokens=2,*" %%B IN ('reg query "%%A" /v DisplayVersion 2^>nul ^| findstr /I "DisplayVersion"') DO (
-            set "appVer=%%C"
-        )
-        
-REM Step 4: Safely escape illegal XML characters (&, <, >)
-REM Because this is inside quotes, the batch interpreter won't crash on the & symbol
-        set "appName=!appName:&=&amp;!"
-        set "appName=!appName:<=&lt;!"
-        set "appName=!appName:>=&gt;!"
-        
-        if defined appVer (
-            set "appVer=!appVer:&=&amp;!"
-            set "appVer=!appVer:<=&lt;!"
-            set "appVer=!appVer:>=&gt;!"
-        )
-        
-REM Step 5: Write the formatted XML block to the file
-        >> "%OUTDIR%\programs.xml" echo   ^<Program^>
-        >> "%OUTDIR%\programs.xml" echo     ^<DisplayName^>!appName!^</DisplayName^>
-        >> "%OUTDIR%\programs.xml" echo     ^<DisplayVersion^>!appVer!^</DisplayVersion^>
-        >> "%OUTDIR%\programs.xml" echo   ^</Program^>
+    ) else if /I "!key!"=="DisplayVersion" (
+        REM Step 4: Capture the DisplayVersion
+        set "appVer=%%C"
     )
 )
 
-REM Close the main XML tag
+REM Step 5: Catch the very last program in the list 
+REM (Because there is no subsequent HKEY_ line to trigger the final write)
+if defined appName call :WriteProgramXML
+
+REM Close the main XML tag and skip over the helper function
 >> "%OUTDIR%\programs.xml" echo ^</Programs^>
+goto :DoneWithPrograms
+
+
+:: -----------------------------------------
+:: Inline Helper Function for XML Escaping
+:: -----------------------------------------
+:WriteProgramXML
+REM Safely escape illegal XML characters
+set "safeName=!appName:&=&amp;!"
+set "safeName=!safeName:<=&lt;!"
+set "safeName=!safeName:>=&gt;!"
+
+set "safeVer="
+if defined appVer (
+    set "safeVer=!appVer:&=&amp;!"
+    set "safeVer=!safeVer:<=&lt;!"
+    set "safeVer=!safeVer:>=&gt;!"
+)
+
+REM Write the formatted XML block
+>> "%OUTDIR%\programs.xml" echo   ^<Program^>
+>> "%OUTDIR%\programs.xml" echo     ^<DisplayName^>!safeName!^</DisplayName^>
+>> "%OUTDIR%\programs.xml" echo     ^<DisplayVersion^>!safeVer!^</DisplayVersion^>
+>> "%OUTDIR%\programs.xml" echo   ^</Program^>
+
+goto :EOF
+:: -----------------------------------------
+
+
+:DoneWithPrograms
+
+
+
 
 
 
