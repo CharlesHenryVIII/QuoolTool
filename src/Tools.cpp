@@ -1297,7 +1297,7 @@ void ToolsImGui(ToolsData& td)
         if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
             continue;
         enabled_scripts++;
-        if (s_scripts[i].completed)
+        if (FlagIntersects(s_scripts[i].completed, AsyncStatus_Completed))
             completed_scripts++;
     }
     if (td.state == ScriptState_Scripts && enabled_scripts == completed_scripts)
@@ -1350,7 +1350,7 @@ void ToolsImGui(ToolsData& td)
         {
             ScriptInfo& s = s_scripts[i];
             ImGui::PushID(i);
-            ImGui::BeginDisabled(s.completed);
+            ImGui::BeginDisabled(FlagIntersects(s.completed, AsyncStatus_Completed));
             ImGui::BeginGroup();
 
             bool pressed = ImGui::InvisibleButton("##btn", button_size);
@@ -1380,7 +1380,7 @@ void ToolsImGui(ToolsData& td)
 
             std::string selected_text = "Enabled";
             ImU32 selected_color = IM_COL32(0, 255, 0, 255);
-            if (s.completed)
+            if (FlagIntersects(s.completed, AsyncStatus_Completed))
             {
                 selected_text = "Completed";
                 selected_color = IM_COL32(0, 255, 0, 255);
@@ -1439,7 +1439,7 @@ void ToolsImGui(ToolsData& td)
             for (i32 i = 0; i < arrsize(s_scripts); i++)
             {
                 ScriptInfo& s = s_scripts[i];
-                if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || s.completed == AsyncStatus_Completed)
+                if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || FlagIntersects(s.completed, AsyncStatus_Completed))
                     continue;
 
                 ZoneScopedN("Run Script");
@@ -1489,7 +1489,7 @@ void ToolsImGui(ToolsData& td)
                     if (!FlagExists(s.flags, ScriptInfoFlags_Enabled))
                         continue;
 
-                    if (s.completed)
+                    if (FlagIntersects(s.completed, AsyncStatus_Completed))
                     {
                         ImGui::ProgressBar(1.0f, ImVec2(-FLT_MIN, individual_height), s.name.c_str());
                     }

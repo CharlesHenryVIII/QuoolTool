@@ -71,6 +71,17 @@ workspace "QuoolTool"
     enablepch "Off"
     targetdir "build/"
 
+    filter "system:Windows"
+        require("vstudio")
+        premake.override(premake.vstudio.vc2010.elements, "globals", function(base, prj)
+            local calls = base(prj)
+            table.insert(calls, function(prj)
+                premake.w('<VcpkgEnabled>false</VcpkgEnabled>')
+            end)
+            return calls
+        end)
+
+
 project "QuoolTool"
     kind "WindowedApp" --kind "ConsoleApp"
     language "C++"
@@ -314,8 +325,8 @@ project "libarchive"
     }
     defines {
         "LIBARCHIVE_STATIC",
-        "LIB_DLL",
-        "USE_BZIP2_DLL",
+        --"LIB_DLL",
+        --"USE_BZIP2_DLL",
         "HAVE_CONFIG_H",
         "_CRT_SECURE_NO_DEPRECATE",
         "ARCHIVE_STATIC",
