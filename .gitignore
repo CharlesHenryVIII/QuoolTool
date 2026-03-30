@@ -15,6 +15,7 @@ imgui.ini
 #renderdoc saves
 *.cap
 .env
+*.xlsx
 
 tags
 shell.bat

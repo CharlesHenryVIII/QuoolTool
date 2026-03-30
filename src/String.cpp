@@ -303,6 +303,43 @@ i32 NumberLengthInString(const std::string& string, i32& i)
     return j;
 }
 
+std::string ToString(const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    char buffer[4096];
+    i32 i = vsnprintf(buffer, arrsize(buffer), fmt, args);
+    va_end(args);
+    return buffer;
+}
+
+std::wstring ToString(const wchar_t* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    wchar_t buffer[4096];
+    i32 i = vswprintf(buffer, arrsize(buffer), fmt, args);
+    va_end(args);
+    return buffer;
+}
+
+void ToLower(std::wstring& s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+        [](std::wint_t c) { return std::towlower(c); }
+    );
+    FAIL; //untested
+}
+
+void ToLower(std::string& s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+        [](unsigned char c) { return std::tolower(c); }
+    );
+}
+
+
+
 i32 StringToInt(const std::string& string, i32 i, i32 length)
 {
     return atoi(string.substr(i, length).c_str());

@@ -15,15 +15,6 @@
 #include <fstream>
 #include <charconv>
 
-////need autosize
-//--programs.xml
-//--processor.xml
-//--networks.xml
-//--network_settings.xml
-//--netstat.txt
-//--physical_disks.xml
-//--logical_disks.xml
-
 AsyncData<lxw_workbook*> s_workbook;
 
 struct ScriptData {
@@ -1530,6 +1521,42 @@ void ToolsImGui(ToolsData& td)
     ImGui::EndChild();
 
 
+#else
+
+    ImGui::SameLine();
+    #define LOG_TITLE "Log"
+    const ImVec2 log_scale = { 0, 0 };
+    ImVec2 log_size = HadamardProduct(viewport->WorkSize, log_scale);
+    if (ImGui::BeginChild(LOG_TITLE, log_size, ImGuiChildFlags_Borders, section_flags))
+    {
+        ZoneScopedN(LOG_TITLE);
+        TextCentered(LOG_TITLE);
+        ImGui::Separator();
+
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        //Screen-space position of the content area
+        ImVec2 area_min = ImGui::GetCursorScreenPos();
+        ImVec2 area_size = ImGui::GetContentRegionAvail();
+        ImVec2 area_max = ImVec2(area_min.x + area_size.x, area_min.y + area_size.y);
+
+        //Clip to child window and add black console background
+        draw->PushClipRect(area_min, area_max, true);
+        draw->AddRectFilled(area_min, area_max, IM_COL32(0, 0, 0, 255), 6.0f, ImDrawFlags_RoundCornersNone);
+        draw->PopClipRect();
+
+        //Padding inside the log area
+        ImGui::SetCursorScreenPos(area_min + ImVec2(8, 6));
+        ImGui::PushFont(g_data.fonts[FontIndex_Monospace]);
+#if 1
+        ImGui::TextUnformatted(s_log.c_str());
+#else
+        ImGui::TextUnformatted("This is a test of the monospace font");
+#endif
+        ImGui::PopFont();
+
+    }
+    ImGui::EndChild();
+#endif
 
     const char* popup_name = "Drop Files";
     if (g_sysinfo.drop_active && !ImGui::IsPopupOpen(popup_name))
@@ -1585,40 +1612,4 @@ void ToolsImGui(ToolsData& td)
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 
-#else
-
-    ImGui::SameLine();
-    #define LOG_TITLE "Log"
-    const ImVec2 log_scale = { 0, 0 };
-    ImVec2 log_size = HadamardProduct(viewport->WorkSize, log_scale);
-    if (ImGui::BeginChild(LOG_TITLE, log_size, ImGuiChildFlags_Borders, section_flags))
-    {
-        ZoneScopedN(LOG_TITLE);
-        TextCentered(LOG_TITLE);
-        ImGui::Separator();
-
-        ImDrawList* draw = ImGui::GetWindowDrawList();
-        //Screen-space position of the content area
-        ImVec2 area_min = ImGui::GetCursorScreenPos();
-        ImVec2 area_size = ImGui::GetContentRegionAvail();
-        ImVec2 area_max = ImVec2(area_min.x + area_size.x, area_min.y + area_size.y);
-
-        //Clip to child window and add black console background
-        draw->PushClipRect(area_min, area_max, true);
-        draw->AddRectFilled(area_min, area_max, IM_COL32(0, 0, 0, 255), 6.0f, ImDrawFlags_RoundCornersNone);
-        draw->PopClipRect();
-
-        //Padding inside the log area
-        ImGui::SetCursorScreenPos(area_min + ImVec2(8, 6));
-        ImGui::PushFont(g_data.fonts[FontIndex_Monospace]);
-#if 1
-        ImGui::TextUnformatted(s_log.c_str());
-#else
-        ImGui::TextUnformatted("This is a test of the monospace font");
-#endif
-        ImGui::PopFont();
-
-    }
-    ImGui::EndChild();
-#endif
 }

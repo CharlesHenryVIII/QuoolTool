@@ -23,7 +23,7 @@
 #include <fstream>
 #include <iostream>
 
-int Main(int argc, char** argv)
+int SysMain(int argc, char** argv)
 {
     DebugPrint("====================");
     DebugPrint("     Quool Tool     ");

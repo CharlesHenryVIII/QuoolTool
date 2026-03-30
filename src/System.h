@@ -33,7 +33,7 @@ struct Mouse {
     //SDL_Cursor* cursors[ImGuiMouseCursor_COUNT] = {};
 };
 
-struct SystemInfo {
+struct SysInfo {
     std::wstring name;
     i32 cores;
     i32 threads;
@@ -43,14 +43,14 @@ struct SystemInfo {
     bool drop_active = false;
     std::vector<Path> drop_file;
 };
-extern SystemInfo g_sysinfo;
+extern SysInfo g_sysinfo;
 
-struct OSIPAndSubnet {
+struct SysIPAndSubnet {
     std::string ip;
     std::string subnet;
 };
 
-struct OSNetworkAdapterInfo
+struct SysNetworkAdapterInfo
 {
     std::string name;
     std::string status;
@@ -60,8 +60,8 @@ struct OSNetworkAdapterInfo
     std::wstring friendly_name;
     std::wstring description;
     std::wstring dns_domain;
-    std::vector<OSIPAndSubnet> ipv4_ips;
-    std::vector<OSIPAndSubnet> ipv6_ips;
+    std::vector<SysIPAndSubnet> ipv4_ips;
+    std::vector<SysIPAndSubnet> ipv6_ips;
     std::vector<std::string> ipv4_dns;
     std::vector<std::string> ipv6_dns;
     std::vector<std::string> ipv4_gateways;
@@ -78,42 +78,41 @@ struct OSNetworkAdapterInfo
     bool multicast_enabled;
 };
 
-void DebugPrint(const char* fmt, ...);
-void DebugPrint(const wchar_t* fmt, ...);
+bool SysInit(void* window);
+void SysDestroy(void* window);
+void* SysGetWindowHandle(void* window);
+int SysMain(int, char**);
+
+void SysDebugPrint(const char* fmt, ...);
+void SysDebugPrint(const wchar_t* fmt, ...);
 //No new line
-void DebugPrintDirect(const char* fmt, ...);
-std::string ToString(const char* fmt, ...);
-std::wstring ToString(const wchar_t* fmt, ...);
-i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess(const char*         path, const char*         args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess(const wchar_t*      path, const wchar_t*      args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess(const std::string&  path, const std::string&  args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-struct SDL_Window;
-bool OSInit(SDL_Window* window);
-void OSDestroy(SDL_Window* window);
-void* OSGetWindowHandle(SDL_Window* window);
-bool OSGetNetworkAdapters(std::vector<OSNetworkAdapterInfo>& out_adapters);
-int Main(int, char**);
-bool ConsoleAttached();
-bool DebuggerAttached();
-//void EnableOutputToDebugger();
-void HideConsole();
-void ShowConsole();
-bool IsConsoleVisible();
-void SysProcessEvents();
+void SysDebugPrintDirect(const char* fmt, ...);
+bool SysIsConsoleAttached();
+bool SysIsDebuggerAttached();
+void SysHideConsole();
+void SysShowConsole();
+bool SysIsConsoleVisible();
+
+//i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
+//i32 RunProcess(const char*         path, const char*         args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+//i32 RunProcess(const wchar_t*      path, const wchar_t*      args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+//i32 RunProcess(const std::string&  path, const std::string&  args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+//i32 RunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+bool SysGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters);
+
 void SysSleep(u64 ms);
 double SysGetTime();
 float SysMonitorScale();
 
-void ParsePowershell(PowershellResponse& out, const std::string& in);
-void ParseSysinfo(PowershellResponse& out, const std::string& in);
 void ParseCSV(PowershellResponse& out, const std::string& in, bool using_quotes);
 
+void SysProcessEvents();
+
+
 static bool keepOpen = true;
-void ShowErrorWindow(const std::wstring& title, const std::wstring& text);
-i32 ShowCustomErrorWindow(const std::string& title, const std::string& text);
-void SysFlashWindow(SDL_Window* window);
+void SysShowErrorWindow(const std::wstring& title, const std::wstring& text);
+i32 SysShowCustomErrorWindow(const std::string& title, const std::string& text);
+void SysFlashWindow(void* window);
 enum ScanDirectoryFlags : u32 {
     ScanDirectoryFlags_None = 0,
     ScanDirectoryFlags_Recursive = BIT(0),
@@ -125,8 +124,8 @@ struct ScannedFile {
     bool dir;
 };
 using ScannedFiles = std::vector<ScannedFile>;
-void ScanDirectoryForFileNames(const std::wstring& dir, ScannedFiles& out, ScanDirectoryFlags flags);
-bool GetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir);
+void SysScanDirectoryForFileNames(const std::wstring& dir, ScannedFiles& out, ScanDirectoryFlags flags);
+bool SysGetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir);
 enum MessageBoxResponse : i32 {
     MessageBoxResponse_Invalid,
     MessageBoxResponse_OpenLog,
@@ -135,14 +134,10 @@ enum MessageBoxResponse : i32 {
     MessageBoxResponse_Count,
 };
 
-void ConvertMultibyteToWideChar(std::wstring& out, const std::string& in);
-void ConvertWideCharToMultiByte(std::string& out, const std::wstring& in);
-void ExpandEnvironemntVariable(std::wstring& out, const std::wstring& in);
-void ToLower(std::wstring& s);
-void ToLower(std::string& s);
-void CreateZip(const Path& zip_path, const Path& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<Path> files_to_add_to_root, Atomic<u64>& progress/*, ArrayView<std::wstring> ext_to_exclude*/);
-bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, std::vector<std::string>& filenames);
-ImFont* LoadFontForImgui(int resource_id, float fontSize);
+void SysConvertMultibyteToWideChar(std::wstring& out, const std::string& in);
+void SysConvertWideCharToMultiByte(std::string& out, const std::wstring& in);
+void SysExpandEnvironemntVariable(std::wstring& out, const std::wstring& in);
+ImFont* SysLoadFontForImgui(int resource_id, float fontSize);
 void* OsGetDataFromResource(i32* out_size, const i32 resource_id);
 
 union Guid {
@@ -165,8 +160,7 @@ union Guid {
 template<typename T> inline [[nodiscard]] T GuidFromString(const char* s) { Guid id = GuidFromString(s); return *(T*)&id; };
 inline constexpr [[nodiscard]] bool operator==(const Guid& a, const Guid& b) { return (a.e[0] == b.e[0]) && (a.e[1] == b.e[1]); }
 inline constexpr [[nodiscard]] bool operator<(const Guid& a, const Guid& b) { return (a.e[1] < b.e[1]) || ((a.e[1] == b.e[1]) && (a.e[0] < b.e[0])); }
-
-Guid NewGuid();
+Guid SysNewGuid();
 
 #define STRONG_GUID_DEF(name)                                                                                     \
 union name {                                                                                                      \

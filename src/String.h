@@ -19,7 +19,7 @@ enum StringCase {
 ENUMOPS(StringCase);
 
 template <u64 sizeT>
-struct InlineString 
+struct InlineString
 {
     u64 max_len = sizeT;
     char s[sizeT] = {};
@@ -43,6 +43,10 @@ std::vector<std::string> TextCsvToStringArray(const char* text);
 std::vector<std::string> FileToStringArray(const char* fileName);
 std::vector<std::string> FileToStringArray(const char* fileName, const char* lineEnd);
 i32 NumberLengthInString(const std::string& string, i32& i);
+std::string ToString(const char* fmt, ...);
+std::wstring ToString(const wchar_t* fmt, ...);
+void ToLower(std::wstring& s);
+void ToLower(std::string& s);
 i32 StringToInt(const std::string& string, i32 i, i32 length);
 i32 StringToInt(const std::string& string, i32 i);
 void StringGetReadableByteSize(std::string& out, const u64 v);
