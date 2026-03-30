@@ -2,8 +2,9 @@
 #include "gb_math.h"
 #include "Debug.h"
 
-#include <vector>
 #include <cmath>
+#include <cstdlib>
+#include <vector>
 #include <cstdint>
 
 #define BIT(num) (1<<(num))

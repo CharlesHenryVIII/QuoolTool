@@ -198,6 +198,23 @@ void GetNameAndTextForJob(std::string& text, std::string& name, const std::wstri
         text.clear();
 }
 
+i32 RunProcess(const char* path, const char* args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+{
+    return RunProcess(std::string(path), std::string(args), output, output_file, flags);
+}
+i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+{
+    return RunProcess(std::wstring(path), std::wstring(args), output, output_file, flags);
+}
+i32 RunProcess(const std::string& path, const std::string& args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+{
+    std::wstring wpath;
+    std::wstring wargs;
+    ConvertMultibyteToWideChar(wpath, path);
+    ConvertMultibyteToWideChar(wargs, args);
+    return RunProcess(wpath, wargs, output, output_file, flags);
+}
+
 i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
 {
     std::string zone_text;
@@ -226,7 +243,7 @@ i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* 
     };
 
     std::wstring real_path;
-    if (path.size())
+    if (path.size() > 1)
         real_path = path;
     else
         real_path = L"cmd.exe /C";
@@ -250,9 +267,10 @@ i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* 
     {
         std::wstring errorBoxTitle = ToString(L"CreateProcess() Error: %i", GetLastError());
         std::wstring errorText     = ToString(L"Application Path: %s\n"
-                                             "Command Line Params: %s", real_path.c_str(), args);
+                                              L"Command Line Params: %s", real_path.c_str(), args.c_str());
         DebugPrint("%s\n", errorBoxTitle.c_str());
         DebugPrint(errorText.c_str());
+        DebugPrint("\n");
         ShowErrorWindow(errorBoxTitle, errorText);
         FAIL;
         return 2;
@@ -1588,7 +1606,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
     }
 }
 
-void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, const std::wstring& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<std::filesystem::path> files_to_add_to_root, std::atomic<u64>& progress/*, ArrayView<std::wstring> ext_to_exclude*/)
+void CreateZip(const Path& zip_path, const Path& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<Path> files_to_add_to_root, Atomic<u64>& progress/*, ArrayView<std::wstring> ext_to_exclude*/)
 {
     archive* a = archive_write_new();
     archive_write_set_format_zip(a);
@@ -1596,21 +1614,24 @@ void CreateZip(const std::wstring& zip_name, const std::wstring& zip_pathw, cons
     ArchiveErrorCheck(a, error);
     error = archive_write_set_options(a, "compression-level=9");
     ArchiveErrorCheck(a, error);
-    Path zip_filename = std::filesystem::path(zip_pathw) / zip_name;
-    CreateParentDirectories(zip_filename);
-    error = archive_write_open_filename(a, zip_filename.string().c_str());
+    CreateParentDirectories(zip_path);
+    error = archive_write_open_filename(a, zip_path.string().c_str());
     ArchiveErrorCheck(a, error);
 
     std::vector<u8> file_buffer;
     //file_buffer.reserve(64*1000*1000);
-    std::filesystem::path source = source_folder;
     for (i32 i = 0; i < files_to_backup.size(); i++)
     {
-        std::filesystem::path full = source / files_to_backup[i].name;
+        Path full;
+        if (!source_folder.empty())
+            full = source_folder / files_to_backup[i].name;
+        else
+            full = files_to_backup[i].name;
         AddEntryToZip(a, full, files_to_backup[i].name, files_to_backup[i].dir, file_buffer, progress);
     }
     for (i32 i = 0; i < files_to_add_to_root.size(); i++)
     {
+        FAIL; //this needs to be rewritten no hardcoding
         if (files_to_add_to_root[i].extension() != ".ini")
             continue;
         AddEntryToZip(a, files_to_add_to_root[i], files_to_add_to_root[i].filename(), false, file_buffer, progress);

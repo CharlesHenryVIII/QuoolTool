@@ -131,6 +131,75 @@ project "QuoolTool"
     CommonFilters()
 
 
+project "Packager"
+    kind "ConsoleApp"
+    language "C++"
+    cppdialect "C++20"
+    targetname "QuoolToolPackager_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    objdir "build/Packager/obj/%{cfg.platform}/%{cfg.buildcfg}"
+
+    --targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    --objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
+
+    --usestandardpreprocessor 'On'
+    --characterset "ASCII"
+
+    --Flags
+    fatalwarnings { "All" }
+
+    dependson {
+        "libarchive",
+        "contrib",
+        "curl-lib",
+        "SDL3-lib",
+    }
+
+    links {
+        "libarchive",
+        "contrib",
+        "curl-lib",
+        "SDL3-lib",
+        "iphlpapi",
+        "ws2_32",
+    }
+
+    includedirs {
+        "contrib",
+        "contrib/ImGui",
+        "contrib/SDL3/include",
+        "contrib/tracy/public/tracy",
+        "contrib/curl/include",
+        "contrib/libxlsxwriter/include",
+        "contrib/pugixml/src",
+        "resources",
+        --"src",
+    }
+    defines {
+        "_CRT_SECURE_NO_WARNINGS",
+        "LIBARCHIVE_STATIC",
+        "IMGUI_DEFINE_MATH_OPERATORS",
+        "CURL_STATICLIB",
+    }
+    files {
+        "src/**",
+        "packager/packager.cpp",
+        "contrib/ImGui/*.h",
+        "contrib/ImGui/backends/imgui_impl_sdl3.*",
+        "contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
+        "contrib/json.hpp",
+        "contrib/stb/**.h",
+        "contrib/libarchive/*.h",
+        "contrib/pugixml/src/*.hpp",
+        "resources/**",
+    }
+
+    removefiles {
+        "src/main.cpp",
+    }
+
+    CommonFilters()
+
+
 project "contrib"
     kind "StaticLib"
     language "C++"

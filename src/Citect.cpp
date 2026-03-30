@@ -22,11 +22,11 @@ void CitectCreateZip(CitectData& cs)
     //1. Backup project as Backup.ctz
     std::vector<ScannedFile> filenames;
     {
-        ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
+        ScanDirectoryForFileNames(cs.project_path.wstring(), filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
         cs.total = filenames.size();
     }
     filenames.clear();
-    ScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
+    ScanDirectoryForFileNames(cs.project_path.wstring(), filenames, ScanDirectoryFlags_IncludeDirs);
      
 
     std::vector<std::filesystem::path> ini_files;
@@ -45,7 +45,7 @@ void CitectCreateZip(CitectData& cs)
         }
     }
 
-    CreateZip(L"Backup.ctz", cs.backup_path, cs.project_path, CreateArrayView(filenames), CreateArrayView(ini_files), cs.progress);
+    CreateZip(L"Backup.ctz", cs.backup_path / cs.project_path, CreateArrayView(filenames), CreateArrayView(ini_files), cs.progress);
     cs.total = 0;
     cs.progress = u64(-1);
 }
