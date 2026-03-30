@@ -28,7 +28,7 @@ AsyncData<lxw_workbook*> s_workbook;
 
 struct ScriptData {
     std::string name;
-    std::string output;
+    AsyncData<std::string> output;
     AsyncData<lxw_workbook*>* workbook;
     bool using_quotes = true;
 };
@@ -38,7 +38,6 @@ struct ScriptJob : Job
 {
     std::wstring path;
     std::wstring args;
-    Atomic<bool>* completed;
     ScriptFunction func;
     ScriptData data;
     
@@ -56,12 +55,6 @@ struct ScriptJob : Job
         {
             ZoneScopedN("ScriptJob func");
             func(data);
-        }
-
-        if (completed)
-        {
-            ASSERT(*completed == false);
-            (*completed) = true;
         }
     }
 };
@@ -97,7 +90,7 @@ struct ScriptInfo {
     ScriptFunction func = nullptr;
     std::wstring cmdline; //function
     //break
-    Atomic<bool> completed = false;
+    Atomic<AsyncStatus> completed = AsyncStatus_Empty;
 };
 
 lxw_format* CreateTitleFormat(lxw_workbook* book)
@@ -165,7 +158,7 @@ void ScriptCsv(ScriptData& data)
 {
     ZoneScoped;
     PowershellResponse array;
-    ParseCSV(array, data.output, data.using_quotes);
+    ParseCSV(array, data.output.data, data.using_quotes);
     if (!array.size())
     {
         FAIL;
@@ -183,7 +176,7 @@ void ScriptCsv(ScriptData& data)
 void ScriptNetstat(ScriptData& data)
 {
     ZoneScoped;
-    const std::vector<std::string> rows = TextToStringArray(data.output.c_str(), "\n");
+    const std::vector<std::string> rows = TextToStringArray(data.output.data.c_str(), "\n");
     if (!rows.size())
     {
         FAIL;
@@ -358,7 +351,7 @@ lxw_datetime StringToDatetime(const char* s)
 void ScriptProgramsXML(ScriptData& data)
 {
     ZoneScoped;
-    pugi::xml_document doc = GetXmlDocFromFile(data.output.c_str());
+    pugi::xml_document doc = GetXmlDocFromFile(data.output.data.c_str());
     if (doc.empty())
         return;
     TRACY_LOCK(data.workbook->lock);
@@ -440,7 +433,7 @@ void WriteTypeToXLSX(lxw_worksheet* sheet, u32 row, u32 col, const char* s, cons
 void ScriptProcessorXML(ScriptData& data)
 {
     ZoneScoped;
-    pugi::xml_document doc = GetXmlDocFromFile(data.output.c_str());
+    pugi::xml_document doc = GetXmlDocFromFile(data.output.data.c_str());
     if (doc.empty())
         return;
     TRACY_LOCK(data.workbook->lock);
@@ -551,8 +544,8 @@ void ScriptNetworkXML(const ScriptData& data)
 
     const char* interfaces_filename = "networks.xml";
     const char* settings_filename = "network_settings.xml";
-    pugi::xml_document interface_doc = GetXmlDocFromFile(PathConcat(data.output, interfaces_filename).c_str());
-    pugi::xml_document settings_doc = GetXmlDocFromFile(PathConcat(data.output, settings_filename).c_str());
+    pugi::xml_document interface_doc = GetXmlDocFromFile(PathConcat(data.output.data, interfaces_filename).c_str());
+    pugi::xml_document settings_doc = GetXmlDocFromFile(PathConcat(data.output.data, settings_filename).c_str());
     std::vector<NetworkInterface> interfaces;
     std::vector<NetworkSettings> settings;
 
@@ -674,7 +667,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("os.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "os.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "os.xml").c_str());
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -695,7 +688,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("computersystem.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "computersystem.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "computersystem.xml").c_str());
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -728,7 +721,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("timezone.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "timezone.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "timezone.xml").c_str());
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -749,7 +742,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("bios.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "bios.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "bios.xml").c_str());
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -771,7 +764,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("gpu.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "gpu.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "gpu.xml").c_str());
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -793,7 +786,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("processor.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output, "processor.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "processor.xml").c_str());
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -863,8 +856,8 @@ void ScriptDisksXML(const ScriptData& data)
 
     std::vector<PhysicalDisk> physical_disks;
     std::vector<LogicalDisk> logical_disks;
-    const pugi::xml_document physical_doc = GetXmlDocFromFile(PathConcat(data.output, "physical_disks.xml").c_str());
-    const pugi::xml_document logical_doc = GetXmlDocFromFile(PathConcat(data.output, "logical_disks.xml").c_str());
+    const pugi::xml_document physical_doc = GetXmlDocFromFile(PathConcat(data.output.data, "physical_disks.xml").c_str());
+    const pugi::xml_document logical_doc = GetXmlDocFromFile(PathConcat(data.output.data, "logical_disks.xml").c_str());
     if (physical_doc.empty() || logical_doc.empty())
         return;
 
@@ -1446,7 +1439,7 @@ void ToolsImGui(ToolsData& td)
             for (i32 i = 0; i < arrsize(s_scripts); i++)
             {
                 ScriptInfo& s = s_scripts[i];
-                if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || s.completed)
+                if (!FlagExists(s.flags, ScriptInfoFlags_Enabled) || s.completed == AsyncStatus_Completed)
                     continue;
 
                 ZoneScopedN("Run Script");
@@ -1457,7 +1450,7 @@ void ToolsImGui(ToolsData& td)
                 job->func = s.func;
                 job->data.workbook = &s_workbook;
                 job->data.name = s.name;
-                job->completed = &s.completed;
+                job->status = &s.completed;
                 threading.SubmitJob(job);
 
                 ImguiLog(ToString("Running: %s", s.name.c_str()));

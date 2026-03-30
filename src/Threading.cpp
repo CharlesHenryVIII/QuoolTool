@@ -73,7 +73,17 @@ i32 Threading::ThreadFunction(ThreadData data)
         if (job == nullptr)
             continue;
 
+        if (job->status)
+        {
+            ASSERT(*job->status == AsyncStatus_Empty);
+            *job->status = AsyncStatus_Fetching;
+        }
         job->RunJob();
+        if (job->status)
+        {
+            ASSERT(*job->status == AsyncStatus_Fetching);
+            *job->status = AsyncStatus_FetchedSuccess;
+        }
 
         MT.m_jobsInFlight--;
         delete job;

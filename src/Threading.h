@@ -22,11 +22,11 @@ using Lock = std::lock_guard<N>;
 #define TRACY_MUTEX(var) TracyLockable(Mutex, var)
 
 enum AsyncStatus : u32 {
-    AsyncStatus_Empty,
-    AsyncStatus_Fetching,
-    AsyncStatus_FetchedSuccess,
-    AsyncStatus_FetchedFailed,
-    AsyncStatus_Count,
+    AsyncStatus_Empty           = 0,
+    AsyncStatus_Fetching        = BIT(0),
+    AsyncStatus_FetchedSuccess  = BIT(1),
+    AsyncStatus_FetchedFailed   = BIT(2),
+    AsyncStatus_Completed       = AsyncStatus_FetchedSuccess | AsyncStatus_FetchedFailed,
 };
 ENUMOPS_PURE(AsyncStatus);
 
@@ -39,6 +39,7 @@ struct AsyncData {
 
 struct Job
 {
+    Atomic<AsyncStatus>* status = nullptr;
     virtual void RunJob() = 0;
 };
 

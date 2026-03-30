@@ -37,16 +37,8 @@
 
 SystemInfo g_sysinfo;
 
-void DebugPrint(const char* fmt, ...)
+void WriteToAttachedConsole(const char* buffer, bool add_new_line)
 {
-    va_list list;
-    va_start(list, fmt);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), fmt, list);
-    OutputDebugStringA(buffer);
-    OutputDebugStringA("\n");
-    va_end(list);
-
     //If we have a console, print there too
     HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
     if (console != NULL && console != INVALID_HANDLE_VALUE)
@@ -56,20 +48,17 @@ void DebugPrint(const char* fmt, ...)
         {
             DWORD written;
             WriteConsoleA(console, buffer, (DWORD)strlen(buffer), &written, NULL);
-            const char* new_line = "\n";
-            WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
+            if (add_new_line)
+            {
+                const char* new_line = "\n";
+                WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
+            }
         }
     }
 }
-void DebugPrint(const wchar_t* fmt, ...)
-{
-    va_list list;
-    va_start(list, fmt);
-    wchar_t buffer[4096];
-    _vsnwprintf(buffer, sizeof(buffer), fmt, list);
-    OutputDebugStringW(buffer);
-    va_end(list);
 
+void WriteToAttachedConsole(const wchar_t* buffer, bool add_new_line)
+{
     //If we have a console, print there too
     HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
     if (console != NULL && console != INVALID_HANDLE_VALUE)
@@ -79,10 +68,50 @@ void DebugPrint(const wchar_t* fmt, ...)
         {
             DWORD written;
             WriteConsoleW(console, buffer, (DWORD)wcslen(buffer), &written, NULL);
-            const char* new_line = "\n";
-            WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
+            if (add_new_line)
+            {
+                const char* new_line = "\n";
+                WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
+            }
         }
     }
+}
+
+void DebugPrintDirect(const char* fmt, ...)
+{
+    va_list list;
+    va_start(list, fmt);
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), fmt, list);
+    OutputDebugStringA(buffer);
+    OutputDebugStringA("\n");
+    va_end(list);
+
+    WriteToAttachedConsole(buffer, false);
+}
+
+void DebugPrint(const char* fmt, ...)
+{
+    va_list list;
+    va_start(list, fmt);
+    char buffer[4096] = {};
+    vsnprintf_s(buffer, arrsize(buffer), _TRUNCATE, fmt, list);
+    OutputDebugStringA(buffer);
+    OutputDebugStringA("\n");
+    va_end(list);
+
+    WriteToAttachedConsole(buffer, true);
+}
+void DebugPrint(const wchar_t* fmt, ...)
+{
+    va_list list;
+    va_start(list, fmt);
+    wchar_t buffer[4096] = {};
+    _vsnwprintf_s(buffer, arrsize(buffer), _TRUNCATE, fmt, list);
+    OutputDebugStringW(buffer);
+    va_end(list);
+
+    WriteToAttachedConsole(buffer, true);
 }
 
 std::string ToString(const char* fmt, ...)
@@ -198,15 +227,19 @@ void GetNameAndTextForJob(std::string& text, std::string& name, const std::wstri
         text.clear();
 }
 
-i32 RunProcess(const char* path, const char* args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+i32 RunProcess(const char* path, const char* args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
 {
-    return RunProcess(std::string(path), std::string(args), output, output_file, flags);
+    const std::string p = path ? path : "";
+    const std::string a = args ? args : "";
+    return RunProcess(p, a, output, output_file, flags);
 }
-i32 RunProcess(const wchar_t* path, const wchar_t* args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+i32 RunProcess(const wchar_t* path, const wchar_t* args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
 {
-    return RunProcess(std::wstring(path), std::wstring(args), output, output_file, flags);
+    const std::wstring pathw = path ? path : L"";
+    const std::wstring argsw = args ? args : L"";
+    return RunProcess(pathw, argsw, output, output_file, flags);
 }
-i32 RunProcess(const std::string& path, const std::string& args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+i32 RunProcess(const std::string& path, const std::string& args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
 {
     std::wstring wpath;
     std::wstring wargs;
@@ -215,7 +248,7 @@ i32 RunProcess(const std::string& path, const std::string& args, std::string* ou
     return RunProcess(wpath, wargs, output, output_file, flags);
 }
 
-i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+i32 RunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
 {
     std::string zone_text;
     std::string zone_name;
@@ -284,7 +317,8 @@ i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* 
         DWORD bytesRead;
         while (ReadFile(readPipe, buffer, sizeof(buffer), &bytesRead, nullptr))
         {
-            output->append(buffer, bytesRead);
+            TRACY_LOCK(output->lock);
+            output->data.append(buffer, bytesRead);
         }
     }
     if (output_file)
@@ -528,17 +562,17 @@ void RunProcessJob::RunJob()
     ZoneText(zone_text.c_str(), zone_text.size());
     const wchar_t* wpath = path.size() ? path.c_str() : nullptr;
     const wchar_t* wargs = args.size() ? args.c_str() : nullptr;
-    i32 result = RunProcess(wpath, wargs);
-    if (result)
-    {
-        Threading::GetInstance().RunAndClearJobs();
-    }
+    i32 result = RunProcess(wpath, wargs, output);
+    //if (result)
+    //{
+    //    Threading::GetInstance().RunAndClearJobs();
+    //}
 }
 
 void RunProcessLogToFileJob::RunJob()
 {
     ZoneScopedN("RunProcessLogToFileJob");
-    bool r = RunProcess(path.c_str(), args.c_str(), &output, &output_file);
+    bool r = RunProcess(path.c_str(), args.c_str(), output, &output_file);
     if (run_and_clear && r)
     {
         ZoneScopedN("Run and Clear");
@@ -1631,9 +1665,6 @@ void CreateZip(const Path& zip_path, const Path& source_folder, ArrayView<Scanne
     }
     for (i32 i = 0; i < files_to_add_to_root.size(); i++)
     {
-        FAIL; //this needs to be rewritten no hardcoding
-        if (files_to_add_to_root[i].extension() != ".ini")
-            continue;
         AddEntryToZip(a, files_to_add_to_root[i], files_to_add_to_root[i].filename(), false, file_buffer, progress);
     }
 

@@ -80,13 +80,15 @@ struct OSNetworkAdapterInfo
 
 void DebugPrint(const char* fmt, ...);
 void DebugPrint(const wchar_t* fmt, ...);
+//No new line
+void DebugPrintDirect(const char* fmt, ...);
 std::string ToString(const char* fmt, ...);
 std::wstring ToString(const wchar_t* fmt, ...);
 i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess(const char*         path, const char*         args, std::string* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess(const wchar_t*      path, const wchar_t*      args, std::string* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess(const std::string&  path, const std::string&  args, std::string* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-i32 RunProcess(const std::wstring& path, const std::wstring& args, std::string* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 RunProcess(const char*         path, const char*         args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 RunProcess(const wchar_t*      path, const wchar_t*      args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 RunProcess(const std::string&  path, const std::string&  args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 RunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
 struct SDL_Window;
 bool OSInit(SDL_Window* window);
 void OSDestroy(SDL_Window* window);
@@ -189,6 +191,7 @@ struct RunProcessJob : Job
 {
     std::wstring path;
     std::wstring args;
+    AsyncData<std::string>* output;
     virtual void RunJob() override;
 };
 
@@ -196,7 +199,7 @@ struct RunProcessLogToFileJob : Job
 {
     std::wstring path;
     std::wstring args;
-    std::string output;
+    AsyncData<std::string>* output;
     AsyncData<Path> output_file;
     Atomic<bool>* completed;
     bool run_and_clear = false;

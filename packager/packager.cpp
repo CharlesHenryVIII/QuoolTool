@@ -10,6 +10,9 @@
 #include <fstream>
 #include <iostream>
 
+#define RETURN_FAILURE \
+FAIL;\
+return 0
 
 int Main(int argc, char** argv)
 {
@@ -17,8 +20,8 @@ int Main(int argc, char** argv)
     DebugPrint(" Quool Tool Packager ");
     DebugPrint("=====================\n");
 
+    Threading& threading = Threading::GetInstance();
     const char* project_name = "QuoolTool";
-
     std::string sln = ToString("%s.sln", project_name);
     if (!fs::exists(sln))
     {
@@ -26,23 +29,42 @@ int Main(int argc, char** argv)
         std::error_code ec;
         if (!fs::exists(sln, ec))
         {
-            FAIL;
             DebugPrint("Error: GenerateProjectFiles has not been ran");
-            return 0;
+            RETURN_FAILURE;
         }
     }
 
-    std::string build_command = ToString("msbuild /t:%s /nologo /verbosity:minimal -p:Configuration=Debug %s", project_name, sln.c_str());
-                                        //msbuild /t:QuoolTool /nologo /verbosity:minimal -p:Configuration=Debug QuoolTool.sln
+    std::string build_command = ToString("msbuild /t:%s /nologo /verbosity:minimal -p:Configuration=Release %s", project_name, sln.c_str());
+    std::wstring build_commandw;
+    ConvertMultibyteToWideChar(build_commandw, build_command);
     std::string empty;
-    std::string build_output;
     DebugPrint("=====================");
     DebugPrint("     Compiling:      ");
-    RunProcess(empty, build_command, &build_output);
+#if 1
+    RunProcessJob* job = new RunProcessJob();
+    AsyncData<std::string> build_log;
+    Atomic<AsyncStatus> build_status;
+    job->args = build_commandw;
+    job->output = &build_log;
+    job->status = &build_status;
+    threading.SubmitJob(job);
+#else
+    i32 compile_result = RunProcess(empty, build_command, &build_output);
+#endif
     DebugPrint("=====================");
     DebugPrint("   Build Output:");
-    DebugPrint("%s", build_output.c_str());
+    size_t build_log_written = 0;
 
+    while (!FlagIntersects(build_status, AsyncStatus_Completed))
+    {
+        TRACY_LOCK(build_log.lock);
+        if (build_log.data.size() > build_log_written)
+        {
+            DebugPrintDirect("%s", build_log.data.substr(build_log_written).c_str());
+            build_log_written = build_log.data.size();
+        }
+        SysSleep(200);
+    }
 
     const Path build_dir = "build/";
     const Path exe = build_dir / ToString("%s_windows_x64_Release.exe", project_name);
@@ -52,16 +74,17 @@ int Main(int argc, char** argv)
     std::error_code ec;
     if (!fs::exists(exe, ec))
     {
-        FAIL;
-        DebugPrint("Error: GenerateProjectFiles has not been ran");
-        return 0;
+        DebugPrint("Error: Executable could not be found");
+        DebugPrint("    -> %s", ec.message().c_str());
+        RETURN_FAILURE;
     }
 
-    fs::copy_file(exe, renamed, ec);
+    fs::copy_file(exe, renamed, fs::copy_options::overwrite_existing, ec);
     if (ec)
     {
         DebugPrint("Error: Failed to rename exe from(\"%s\") to(\"%s\")", exe.string().c_str(), renamed.string().c_str());
-        return 0;
+        DebugPrint("    \"%s\"", ec.message().c_str());
+        RETURN_FAILURE;
     }
 
     std::vector<ScannedFile> files_and_folders_to_zip;
@@ -73,7 +96,7 @@ int Main(int argc, char** argv)
     if (!fs::exists(zip_name, ec))
     {
         DebugPrint("Erorr: Failed to create zip/zip doesn't exist");
-        return 0;
+        RETURN_FAILURE;
     }
     fs::remove(renamed, ec);
 

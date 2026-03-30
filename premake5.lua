@@ -135,7 +135,7 @@ project "Packager"
     kind "ConsoleApp"
     language "C++"
     cppdialect "C++20"
-    targetname "QuoolToolPackager_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    targetname "Packager/QuoolToolPackager_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     objdir "build/Packager/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     --targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
@@ -281,7 +281,6 @@ project "libarchive"
     --fatalwarnings { "None" }
 
     links {
-        --"archive",
         "zlib",
         "lzma",
         "bz2",
