@@ -923,7 +923,7 @@ void SysProcessEvents()
         case SDL_EVENT_DROP_FILE:
             if (event.drop.data)
             {
-                g_sysinfo.drop_file = event.drop.data;
+                g_sysinfo.drop_file.push_back(event.drop.data);
             }
             break;
         //case SDL_EVENT_DROP_TEXT:

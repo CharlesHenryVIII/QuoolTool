@@ -41,7 +41,7 @@ struct SystemInfo {
     Mouse mouse = {};
     bool has_attention;
     bool drop_active = false;
-    Path drop_file;
+    std::vector<Path> drop_file;
 };
 extern SystemInfo g_sysinfo;
 

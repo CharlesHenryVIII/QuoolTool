@@ -1534,11 +1534,11 @@ void ToolsImGui(ToolsData& td)
     const char* popup_name = "Drop Files";
     if (g_sysinfo.drop_active && !ImGui::IsPopupOpen(popup_name))
         ImGui::OpenPopup(popup_name);
-    if (!g_sysinfo.drop_file.empty())
+    for (const auto& f : g_sysinfo.drop_file)
     {
-        ConvertFolderToXLSX(g_sysinfo.drop_file);
-        g_sysinfo.drop_file.clear();
+        ConvertFolderToXLSX(f);
     }
+    g_sysinfo.drop_file.clear();
 
     ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.8f, 0.8f, 0.8f, 0.5f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 15.0f);
