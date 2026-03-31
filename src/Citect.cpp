@@ -1,5 +1,5 @@
 #include "Citect.h"
-#include "WinInterop.h"
+#include "System.h"
 #include "WinInterop_File.h"
 #include "Math.h"
 #include "Threading.h"
@@ -8,8 +8,7 @@
 #include "LoadJson.h"
 #include "ImguiHelper.h"
 #include "String.h"
-
-#include <filesystem>
+#include "Archive.h"
 
 #include "Tracy.hpp"
 //#include "archive.h"
@@ -22,11 +21,11 @@ void CitectCreateZip(CitectData& cs)
     //1. Backup project as Backup.ctz
     std::vector<ScannedFile> filenames;
     {
-        ScanDirectoryForFileNames(cs.project_path.wstring(), filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
+        SysScanDirectoryForFileNames(cs.project_path.wstring(), filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
         cs.total = filenames.size();
     }
     filenames.clear();
-    ScanDirectoryForFileNames(cs.project_path.wstring(), filenames, ScanDirectoryFlags_IncludeDirs);
+    SysScanDirectoryForFileNames(cs.project_path.wstring(), filenames, ScanDirectoryFlags_IncludeDirs);
      
 
     std::vector<std::filesystem::path> ini_files;
@@ -34,7 +33,7 @@ void CitectCreateZip(CitectData& cs)
     {
         std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / L"Config";
         std::vector<ScannedFile> config_files;
-        ScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
+        SysScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
 
         for (auto f : config_files)
         {
@@ -82,7 +81,7 @@ void RunCitectFullBackupJob::RunJob()
 #if 1
     Path data_path = program_files_path / L"Data";
     std::vector<ScannedFile> data_files;
-    ScanDirectoryForFileNames(data_path, data_files, ScanDirectoryFlags_None);
+    SysScanDirectoryForFileNames(data_path, data_files, ScanDirectoryFlags_None);
     cs.total = data_files.size();
     cs.progress = 0;
     for (auto sf : data_files)
@@ -193,10 +192,10 @@ void CitectImGui(CitectData& cd)
             if (ImGui::Button("Auto Search Paths", ImVec2(150, size.y)))
             {
                 std::wstring program_data;
-                ExpandEnvironemntVariable(program_data, L"%PROGRAMDATA%");
+                SysExpandEnvironemntVariable(program_data, L"%PROGRAMDATA%");
                 const std::filesystem::path program_data_path = program_data;
                 std::vector<ScannedFile> program_data_folders;
-                ScanDirectoryForFileNames(program_data_path, program_data_folders, ScanDirectoryFlags_IncludeDirs);
+                SysScanDirectoryForFileNames(program_data_path, program_data_folders, ScanDirectoryFlags_IncludeDirs);
                 std::filesystem::path found_path;
 
                 //1. search for final scada dir first in ProgramData
@@ -219,7 +218,7 @@ void CitectImGui(CitectData& cd)
                         {
                             const std::filesystem::path aveva_folder_path = (program_data_path / pd_folder.name).wstring();
                             std::vector<ScannedFile> aveva_folder_files;
-                            ScanDirectoryForFileNames(aveva_folder_path, aveva_folder_files, ScanDirectoryFlags_IncludeDirs);
+                            SysScanDirectoryForFileNames(aveva_folder_path, aveva_folder_files, ScanDirectoryFlags_IncludeDirs);
                             std::filesystem::path scada_folder;
                             found = GetScadaDir(scada_folder, CreateArrayView(aveva_folder_files));
                             if (found)
@@ -247,7 +246,7 @@ void CitectImGui(CitectData& cd)
                 //C:\Program Files (x86)\AVEVA Plant SCADA\
 
                 std::wstring program_files_86;
-                ExpandEnvironemntVariable(program_files_86, L"%programfiles(x86)%");
+                SysExpandEnvironemntVariable(program_files_86, L"%programfiles(x86)%");
                 Path pfx = program_files_86;
             }
 

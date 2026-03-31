@@ -1,5 +1,5 @@
 #include "String.h"
-#include "WinInterop.h"
+#include "System.h"
 
 const char* ReadEntireFileAsString(const char* fileName)
 {
@@ -446,9 +446,9 @@ bool StringCompare(StringCase case_sensitivity, const std::string& a, const std:
 bool ContainsString(const std::wstring& source, const std::wstring& find, StringCase case_insensitive)
 {
     std::string s;
-    ConvertWideCharToMultiByte(s, source);
+    SysConvertWideCharToMultiByte(s, source);
     std::string f;
-    ConvertWideCharToMultiByte(f, find);
+    SysConvertWideCharToMultiByte(f, find);
     if (case_insensitive == StringCase_Insensitive)
     {
         ToLower(s);

@@ -6,7 +6,7 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 
-#include "WinInterop.h"
+#include "OSWindows.h"
 #include "WinInterop_File.h"
 #include "Math.h"
 #include "String.h"
@@ -17,20 +17,52 @@
 #include "Rendering.h"
 #include "Tracy.hpp"
 
-#include "SDL3/SDL.h"
-//#include "SDL3/SDL_events.h"
-#include "ImguiHelper.h"
-#include "ImGui/backends/imgui_impl_sdl3.h"
-#include "ImGui/backends/imgui_impl_sdlrenderer3.h"
-
 #include <fstream>
 #include <filesystem>
 #include <cwctype>
 #include <format>
-#include <fstream>
 #include <iostream>
 #include <chrono>
 #include <charconv>
+
+void OSWriteToAttachedConsole(const char* buffer, bool add_new_line)
+{
+    //If we have a console, print there too
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (console != NULL && console != INVALID_HANDLE_VALUE)
+    {
+        DWORD mode;
+        if (GetConsoleMode(console, &mode)) // succeeds only if console attached
+        {
+            DWORD written;
+            WriteConsoleA(console, buffer, (DWORD)strlen(buffer), &written, NULL);
+            if (add_new_line)
+            {
+                const char* new_line = "\n";
+                WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
+            }
+        }
+    }
+}
+void OSWriteToAttachedConsole(const wchar_t* buffer, bool add_new_line)
+{
+    //If we have a console, print there too
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (console != NULL && console != INVALID_HANDLE_VALUE)
+    {
+        DWORD mode;
+        if (GetConsoleMode(console, &mode)) // succeeds only if console attached
+        {
+            DWORD written;
+            WriteConsoleW(console, buffer, (DWORD)wcslen(buffer), &written, NULL);
+            if (add_new_line)
+            {
+                const wchar_t* new_line = L"\n";
+                WriteConsoleW(console, new_line, (DWORD)wcslen(new_line), &written, NULL);
+            }
+        }
+    }
+}
 
 void OSDebugOutput(const char* s)
 {
@@ -68,7 +100,7 @@ i32 OSRunShellProcess(const wchar_t* path, const wchar_t* args, std::string* out
         std::wstring errorBoxTitle = ToString(L"ShellExecuteEx Error: %i", GetLastError());
         std::wstring errorText     = ToString(L"Application Path: %s\n"
                                              "Command Line Params: %s", info.lpFile, args);
-        ShowErrorWindow(errorBoxTitle, errorText);
+        OSShowErrorWindow(errorBoxTitle, errorText);
         ASSERT(false);
         return 2;
     }
@@ -80,7 +112,7 @@ i32 OSRunShellProcess(const wchar_t* path, const wchar_t* args, std::string* out
             std::wstring errorBoxTitle = ToString(L"WaitForSingleObject Error: %i", GetLastError());
             std::wstring errorText = ToString(L"Application Path: %s\n"
                 "Command Line Params: %s", info.lpFile, args);
-            ShowErrorWindow(errorBoxTitle, errorText);
+            OSShowErrorWindow(errorBoxTitle, errorText);
             ASSERT(false);
             return -1;
         }
@@ -90,7 +122,7 @@ i32 OSRunShellProcess(const wchar_t* path, const wchar_t* args, std::string* out
             std::wstring errorBoxTitle = ToString(L"GetExitCodeProcess Error: %i", GetLastError());
             std::wstring errorText = ToString(L"Application Path: %s\n"
                 "Command Line Params: %s", info.lpFile, args);
-            ShowErrorWindow(errorBoxTitle, errorText);
+            OSShowErrorWindow(errorBoxTitle, errorText);
             return -1;
         }
         if (exitCode)
@@ -100,33 +132,12 @@ i32 OSRunShellProcess(const wchar_t* path, const wchar_t* args, std::string* out
                 L"Command Line Params: %s", info.lpFile, args);
             std::string error_box_title;
             std::string error_text;
-            ConvertWideCharToMultiByte(error_box_title, werrorBoxTitle);
-            ConvertWideCharToMultiByte(error_text, werrorText);
+            SysConvertWideCharToMultiByte(error_box_title, werrorBoxTitle);
+            SysConvertWideCharToMultiByte(error_text, werrorText);
             return SysShowCustomErrorWindow(error_box_title, error_text);
         }
     }
     return 0;
-}
-
-i32 OSRunProcess(const char* path, const char* args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
-{
-    const std::string p = path ? path : "";
-    const std::string a = args ? args : "";
-    return RunProcess(p, a, output, output_file, flags);
-}
-i32 OSRunProcess(const wchar_t* path, const wchar_t* args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
-{
-    const std::wstring pathw = path ? path : L"";
-    const std::wstring argsw = args ? args : L"";
-    return RunProcess(pathw, argsw, output, output_file, flags);
-}
-i32 OSRunProcess(const std::string& path, const std::string& args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
-{
-    std::wstring wpath;
-    std::wstring wargs;
-    ConvertMultibyteToWideChar(wpath, path);
-    ConvertMultibyteToWideChar(wargs, args);
-    return RunProcess(wpath, wargs, output, output_file, flags);
 }
 
 i32 OSRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
@@ -185,7 +196,7 @@ i32 OSRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<s
         DebugPrint("%s\n", errorBoxTitle.c_str());
         DebugPrint(errorText.c_str());
         DebugPrint("\n");
-        ShowErrorWindow(errorBoxTitle, errorText);
+        SysShowErrorWindow(errorBoxTitle, errorText);
         FAIL;
         return 2;
     }
@@ -207,9 +218,9 @@ i32 OSRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<s
         if (output_file->data.empty())
         {
             std::string p;
-            ConvertWideCharToMultiByte(p, path);
+            SysConvertWideCharToMultiByte(p, path);
             std::string a;
-            ConvertWideCharToMultiByte(a, args);
+            SysConvertWideCharToMultiByte(a, args);
             DebugPrint("RunProcess() has output_file specified but no data: \"%s\" \"%s\"", p.c_str(), a.c_str());
         }
         else
@@ -219,7 +230,7 @@ i32 OSRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<s
             if (!file.good())
             {
                 std::string of;
-                ConvertWideCharToMultiByte(of, output_file->data);
+                SysConvertWideCharToMultiByte(of, output_file->data);
                 DebugPrint("Failed to open file for write: %s", of.c_str());
                 FAIL;
                 r = ERROR_TOO_MANY_OPEN_FILES;
@@ -245,7 +256,7 @@ i32 OSRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<s
     ZoneScoped;                                                                         \
     const std::wstring cmdlinew = app.size() ? app + L" " + args : args;                \
     std::string cmdline;                                                                \
-    ConvertWideCharToMultiByte(cmdline, cmdlinew);                                      \
+    SysConvertWideCharToMultiByte(cmdline, cmdlinew);                                      \
     cmdline.find_first_of('')\
     const std::string zone_name = cmdline;                                              \
     ZoneName(zone_name.c_str(), zone_name.size())                                       \
@@ -393,7 +404,7 @@ void OSDestroy(SDL_Window* window)
 //#pragma comment(lib, "iphlpapi.lib")
 //#pragma comment(lib, "ws2_32.lib")
 
-bool OSGetNetworkAdapters(std::vector<OSNetworkAdapterInfo>& adapters)
+bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
 {
     ZoneScoped;
     WSADATA wsa_data;
@@ -424,7 +435,7 @@ bool OSGetNetworkAdapters(std::vector<OSNetworkAdapterInfo>& adapters)
     PIP_ADAPTER_ADDRESSES adapter = adapter_addresses;
     while (adapter)
     {
-        OSNetworkAdapterInfo ad = {};
+        SysNetworkAdapterInfo ad = {};
         ad.name = adapter->AdapterName;
         ad.friendly_name = adapter->FriendlyName;
         ad.description = adapter->Description;
@@ -453,7 +464,7 @@ bool OSGetNetworkAdapters(std::vector<OSNetworkAdapterInfo>& adapters)
         PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress;
         while (unicast)
         {
-            OSIPAndSubnet ips = {};
+            SysIPAndSubnet ips = {};
             char ip_str[INET6_ADDRSTRLEN] = {};
             sockaddr* sa = unicast->Address.lpSockaddr;
             const u8 prefix_len = unicast->OnLinkPrefixLength;
@@ -691,7 +702,7 @@ void _ScanDirectoryForFileNames(const std::wstring& root, const std::wstring& di
     {
         DWORD error = GetLastError();
         std::string mb;
-        ConvertWideCharToMultiByte(mb, d);
+        SysConvertWideCharToMultiByte(mb, d);
         DebugPrint(ToString("Error finding files: %s", mb.c_str()).c_str());
         return;
     }
@@ -862,7 +873,7 @@ void OSExpandEnvironemntVariable(std::wstring& out, const std::wstring& in)
     if (size == 0)
     {
         std::string var;
-        ConvertWideCharToMultiByte(var, in);
+        SysConvertWideCharToMultiByte(var, in);
         DebugPrint("Failed to expand string: \"%s\" error: %i", var.c_str(), GetLastError());
         return;
     }
@@ -1052,7 +1063,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR str, int v
     return SysMain(-1, &str);
 }
 
-void* OsGetDataFromResource(i32* out_size, const i32 resource_id)
+void* OSGetDataFromResource(i32* out_size, const i32 resource_id)
 {
     HRSRC handle = FindResource(nullptr, MAKEINTRESOURCE(resource_id), RT_RCDATA);
     DWORD error = GetLastError();

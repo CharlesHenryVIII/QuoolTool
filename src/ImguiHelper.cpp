@@ -1,7 +1,7 @@
 #include "ImguiHelper.h"
 #include "Tracy.hpp"
 
-#include "WinInterop.h"
+#include "System.h"
 #include "WinInterop_File.h"
 #include "Math.h"
 #include "Threading.h"
@@ -84,7 +84,7 @@ void ImguiNewFrame()
 void ImguiText(const std::wstring& ws)
 {
     std::string s;
-    ConvertWideCharToMultiByte(s, ws);
+    SysConvertWideCharToMultiByte(s, ws);
     ImGui::TextUnformatted(s.c_str());
 }
 
@@ -104,9 +104,9 @@ int DynamicTextCallback(ImGuiInputTextCallbackData* data)
 bool InputTextDynamicSize(const std::string& title, std::wstring& ws, ImGuiInputTextFlags flags = ImGuiInputTextFlags_None)
 {
     std::string s;
-    ConvertWideCharToMultiByte(s, ws);
+    SysConvertWideCharToMultiByte(s, ws);
     bool r = ImGui::InputText(title.c_str(), s.data(), s.capacity(), flags | ImGuiInputTextFlags_CallbackResize, DynamicTextCallback, &s);
-    ConvertMultibyteToWideChar(ws, s);
+    SysConvertMultibyteToWideChar(ws, s);
     if (ws[ws.size() - 1] == 0)
         ws.pop_back();
     return r;
@@ -118,7 +118,7 @@ bool InputTextMultilineDynamicSize(const std::string& title, std::string& s, ImG
 bool InputTextDynamicSize(const std::string& title, Path& path, ImGuiInputTextFlags flags = ImGuiInputTextFlags_None)
 {
     std::string s;
-    ConvertWideCharToMultiByte(s, path.wstring());
+    SysConvertWideCharToMultiByte(s, path.wstring());
     bool r = ImGui::InputText(title.c_str(), s.data(), s.capacity(), flags | ImGuiInputTextFlags_CallbackResize, DynamicTextCallback, &s);
     if (s.back() == '\0')
         path = s.substr(0, s.size() - 1);// remove nullterminator
@@ -329,7 +329,7 @@ void ImguiMain(AppData& data)
                 }
 
                 if (ImGui::MenuItem("Github Releases"))
-                    RunShellProcess(L"https://github.com/CharlesHenryVIII/QuoolTool/releases", nullptr);
+                    SysRunShellProcess(L"https://github.com/CharlesHenryVIII/QuoolTool/releases", nullptr);
 #if _DEBUG
                 if (ImGui::MenuItem("imgui demo"))
                     s_show_demo_window = !s_show_demo_window;

@@ -3,7 +3,7 @@
 #include "ImguiHelper.h"
 #include "Tracy.hpp"
 #include "LoadJson.h"
-#include "WinInterop.h"
+#include "System.h"
 #include "Scripts.h"
 #include "Wininterop_file.h"
 #include "pugixml.hpp"
@@ -38,7 +38,7 @@ struct ScriptJob : Job
 
         if (!path.empty() || !args.empty())
         {
-            i32 r = RunProcess(path, args, &data.output);
+            i32 r = SysRunProcess(path, args, &data.output);
             bool success = !r;
         }
 
@@ -496,7 +496,7 @@ void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_
 void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const std::wstring& value, size_t* column_widths)
 {
     std::string s;
-    ConvertWideCharToMultiByte(s, value);
+    SysConvertWideCharToMultiByte(s, value);
     WriteKeyValueStringXlsx(sheet, format, row_i, key, s.c_str(), column_widths);
 }
 #define WORKSHEET_WRITE_KEY_VAL_STRING(_struct, _name) WriteKeyValueStringXlsx(sheet, data_format, row_i, #_name, _struct ## . ## _name, column_widths)
@@ -1152,8 +1152,8 @@ void ScriptNetwork(ScriptData& data)
 {
     ZoneScoped;
 
-    std::vector<OSNetworkAdapterInfo> adapters;
-    OSGetNetworkAdapters(adapters);
+    std::vector<SysNetworkAdapterInfo> adapters;
+    SysGetNetworkAdapters(adapters);
 
     TRACY_LOCK(data.workbook->lock);
     lxw_workbook* book = data.workbook->data;
@@ -1165,9 +1165,9 @@ void ScriptNetwork(ScriptData& data)
     i32 row_i = 0;
     for (i32 i = 0; i < adapters.size(); i++)
     {
-        const OSNetworkAdapterInfo& net = adapters[i];
+        const SysNetworkAdapterInfo& net = adapters[i];
         std::string friendly_name;
-        ConvertWideCharToMultiByte(friendly_name, net.friendly_name);
+        SysConvertWideCharToMultiByte(friendly_name, net.friendly_name);
         worksheet_merge_range(sheet, row_i, 0, row_i, 1, friendly_name.c_str(), title_format);
         worksheet_set_row(sheet, row_i, 30, NULL);
         ++row_i;
@@ -1182,7 +1182,7 @@ void ScriptNetwork(ScriptData& data)
 
         for (i32 i = 0; i < net.ipv4_ips.size(); i++)
         {
-            const OSIPAndSubnet& ips = net.ipv4_ips[i];
+            const SysIPAndSubnet& ips = net.ipv4_ips[i];
             std::string ip_key_name = ToString("IPv4 %i", i + 1);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip, column_widths);
             std::string sub_key_name = ToString("IPv4 Subnet %i", i + 1);
@@ -1190,7 +1190,7 @@ void ScriptNetwork(ScriptData& data)
         }
         for (i32 i = 0; i < net.ipv6_ips.size(); i++)
         {
-            const OSIPAndSubnet& ips = net.ipv6_ips[i];
+            const SysIPAndSubnet& ips = net.ipv6_ips[i];
             std::string ip_key_name = ToString("IPv6 %i", i + 1);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip, column_widths);
             std::string sub_key_name = ToString("IPv6 Subnet %i", i + 1);
@@ -1264,7 +1264,7 @@ void ImguiLog(const std::string& s)
 void ImguiLog(const std::wstring& ws)
 {
     std::string s;
-    ConvertWideCharToMultiByte(s, ws);
+    SysConvertWideCharToMultiByte(s, ws);
     ImguiLog(s);
 }
 

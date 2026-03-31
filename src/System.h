@@ -1,9 +1,11 @@
 #pragma once
 #include "Threading.h"
-#include "imgui.h"
 #include "Math.h"
 #include "ArrayView.h"
 #include "Settings.h"
+
+#include "SDL3/SDL.h"
+//#include "SDL3/SDL_events.h"
 
 #include <string>
 #include <unordered_map>
@@ -78,13 +80,13 @@ struct SysNetworkAdapterInfo
     bool multicast_enabled;
 };
 
-bool SysInit(void* window);
-void SysDestroy(void* window);
-void* SysGetWindowHandle(void* window);
-int SysMain(int, char**);
+bool SysInit(SDL_Window* window);
+void SysDestroy(SDL_Window* window);
+void* SysGetWindowHandle(SDL_Window* window);
+i32 SysMain(i32 argc, char** argv);
 
-void SysDebugPrint(const char* fmt, ...);
-void SysDebugPrint(const wchar_t* fmt, ...);
+void DebugPrint(const char* fmt, ...);
+void DebugPrint(const wchar_t* fmt, ...);
 //No new line
 void SysDebugPrintDirect(const char* fmt, ...);
 bool SysIsConsoleAttached();
@@ -93,11 +95,11 @@ void SysHideConsole();
 void SysShowConsole();
 bool SysIsConsoleVisible();
 
-//i32 RunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
-//i32 RunProcess(const char*         path, const char*         args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-//i32 RunProcess(const wchar_t*      path, const wchar_t*      args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-//i32 RunProcess(const std::string&  path, const std::string&  args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
-//i32 RunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 SysRunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output = nullptr, Mutex* output_lock = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 SysRunProcess(const char*         path, const char*         args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 SysRunProcess(const wchar_t*      path, const wchar_t*      args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 SysRunProcess(const std::string&  path, const std::string&  args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
+i32 SysRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
 bool SysGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters);
 
 void SysSleep(u64 ms);
@@ -109,10 +111,9 @@ void ParseCSV(PowershellResponse& out, const std::string& in, bool using_quotes)
 void SysProcessEvents();
 
 
-static bool keepOpen = true;
 void SysShowErrorWindow(const std::wstring& title, const std::wstring& text);
 i32 SysShowCustomErrorWindow(const std::string& title, const std::string& text);
-void SysFlashWindow(void* window);
+void SysFlashWindow(SDL_Window* window);
 enum ScanDirectoryFlags : u32 {
     ScanDirectoryFlags_None = 0,
     ScanDirectoryFlags_Recursive = BIT(0),
@@ -138,7 +139,7 @@ void SysConvertMultibyteToWideChar(std::wstring& out, const std::string& in);
 void SysConvertWideCharToMultiByte(std::string& out, const std::wstring& in);
 void SysExpandEnvironemntVariable(std::wstring& out, const std::wstring& in);
 ImFont* SysLoadFontForImgui(int resource_id, float fontSize);
-void* OsGetDataFromResource(i32* out_size, const i32 resource_id);
+void* SysGetDataFromResource(i32* out_size, const i32 resource_id);
 
 union Guid {
     uint64_t e[2];

@@ -2,7 +2,7 @@
 #include <Windows.h>
 
 #include "WinInterop_File.h"
-#include "WinInterop.h"
+#include "System.h"
 
 
 
@@ -26,14 +26,14 @@ File::File() :
 File::File(char const* filename, FileMode fileMode, bool createIfNotFound)
 {
     std::wstring wide_string;
-    ConvertMultibyteToWideChar(wide_string, filename);
+    SysConvertMultibyteToWideChar(wide_string, filename);
     Init(wide_string, fileMode, createIfNotFound);
 }
 
 File::File(const std::string& filename, FileMode fileMode, bool createIfNotFound)
 {
     std::wstring wide_string;
-    ConvertMultibyteToWideChar(wide_string, filename);
+    SysConvertMultibyteToWideChar(wide_string, filename);
     Init(wide_string, fileMode, createIfNotFound);
 }
 

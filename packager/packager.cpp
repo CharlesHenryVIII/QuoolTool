@@ -1,6 +1,7 @@
 #include "../src/Math.h"
-#include "../src/WinInterop.h"
+#include "../src/System.h"
 #include "../src/Version.h"
+#include "../src/Archive.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -14,7 +15,7 @@
 FAIL;\
 return 0
 
-int Main(int argc, char** argv)
+i32 SysMain(i32 argc, char** argv)
 {
     DebugPrint("=====================");
     DebugPrint(" Quool Tool Packager ");
@@ -36,7 +37,7 @@ int Main(int argc, char** argv)
 
     std::string build_command = ToString("msbuild /t:%s /nologo /verbosity:minimal -p:Configuration=Release %s", project_name, sln.c_str());
     std::wstring build_commandw;
-    ConvertMultibyteToWideChar(build_commandw, build_command);
+    SysConvertMultibyteToWideChar(build_commandw, build_command);
     std::string empty;
     DebugPrint("=====================");
     DebugPrint("     Compiling:      ");
@@ -60,7 +61,7 @@ int Main(int argc, char** argv)
         TRACY_LOCK(build_log.lock);
         if (build_log.data.size() > build_log_written)
         {
-            DebugPrintDirect("%s", build_log.data.substr(build_log_written).c_str());
+            SysDebugPrintDirect("%s", build_log.data.substr(build_log_written).c_str());
             build_log_written = build_log.data.size();
         }
         SysSleep(200);

@@ -7,6 +7,7 @@
 #include <string>
 #include <filesystem>
 #include <fstream>
+#include <cwctype>
 
 namespace fs = std::filesystem;
 using Path = fs::path;

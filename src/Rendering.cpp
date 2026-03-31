@@ -1,6 +1,6 @@
 #include "Rendering.h"
 #include "Debug.h"
-#include "WinInterop.h"
+#include "System.h"
 #include "resource.h"
 
 //#define STB_IMAGE_IMPLEMENTATION
@@ -63,7 +63,7 @@ bool RenderInit()
     for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
     {
         i32 size;
-        void* data = OsGetDataFromResource(&size, icon_id);
+        void* data = SysGetDataFromResource(&size, icon_id);
         if (!data)
         {
             DebugPrint("Error: failed to get data from resource: %i", icon_id);

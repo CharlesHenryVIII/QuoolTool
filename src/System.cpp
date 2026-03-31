@@ -1,65 +1,31 @@
 #include "System.h"
+#include "Rendering.h"
 
 
 #if WIN32
 #include "OSWindows.h"
 #endif
 
+#include "ImguiHelper.h"
+#include "ImGui/backends/imgui_impl_sdl3.h"
+#include "ImGui/backends/imgui_impl_sdlrenderer3.h"
 
-bool SysInit(void* window)
+SysInfo g_sysinfo;
+
+bool SysInit(SDL_Window* window)
 {
     return OSInit(window);
 }
-void SysDestroy(void* window)
+void SysDestroy(SDL_Window* window)
 {
     OSDestroy(window);
 }
 
-void* SysGetWindowHandle(void* window)
+void* SysGetWindowHandle(SDL_Window* window)
 {
     return OSGetWindowHandle(window);
 }
 
-
-void WriteToAttachedConsole(const char* buffer, bool add_new_line)
-{
-    //If we have a console, print there too
-    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (console != NULL && console != INVALID_HANDLE_VALUE)
-    {
-        DWORD mode;
-        if (GetConsoleMode(console, &mode)) // succeeds only if console attached
-        {
-            DWORD written;
-            WriteConsoleA(console, buffer, (DWORD)strlen(buffer), &written, NULL);
-            if (add_new_line)
-            {
-                const char* new_line = "\n";
-                WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
-            }
-        }
-    }
-}
-
-void WriteToAttachedConsole(const wchar_t* buffer, bool add_new_line)
-{
-    //If we have a console, print there too
-    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (console != NULL && console != INVALID_HANDLE_VALUE)
-    {
-        DWORD mode;
-        if (GetConsoleMode(console, &mode)) // succeeds only if console attached
-        {
-            DWORD written;
-            WriteConsoleW(console, buffer, (DWORD)wcslen(buffer), &written, NULL);
-            if (add_new_line)
-            {
-                const char* new_line = "\n";
-                WriteConsoleA(console, new_line, (DWORD)strlen(new_line), &written, NULL);
-            }
-        }
-    }
-}
 
 void SysDebugPrintDirect(const char* fmt, ...)
 {
@@ -71,10 +37,10 @@ void SysDebugPrintDirect(const char* fmt, ...)
     OSDebugOutput("\n");
     va_end(list);
 
-    WriteToAttachedConsole(buffer, false);
+    OSWriteToAttachedConsole(buffer, false);
 }
 
-void SysDebugPrint(const char* fmt, ...)
+void DebugPrint(const char* fmt, ...)
 {
     va_list list;
     va_start(list, fmt);
@@ -84,9 +50,9 @@ void SysDebugPrint(const char* fmt, ...)
     OSDebugOutput("\n");
     va_end(list);
 
-    WriteToAttachedConsole(buffer, true);
+    OSWriteToAttachedConsole(buffer, true);
 }
-void SysDebugPrint(const wchar_t* fmt, ...)
+void DebugPrint(const wchar_t* fmt, ...)
 {
     va_list list;
     va_start(list, fmt);
@@ -95,7 +61,7 @@ void SysDebugPrint(const wchar_t* fmt, ...)
     OSDebugOutput(buffer);
     va_end(list);
 
-    WriteToAttachedConsole(buffer, true);
+    OSWriteToAttachedConsole(buffer, true);
 }
 
 bool SysIsConsoleAttached()
@@ -119,6 +85,42 @@ bool SysIsConsoleVisible()
     return OSIsConsoleVisible();
 }
 
+i32 SysRunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mutex* output_lock, RunProcessFlags flags)
+{
+    return OSRunShellProcess(path, args, output, output_lock, flags);
+}
+i32 SysRunProcess(const char* path, const char* args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+{
+    const std::string p = path ? path : "";
+    const std::string a = args ? args : "";
+    return SysRunProcess(p, a, output, output_file, flags);
+}
+i32 SysRunProcess(const wchar_t* path, const wchar_t* args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+{
+    const std::wstring pathw = path ? path : L"";
+    const std::wstring argsw = args ? args : L"";
+    return SysRunProcess(pathw, argsw, output, output_file, flags);
+}
+i32 SysRunProcess(const std::string& path, const std::string& args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+{
+    std::wstring wpath;
+    std::wstring wargs;
+    SysConvertMultibyteToWideChar(wpath, path);
+    SysConvertMultibyteToWideChar(wargs, args);
+    return SysRunProcess(wpath, wargs, output, output_file, flags);
+}
+i32 SysRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output, AsyncData<Path>* output_file, RunProcessFlags flags)
+{
+    return OSRunProcess(path, args, output, output_file, flags);
+}
+
+
+
+bool SysGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters)
+{
+    return OSGetNetworkAdapters(out_adapters);
+}
+
 void SysSleep(u64 _ms)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(_ms));
@@ -135,11 +137,6 @@ float SysMonitorScale()
 {
     const static float scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     return scale;
-}
-
-i32 SysRunProcess()
-{
-
 }
 
 void ParseCSV(PowershellResponse& out, const std::string& in, bool using_quotes)
@@ -206,17 +203,12 @@ void SysShowErrorWindow(const std::wstring& title, const std::wstring& text)
     OSShowErrorWindow(title, text);
 }
 
-i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
-{
-    return ShowCustomErrorWindow(title, text);
-}
-
-void SysFlashWindow(void* window)
+void SysFlashWindow(SDL_Window* window)
 {
     OSFlashWindow(window);
 }
 
-i32 ShowCustomErrorWindow(const std::string& title, const std::string& text)
+i32 SysShowCustomErrorWindow(const std::string& title, const std::string& text)
 {
     FAIL;
     //const SDL_MessageBoxButtonData buttons[] = {
@@ -305,7 +297,7 @@ void* SysGetDataFromResource(i32* out_size, const i32 resource_id)
 ImFont* SysLoadFontForImgui(int resource_id, float fontSize)
 {
     i32 size;
-    void* data = OsGetDataFromResource(&size, resource_id);
+    void* data = OSGetDataFromResource(&size, resource_id);
     if (!data || size == 0)
         return nullptr;
 
@@ -487,5 +479,39 @@ void SysProcessEvents()
     else if (g_sysinfo.mouse.wheel_instant.y)
     {
         g_sysinfo.mouse.wheel_modified_last_frame = true;
+    }
+}
+
+void RunProcessJob::RunJob()
+{
+    std::string zone_text;
+    std::string zone_name;
+    GetNameAndTextForJob(zone_text, zone_name, path, args);
+    ZoneScoped;
+    ZoneName(zone_name.c_str(), zone_name.size());
+    ZoneText(zone_text.c_str(), zone_text.size());
+    const wchar_t* wpath = path.size() ? path.c_str() : nullptr;
+    const wchar_t* wargs = args.size() ? args.c_str() : nullptr;
+    i32 result = SysRunProcess(wpath, wargs, output);
+    //if (result)
+    //{
+    //    Threading::GetInstance().RunAndClearJobs();
+    //}
+}
+
+void RunProcessLogToFileJob::RunJob()
+{
+    ZoneScopedN("RunProcessLogToFileJob");
+    bool r = SysRunProcess(path.c_str(), args.c_str(), output, &output_file);
+    if (run_and_clear && r)
+    {
+        ZoneScopedN("Run and Clear");
+        Threading::GetInstance().RunAndClearJobs();
+    }
+
+    if (completed)
+    {
+        ASSERT(*completed == false);
+        (*completed) = true;
     }
 }

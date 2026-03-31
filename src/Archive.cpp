@@ -38,7 +38,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
     if (is_dir)
     {
         std::vector<ScannedFile> out;
-        ScanDirectoryForFileNames(full_path, out, ScanDirectoryFlags_IncludeDirs);
+        SysScanDirectoryForFileNames(full_path, out, ScanDirectoryFlags_IncludeDirs);
         for (i32 i = 0; i < (i32)out.size(); i++)
         {
             AddEntryToZip(a, full_path / out[i].name, relative_path / out[i].name, out[i].dir, file_buffer, progress);

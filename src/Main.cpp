@@ -1,10 +1,8 @@
-#include "imgui.h"
-#include <stdio.h>
+#include "System.h"
 
 #include "Tracy.hpp"
 #include "cmdline.h"
 
-#include "WinInterop.h"
 #include "WinInterop_File.h"
 #include "Math.h"
 #include "Threading.h"
@@ -23,7 +21,7 @@
 #include <fstream>
 #include <iostream>
 
-int SysMain(int argc, char** argv)
+i32 SysMain(i32 argc, char** argv)
 {
     DebugPrint("====================");
     DebugPrint("     Quool Tool     ");
@@ -89,7 +87,7 @@ int SysMain(int argc, char** argv)
     {
         return 1;
     }
-    if (!OSInit(gfx.window))
+    if (!SysInit(gfx.window))
     {
         DebugPrint("Error: OSInit() failed");
     }
@@ -131,9 +129,9 @@ int SysMain(int argc, char** argv)
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
     // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
     style.FontSizeBase = 16.0f;
-    g_data.fonts[FontIndex_Default] = LoadFontForImgui(IDR_FONT1, 16.0f);
+    g_data.fonts[FontIndex_Default] = SysLoadFontForImgui(IDR_FONT1, 16.0f);
     g_data.fonts[FontIndex_Imgui] = io.Fonts->AddFontDefault();
-    g_data.fonts[FontIndex_Monospace] = LoadFontForImgui(IDR_FONT2, 16.0f);
+    g_data.fonts[FontIndex_Monospace] = SysLoadFontForImgui(IDR_FONT2, 16.0f);
 
     // Our state
     bool keepProcessWindowAlive = true;
@@ -184,7 +182,7 @@ int SysMain(int argc, char** argv)
     //(Threading::GetInstance()).ForceQuit();
     ImguiDestroy();
     RenderDestroy();
-    OSDestroy(gfx.window);
+    SysDestroy(gfx.window);
     SDL_Quit();
 
     return 0;
