@@ -47,23 +47,83 @@ struct SysInfo {
 };
 extern SysInfo g_sysinfo;
 
-struct SysIPAndSubnet {
+union SysIP4 {
+    struct { u8 a,b,c,d; };
+    struct { u16 ab, cd; };
+    u32 addr;
+    u8 e[4];
+    SysIP4() = default;
+    SysIP4(u8 v) : a(v), b(v), c(v), d(v) {};
+    SysIP4(u8 _a, u8 _b, u8 _c, u8 _d) : a(_a), b(_b), c(_c), d(_d) {};
+    void ToString(std::string& out) const;
+};
+
+struct SysIP4Subnet
+{
+    u32 mask;
+    SysIP4 ToIP4() const;
+    //Create the mask like 255.255.255.0 from the prefix length
+    void FromLength(i32 length)
+    {
+        mask = (length == 0) ? 0 : (~0UL << (32 - length));
+    }
+    void ToString(std::string& out) const;
+    i32 GetLength() const
+    {
+        i32 zerobits = 0;
+        u32 m = mask;
+        while ((m & 0x1) == 0)
+        {
+            m = m >> 1;
+            zerobits++;
+        }
+        return (32 - zerobits);
+    }
+};
+
+
+struct SysIP4AndSubnet {
+    SysIP4 ip;
+    SysIP4Subnet subnet;
+};
+
+struct SysIP6AndSubnet {
     std::string ip;
     std::string subnet;
+};
+
+struct SysMacAddress {
+    i32 count = 0;
+    u8 bytes[8] = {};
+    void ToString(std::string& out) const
+    {
+        out.clear();
+        const i32 tot = Min<i32>(arrsize(bytes), count);
+        for (i32 i = 0; i < tot; i++)
+        {
+            char s[4] = {};
+            sprintf(s, "%.2X%s", bytes[i], (i == (tot - 1)) ? "" : "-");
+            out = out + s;
+        }
+    }
+    void SetBytes(const u8* in, const i32 amount)
+    {
+        memmove(bytes, in, Min<size_t>(amount, arrsize(bytes)));
+    }
 };
 
 struct SysNetworkAdapterInfo
 {
     std::string name;
     std::string status;
-    std::string mac_address;
+    SysMacAddress mac_address;
     std::string ipv4_dhcp;
     std::string ipv6_dhcp;
     std::wstring friendly_name;
     std::wstring description;
     std::wstring dns_domain;
-    std::vector<SysIPAndSubnet> ipv4_ips;
-    std::vector<SysIPAndSubnet> ipv6_ips;
+    std::vector<SysIP4AndSubnet> ipv4_ips;
+    std::vector<SysIP6AndSubnet> ipv6_ips;
     std::vector<std::string> ipv4_dns;
     std::vector<std::string> ipv6_dns;
     std::vector<std::string> ipv4_gateways;

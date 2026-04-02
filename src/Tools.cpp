@@ -1172,9 +1172,11 @@ void ScriptNetwork(ScriptData& data)
         worksheet_set_row(sheet, row_i, 30, NULL);
         ++row_i;
 
+        std::string mac_address;
+        net.mac_address.ToString(mac_address);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, name);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, status);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, mac_address);
+        WriteKeyValueStringXlsx(sheet, data_format, row_i, "Mac Address", mac_address, column_widths);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, ipv4_dhcp);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, ipv6_dhcp);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, description);
@@ -1182,15 +1184,19 @@ void ScriptNetwork(ScriptData& data)
 
         for (i32 i = 0; i < net.ipv4_ips.size(); i++)
         {
-            const SysIPAndSubnet& ips = net.ipv4_ips[i];
+            const SysIP4AndSubnet& ips = net.ipv4_ips[i];
             std::string ip_key_name = ToString("IPv4 %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip, column_widths);
+            std::string ip_str;
+            ips.ip.ToString(ip_str);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ip_str, column_widths);
             std::string sub_key_name = ToString("IPv4 Subnet %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, ips.subnet, column_widths);
+            std::string sub_str;
+            ips.subnet.ToString(sub_str);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, sub_str, column_widths);
         }
         for (i32 i = 0; i < net.ipv6_ips.size(); i++)
         {
-            const SysIPAndSubnet& ips = net.ipv6_ips[i];
+            const SysIP6AndSubnet& ips = net.ipv6_ips[i];
             std::string ip_key_name = ToString("IPv6 %i", i + 1);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip, column_widths);
             std::string sub_key_name = ToString("IPv6 Subnet %i", i + 1);

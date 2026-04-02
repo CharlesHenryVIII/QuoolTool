@@ -25,6 +25,36 @@
 #include <chrono>
 #include <charconv>
 
+void SysIP4::ToString(std::string& out) const
+{
+    out.clear();
+    //"-1" to remove null terminator
+    out.resize(INET_ADDRSTRLEN - 1);
+    if (inet_ntop(AF_INET, (IN_ADDR*)(&addr), out.data(), out.size()) == NULL)
+    {
+        DebugPrint("Failed to convert IPv4 to string: %i", addr);
+        FAIL;
+    }
+}
+
+SysIP4 SysIP4Subnet::ToIP4() const
+{
+    u_long l = htonl(mask);
+    SysIP4 r;
+    r.addr = l;
+    return r;
+}
+
+void SysIP4Subnet::ToString(std::string& out) const
+{
+    out.clear();
+    //"-1" to remove null terminator
+    SysIP4 ip = ToIP4();
+    std::string ips;
+    ip.ToString(ips);
+    out = ::ToString("%s(/%i)", ips, GetLength());
+}
+
 void OSWriteToAttachedConsole(const char* buffer, bool add_new_line)
 {
     //If we have a console, print there too
@@ -451,20 +481,12 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
         ad.multicast_enabled = !adapter->NoMulticast;
 
         if (adapter->PhysicalAddressLength != 0)
-        {
-            for (ULONG i = 0; i < adapter->PhysicalAddressLength; i++)
-            {
-                char s[4] = {};
-                sprintf(s, "%.2X%s", adapter->PhysicalAddress[i], (i == (adapter->PhysicalAddressLength - 1)) ? "" : "-");
-                ad.mac_address = ad.mac_address + s;
-            }
-        }
+            ad.mac_address.SetBytes(adapter->PhysicalAddress, adapter->PhysicalAddressLength);
 
         // Get IP Addresses (Unicast)
         PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress;
         while (unicast)
         {
-            SysIPAndSubnet ips = {};
             char ip_str[INET6_ADDRSTRLEN] = {};
             sockaddr* sa = unicast->Address.lpSockaddr;
             const u8 prefix_len = unicast->OnLinkPrefixLength;
@@ -472,23 +494,15 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
             {
                 if (sa->sa_family == AF_INET) //IPv4
                 {
-                    sockaddr_in* sa_in = (sockaddr_in*)sa;
-                    inet_ntop(AF_INET, &(sa_in->sin_addr), ip_str, sizeof(ip_str));
-                    ips.ip = ip_str;
-
-                    //Bitwise math to create the mask like 255.255.255.0
-                    const u32 mask = (prefix_len == 0) ? 0 : (~0UL << (32 - prefix_len));
-
-                    in_addr mask_addr;
-                    mask_addr.s_addr = htonl(mask);
-                    char mask_s[INET_ADDRSTRLEN] = {};
-                    inet_ntop(AF_INET, &mask_addr, mask_s, sizeof(mask_s));
-                    ips.subnet = ToString("%s(/%i)", mask_s, prefix_len);
-
+                    const sockaddr_in* sa_in = (sockaddr_in*)sa;
+                    SysIP4AndSubnet ips;
+                    ips.ip.addr = sa_in->sin_addr.s_addr;
+                    ips.subnet.FromLength(prefix_len);
                     ad.ipv4_ips.push_back(ips);
                 }
                 else if (sa->sa_family == AF_INET6) //IPv6
                 {
+                    SysIP6AndSubnet ips = {};
                     sockaddr_in6* sa_in = (sockaddr_in6*)sa;
                     inet_ntop(AF_INET6, &(sa_in->sin6_addr), ip_str, sizeof(ip_str));
                     ips.ip = ip_str;
