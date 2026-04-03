@@ -478,20 +478,29 @@ void WriteKeyValueNumberXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_
 }
 void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const char* value, size_t* column_widths)
 {
+    if (!key)
+        return;
     worksheet_write_string(sheet, row_i, 0, key, format);
-    worksheet_write_string(sheet, row_i, 1, value, format);
+    if (value)
+        worksheet_write_string(sheet, row_i, 1, value, format);
     ++row_i;
     if (column_widths)
     {
-        size_t key_len = strlen(key);
-        size_t val_len = strlen(value);
+        size_t key_len = !!key   ? strlen(key)   : 0;
+        size_t val_len = !!value ? strlen(value) : 0;
         column_widths[0] = Max(column_widths[0], key_len);
         column_widths[1] = Max(column_widths[1], val_len);
     }
 }
 void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const std::string& key, const std::string& value, size_t* column_widths)
 {
-    WriteKeyValueStringXlsx(sheet, format, row_i, key.c_str(), value.c_str(), column_widths);
+    if (key.size())
+    {
+        if (value.size())
+            WriteKeyValueStringXlsx(sheet, format, row_i, key.c_str(), value.c_str(), column_widths);
+        else
+            WriteKeyValueStringXlsx(sheet, format, row_i, key.c_str(), nullptr, column_widths);
+    }
 }
 void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* format, i32& row_i, const char* key, const std::wstring& value, size_t* column_widths)
 {
@@ -1172,24 +1181,29 @@ void ScriptNetwork(ScriptData& data)
         worksheet_set_row(sheet, row_i, 30, NULL);
         ++row_i;
 
-        std::string mac_address;
-        net.mac_address.ToString(mac_address);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, name);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, status);
+        std::string mac_address;
+        if (net.mac_address.count)
+            net.mac_address.ToString(mac_address);
         WriteKeyValueStringXlsx(sheet, data_format, row_i, "Mac Address", mac_address, column_widths);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, ipv4_dhcp);
-        WORKSHEET_WRITE_KEY_VAL_STRING(net, ipv6_dhcp);
+        std::string ipv4_dhcp;
+        net.ipv4_dhcp.ToString(ipv4_dhcp);
+        WriteKeyValueStringXlsx(sheet, data_format, row_i, "IPv4 DHCP", ipv4_dhcp, column_widths);
+        std::string ipv6_dhcp;
+        net.ipv6_dhcp.ToString(ipv6_dhcp);
+        WriteKeyValueStringXlsx(sheet, data_format, row_i, "IPv6 DHCP", ipv6_dhcp, column_widths);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, description);
         WORKSHEET_WRITE_KEY_VAL_STRING(net, dns_domain);
 
         for (i32 i = 0; i < net.ipv4_ips.size(); i++)
         {
             const SysIP4AndSubnet& ips = net.ipv4_ips[i];
-            std::string ip_key_name = ToString("IPv4 %i", i + 1);
+            std::string ip_key_name = ToString("IPv4 #%i", i + 1);
             std::string ip_str;
             ips.ip.ToString(ip_str);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ip_str, column_widths);
-            std::string sub_key_name = ToString("IPv4 Subnet %i", i + 1);
+            std::string sub_key_name = ToString("IPv4 Subnet #%i", i + 1);
             std::string sub_str;
             ips.subnet.ToString(sub_str);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, sub_str, column_widths);
@@ -1197,35 +1211,43 @@ void ScriptNetwork(ScriptData& data)
         for (i32 i = 0; i < net.ipv6_ips.size(); i++)
         {
             const SysIP6AndSubnet& ips = net.ipv6_ips[i];
-            std::string ip_key_name = ToString("IPv6 %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ips.ip, column_widths);
-            std::string sub_key_name = ToString("IPv6 Subnet %i", i + 1);
-            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, ips.subnet, column_widths);
+            std::string ip_key_name = ToString("IPv6 #%i", i + 1);
+            std::string ip_str;
+            ips.ip.ToString(ip_str);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, ip_key_name, ip_str, column_widths);
+            std::string sub_key_name = ToString("IPv6 Subnet #%i", i + 1);
+            std::string sub_str;
+            ips.subnet.ToString(sub_str);
+            WriteKeyValueStringXlsx(sheet, data_format, row_i, sub_key_name, sub_str, column_widths);
         }
 
         for (i32 i = 0; i < net.ipv4_dns.size(); i++)
         {
-            const std::string& dns = net.ipv4_dns[i];
-            std::string key_name = ToString("IPv4 DNS %i", i + 1);
+            std::string dns;
+            net.ipv4_dns[i].ToString(dns);
+            std::string key_name = ToString("IPv4 DNS #%i", i + 1);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, dns, column_widths);
         }
         for (i32 i = 0; i < net.ipv6_dns.size(); i++)
         {
-            const std::string& dns = net.ipv6_dns[i];
-            std::string key_name = ToString("IPv6 DNS %i", i + 1);
+            std::string dns;
+            net.ipv6_dns[i].ToString(dns);
+            std::string key_name = ToString("IPv6 DNS #%i", i + 1);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, dns, column_widths);
         }
 
         for (i32 i = 0; i < net.ipv4_gateways.size(); i++)
         {
-            const std::string& gateway = net.ipv4_gateways[i];
-            std::string key_name = ToString("IPv4 Gateway %i", i + 1);
+            std::string gateway;
+            net.ipv4_gateways[i].ToString(gateway);
+            std::string key_name = ToString("IPv4 Gateway #%i", i + 1);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, gateway, column_widths);
         }
         for (i32 i = 0; i < net.ipv6_gateways.size(); i++)
         {
-            const std::string& gateway = net.ipv6_gateways[i];
-            std::string key_name = ToString("IPv6 Gateway %i", i + 1);
+            std::string gateway;
+            net.ipv6_gateways[i].ToString(gateway);
+            std::string key_name = ToString("IPv6 Gateway #%i", i + 1);
             WriteKeyValueStringXlsx(sheet, data_format, row_i, key_name, gateway, column_widths);
         }
 

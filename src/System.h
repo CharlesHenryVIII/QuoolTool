@@ -56,6 +56,25 @@ union SysIP4 {
     SysIP4(u8 v) : a(v), b(v), c(v), d(v) {};
     SysIP4(u8 _a, u8 _b, u8 _c, u8 _d) : a(_a), b(_b), c(_c), d(_d) {};
     void ToString(std::string& out) const;
+    bool IsValid() const
+    {
+        return (addr != 0);
+    }
+};
+
+union SysIP6 {
+    struct { u16 a, b, c, d, e, f, g, h; };
+    u8  byte[16];
+    u16 word[8];
+    u64 addr[2];
+    SysIP6() = default;
+    SysIP6(u16 v) : a(v), b(v), c(v), d(v), e(v), f(v), g(v), h(v) {};
+    SysIP6(u8 _a, u8 _b, u8 _c, u8 _d, u8 _e, u8 _f, u8 _g, u8 _h) : a(_a), b(_b), c(_c), d(_d), e(_e), f(_f), g(_g), h(_h) {};
+    void ToString(std::string& out) const;
+    bool IsValid() const
+    {
+        return (addr[0] != 0 || addr[1] != 0);
+    }
 };
 
 struct SysIP4Subnet
@@ -67,7 +86,15 @@ struct SysIP4Subnet
     {
         mask = (length == 0) ? 0 : (~0UL << (32 - length));
     }
-    void ToString(std::string& out) const;
+    void ToString(std::string& out) const
+    {
+        out.clear();
+        //"-1" to remove null terminator
+        SysIP4 ip = ToIP4();
+        std::string ips;
+        ip.ToString(ips);
+        out = ::ToString("%s (/%i)", ips.c_str(), GetLength());
+    }
     i32 GetLength() const
     {
         i32 zerobits = 0;
@@ -77,7 +104,54 @@ struct SysIP4Subnet
             m = m >> 1;
             zerobits++;
         }
-        return (32 - zerobits);
+        return ((sizeof(mask) * 8) - zerobits);
+    }
+};
+
+struct SysIP6Subnet
+{
+    u64 mask[2];
+    SysIP6 ToIP6() const;
+    //Create the mask like 255.255.255.0 from the prefix length
+    void FromLength(i32 length)
+    {
+        if (length >= 64)
+        {
+            mask[0] = -1;
+            mask[1] = (length == 64) ? 0 : (((u64)(-1)) << (128 - length));
+        }
+        else
+        {
+            mask[0] = (length == 0) ? 0 : (~0ULL << (64 - length));
+            mask[1] = 0;
+        }
+        i32 test = 1;
+    }
+    void ToString(std::string& out) const
+    {
+        out.clear();
+        //"-1" to remove null terminator
+        SysIP6 ip = ToIP6();
+        std::string ips;
+        ip.ToString(ips);
+        out = ::ToString("%s (/%i)", ips.c_str(), GetLength());
+    }
+    i32 GetLength() const
+    {
+        i32 zerobits = 0;
+        u64 m = mask[0];
+        for (i32 i = 0; i < sizeof(u64) * 8 && ((m & 0x1) == 0); i++)
+        {
+            m = m >> 1;
+            zerobits++;
+        }
+        m = mask[1];
+        for (i32 i = 0; i < sizeof(u64) * 8 && ((m & 0x1) == 0); i++)
+        {
+            m = m >> 1;
+            zerobits++;
+        }
+        return ((sizeof(mask) * 8) - zerobits);
     }
 };
 
@@ -88,8 +162,8 @@ struct SysIP4AndSubnet {
 };
 
 struct SysIP6AndSubnet {
-    std::string ip;
-    std::string subnet;
+    SysIP6 ip;
+    SysIP6Subnet subnet;
 };
 
 struct SysMacAddress {
@@ -109,6 +183,7 @@ struct SysMacAddress {
     void SetBytes(const u8* in, const i32 amount)
     {
         memmove(bytes, in, Min<size_t>(amount, arrsize(bytes)));
+        count = amount;
     }
 };
 
@@ -116,18 +191,18 @@ struct SysNetworkAdapterInfo
 {
     std::string name;
     std::string status;
-    SysMacAddress mac_address;
-    std::string ipv4_dhcp;
-    std::string ipv6_dhcp;
     std::wstring friendly_name;
     std::wstring description;
     std::wstring dns_domain;
+    SysMacAddress mac_address;
+    SysIP4        ipv4_dhcp;
+    SysIP6        ipv6_dhcp;
     std::vector<SysIP4AndSubnet> ipv4_ips;
     std::vector<SysIP6AndSubnet> ipv6_ips;
-    std::vector<std::string> ipv4_dns;
-    std::vector<std::string> ipv6_dns;
-    std::vector<std::string> ipv4_gateways;
-    std::vector<std::string> ipv6_gateways;
+    std::vector<SysIP4>          ipv4_dns;
+    std::vector<SysIP6>          ipv6_dns;
+    std::vector<SysIP4>          ipv4_gateways;
+    std::vector<SysIP6>          ipv6_gateways;
 
     u32 ipv4_metric;
     u32 ipv6_metric;

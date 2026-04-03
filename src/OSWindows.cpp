@@ -28,32 +28,46 @@
 void SysIP4::ToString(std::string& out) const
 {
     out.clear();
-    //"-1" to remove null terminator
+    if (!IsValid())
+        return;
+    //"-1" to remove the length of null terminator
     out.resize(INET_ADDRSTRLEN - 1);
     if (inet_ntop(AF_INET, (IN_ADDR*)(&addr), out.data(), out.size()) == NULL)
     {
-        DebugPrint("Failed to convert IPv4 to string: %i", addr);
+        DebugPrint("Error: Failed to convert IPv4 to string: {%i}", addr);
+        FAIL;
+    }
+}
+
+void SysIP6::ToString(std::string& out) const
+{
+    out.clear();
+    if (!IsValid())
+        return;
+    //"-1" to remove the length of null terminator
+    out.resize(INET6_ADDRSTRLEN - 1);
+    if (inet_ntop(AF_INET6, (IN6_ADDR*)(&addr), out.data(), out.size()) == NULL)
+    {
+        DebugPrint("Error: Failed to convert IPv6 to string: {%i, %i}", addr[0], addr[1]);
         FAIL;
     }
 }
 
 SysIP4 SysIP4Subnet::ToIP4() const
 {
-    u_long l = htonl(mask);
     SysIP4 r;
-    r.addr = l;
+    r.addr = htonl(mask);
     return r;
 }
 
-void SysIP4Subnet::ToString(std::string& out) const
+SysIP6 SysIP6Subnet::ToIP6() const
 {
-    out.clear();
-    //"-1" to remove null terminator
-    SysIP4 ip = ToIP4();
-    std::string ips;
-    ip.ToString(ips);
-    out = ::ToString("%s(/%i)", ips, GetLength());
+    SysIP6 r;
+    r.addr[0] = htonll(mask[0]);
+    r.addr[1] = htonll(mask[1]);
+    return r;
 }
+
 
 void OSWriteToAttachedConsole(const char* buffer, bool add_new_line)
 {
@@ -434,6 +448,21 @@ void OSDestroy(SDL_Window* window)
 //#pragma comment(lib, "iphlpapi.lib")
 //#pragma comment(lib, "ws2_32.lib")
 
+SysIP4 GetIP4FromSockaddr(const sockaddr* sa)
+{
+    const sockaddr_in* sa_in = (sockaddr_in*)sa;
+    SysIP4 r;
+    r.addr = sa_in->sin_addr.s_addr;
+    return r;
+}
+SysIP6 GetIP6FromSockaddr(const sockaddr* sa)
+{
+    const sockaddr_in6* sa_in = (sockaddr_in6*)sa;
+    SysIP6 r;
+    memmove((void*)&r, (void*)&sa_in->sin6_addr, sizeof(r));
+    return r;
+}
+
 bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
 {
     ZoneScoped;
@@ -494,19 +523,16 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
             {
                 if (sa->sa_family == AF_INET) //IPv4
                 {
-                    const sockaddr_in* sa_in = (sockaddr_in*)sa;
                     SysIP4AndSubnet ips;
-                    ips.ip.addr = sa_in->sin_addr.s_addr;
+                    ips.ip = GetIP4FromSockaddr(sa);
                     ips.subnet.FromLength(prefix_len);
                     ad.ipv4_ips.push_back(ips);
                 }
                 else if (sa->sa_family == AF_INET6) //IPv6
                 {
                     SysIP6AndSubnet ips = {};
-                    sockaddr_in6* sa_in = (sockaddr_in6*)sa;
-                    inet_ntop(AF_INET6, &(sa_in->sin6_addr), ip_str, sizeof(ip_str));
-                    ips.ip = ip_str;
-                    ips.subnet = ToString("/%i", prefix_len);
+                    ips.ip = GetIP6FromSockaddr(sa);
+                    ips.subnet.FromLength(prefix_len);
                     ad.ipv6_ips.push_back(ips);
                 }
             }
@@ -525,15 +551,11 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
             {
                 if (sa->sa_family == AF_INET) //IPv4
                 {
-                    sockaddr_in* sa_in = (sockaddr_in*)sa;
-                    inet_ntop(AF_INET, &(sa_in->sin_addr), dns_str, sizeof(dns_str));
-                    ad.ipv4_dns.push_back(dns_str);
+                    ad.ipv4_dns.push_back(GetIP4FromSockaddr(sa));
                 }
                 else if (sa->sa_family == AF_INET6) //IPv6
                 {
-                    sockaddr_in6* sa_in = (sockaddr_in6*)sa;
-                    inet_ntop(AF_INET6, &(sa_in->sin6_addr), dns_str, sizeof(dns_str));
-                    ad.ipv6_dns.push_back(dns_str);
+                    ad.ipv6_dns.push_back(GetIP6FromSockaddr(sa));
                 }
             }
             dns = dns->Next;
@@ -555,15 +577,11 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
             {
                 if (sa->sa_family == AF_INET)
                 {
-                    sockaddr_in* sa_in = (sockaddr_in*)sa;
-                    inet_ntop(AF_INET, &(sa_in->sin_addr), g_s, sizeof(g_s));
-                    ad.ipv4_gateways.push_back(g_s);
+                    ad.ipv4_gateways.push_back(GetIP4FromSockaddr(sa));
                 }
                 else if (sa->sa_family == AF_INET6)
                 {
-                    sockaddr_in6* sa_in = (sockaddr_in6*)sa;
-                    inet_ntop(AF_INET6, &(sa_in->sin6_addr), g_s, sizeof(g_s));
-                    ad.ipv6_gateways.push_back(g_s);
+                    ad.ipv6_gateways.push_back(GetIP6FromSockaddr(sa));
                 }
             }
             gateway = gateway->Next;
@@ -579,15 +597,11 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
             {
                 if (sa->sa_family == AF_INET)
                 {
-                    sockaddr_in* sa_in = (sockaddr_in*)sa;
-                    inet_ntop(AF_INET, &(sa_in->sin_addr), dhcp_s, sizeof(dhcp_s));
-                    ad.ipv4_dhcp = dhcp_s;
+                    ad.ipv4_dhcp = GetIP4FromSockaddr(sa);
                 }
                 else if (sa->sa_family == AF_INET6)
                 {
-                    sockaddr_in6* sa_in = (sockaddr_in6*)sa;
-                    inet_ntop(AF_INET6, &(sa_in->sin6_addr), dhcp_s, sizeof(dhcp_s));
-                    ad.ipv6_dhcp = dhcp_s;
+                    ad.ipv6_dhcp = GetIP6FromSockaddr(sa);
                 }
             }
         }
