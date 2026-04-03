@@ -20,6 +20,7 @@ bool OSInit(SDL_Window* window);
 void OSDestroy(SDL_Window* window);
 void* OSGetWindowHandle(SDL_Window* window);
 bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters);
+bool OSHasAdminPrivledge();
 
 bool OSIsConsoleAttached();
 bool OSIsDebuggerAttached();

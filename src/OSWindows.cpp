@@ -5,6 +5,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
+#include <comdef.h>
+#include <Wbemidl.h>
 
 #include "OSWindows.h"
 #include "WinInterop_File.h"
@@ -612,6 +614,23 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
 
     WSACleanup();
     return true;
+}
+
+bool OSHasAdminPrivledge()
+{
+    bool is_admin = false;
+    HANDLE handle = NULL;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &handle))
+    {
+        TOKEN_ELEVATION elevation;
+        DWORD size = sizeof(TOKEN_ELEVATION);
+        if (GetTokenInformation(handle, TokenElevation, &elevation, sizeof(elevation), &size))
+        {
+            is_admin = (elevation.TokenIsElevated != 0);
+        }
+        CloseHandle(handle);
+    }
+    return is_admin;
 }
 
 bool OSIsConsoleAttached()
