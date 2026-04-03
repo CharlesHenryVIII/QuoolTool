@@ -1,4 +1,4 @@
-#include "Scripts.h"
+#include "TerminalCommands.h"
 
 #define CSV_CONVERT_TEXT LR"term(ConvertTo-Csv -NoTypeInformation)term"// | ForEach-Object {$_ -replace '\"',''}")term"
 

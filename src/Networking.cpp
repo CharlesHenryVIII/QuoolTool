@@ -233,6 +233,21 @@ void NetworkingInit()
 #endif
 }
 
+void NetworkImGui(NetworkData& data)
+{
+    if (data.adapters.state == AsyncStatus_Empty)
+    {
+        TRACY_LOCK(data.adapters.lock);
+        data.adapters.state = SysGetNetworkAdapters(data.adapters.data) ? AsyncStatus_FetchedSuccess : AsyncStatus_FetchedFailed;
+    }
+
+    TRACY_LOCK(data.adapters.lock);
+    for (i32 i = 0; i < data.adapters.data.size(); i++)
+    {
+        
+    }
+}
+
 void NetworkShutdown()
 {
 

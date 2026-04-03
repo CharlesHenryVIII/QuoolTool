@@ -3,8 +3,9 @@
 #include "Themes.h"
 #include "String.h"
 #include "Threading.h"
-#include "Tools.h"
+#include "DataCollection.h"
 #include "Citect.h"
+#include "Networking.h"
 
 
 struct Settings {
@@ -22,6 +23,7 @@ enum FontIndex : u32 {
 struct AppData {
     ToolsData tools_data;
     CitectData citect_data;
+    NetworkData network_data;
 };
 
 struct ImFont;

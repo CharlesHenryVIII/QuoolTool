@@ -2,11 +2,16 @@
 #include "String.h"
 #include "Version.h"
 #include "Threading.h"
+#include "System.h"
 
 extern Version g_online_version;
 extern Atomic<AsyncStatus> g_version_state;
 extern Atomic<AsyncStatus> g_download_state;
 extern Atomic<float> g_download_update_progress;
+
+struct NetworkData {
+    AsyncData<std::vector<SysNetworkAdapterInfo>> adapters;
+};
 
 struct EnvironmentVariables
 {
@@ -24,3 +29,4 @@ struct GetOnlineVersionJob : Job
 };
 
 void NetworkingInit();
+void NetworkImGui(NetworkData& data);

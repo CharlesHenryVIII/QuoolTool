@@ -106,6 +106,10 @@ struct SysIP4Subnet
         }
         return ((sizeof(mask) * 8) - zerobits);
     }
+    bool IsValid() const
+    {
+        return mask != 0;
+    }
 };
 
 struct SysIP6Subnet

@@ -9,7 +9,7 @@
 #include "Settings.h"
 #include "LoadJson.h"
 #include "Citect.h"
-#include "Tools.h"
+#include "DataCollection.h"
 #include "Version.h"
 #include "Networking.h"
 #include "Rendering.h"
@@ -343,9 +343,14 @@ void ImguiMain(AppData& data)
         ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_NoCloseWithMiddleMouseButton | ImGuiTabBarFlags_FittingPolicyScroll | ImGuiTabBarFlags_DrawSelectedOverline;
         if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
         {
-            if (ImGui::BeginTabItem("Tools"))
+            if (ImGui::BeginTabItem("Data Collection"))
             {
                 ToolsImGui(data.tools_data);
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Network"))
+            {
+                NetworkImGui(data.network_data);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Citect/AVEVA"))

@@ -1,10 +1,10 @@
-#include "Tools.h"
+#include "DataCollection.h"
 #include "String.h"
 #include "ImguiHelper.h"
 #include "Tracy.hpp"
 #include "LoadJson.h"
 #include "System.h"
-#include "Scripts.h"
+#include "TerminalCommands.h"
 #include "Wininterop_file.h"
 #include "pugixml.hpp"
 
