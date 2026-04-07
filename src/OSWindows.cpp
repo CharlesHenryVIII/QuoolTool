@@ -616,6 +616,26 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
     return true;
 }
 
+void OSNetAdapterSetIP(const std::string& adapter_name, const SysIP4AndSubnet& ip)
+{
+    VALIDATE(ip.ip.IsValid());
+    VALIDATE(ip.subnet.IsValid());
+    std::string ip_str;
+    std::string sub_str;
+    ip.ip.ToString(ip_str);
+    ip.subnet.ToString(sub_str);
+    const std::string command = "netsh interface ipv4 set address name=\"" + adapter_name + "\" static " + ip_str + " " + sub_str;
+    system(command.c_str());
+}
+
+void OSNetAdapterSetDNSServers(const std::string& adapter_name, const SysIP4& ip)
+{
+    std::string ip_str;
+    ip.ToString(ip_str);
+    std::string command = "netsh interface ipv4 set dnsservers name=\"" + adapter_name + "\" static " + ip_str;
+    system(command.c_str());
+}
+
 bool OSHasAdminPrivledge()
 {
     bool is_admin = false;

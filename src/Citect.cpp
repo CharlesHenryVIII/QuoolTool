@@ -152,6 +152,17 @@ bool GetScadaDir(std::filesystem::path& out, ArrayView<ScannedFile> files)
     return false;
 }
 
+void CitectInit(CitectData** citect_data)
+{
+    VALIDATE(citect_data && !(*citect_data));
+    *citect_data = new CitectData();
+}
+void CitectDestroy(CitectData** citect_data)
+{
+    VALIDATE(citect_data && *citect_data);
+    delete (*citect_data);
+}
+
 void CitectImGui(CitectData& cd)
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();

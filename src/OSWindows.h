@@ -19,8 +19,11 @@ i32 OSRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<s
 bool OSInit(SDL_Window* window);
 void OSDestroy(SDL_Window* window);
 void* OSGetWindowHandle(SDL_Window* window);
-bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters);
+
 bool OSHasAdminPrivledge();
+bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters);
+void OSNetAdapterSetIP(const std::string& adapter_name, const SysIP4AndSubnet& ip);
+void OSNetAdapterSetDNSServers(const std::string& adapter_name, const SysIP4& ip);
 
 bool OSIsConsoleAttached();
 bool OSIsDebuggerAttached();

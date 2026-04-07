@@ -120,6 +120,11 @@ bool SysGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters)
 {
     return OSGetNetworkAdapters(out_adapters);
 }
+bool SysHasAdminPrivledge()
+{
+    ZoneScoped;
+    return OSHasAdminPrivledge();
+}
 
 void SysSleep(u64 _ms)
 {

@@ -4,6 +4,7 @@
 #include "System.h"
 #include "LoadJson.h"
 #include "Archive.h"
+#include "ImguiHelper.h"
 
 #include "json.hpp"
 
@@ -216,14 +217,51 @@ void GetOnlineVersionJob::RunJob()
     g_version_state = AsyncStatus_FetchedSuccess;
 }
 
-void NetworkingInit()
+struct MainAdapterInfo {
+    std::string name;
+    std::string desc;
+    NetAdapterConfig config;
+};
+static std::vector<MainAdapterInfo> s_current_adapters;
+
+void UpdateNetworkAdaptersInfo(NetworkData* nd)
+{
+    ZoneScoped;
+    TRACY_LOCK(nd->adapters.lock);
+    if (nd->adapters.state == AsyncStatus_Empty)
+    {
+        nd->adapters.state = SysGetNetworkAdapters(nd->adapters.data) ? AsyncStatus_FetchedSuccess : AsyncStatus_FetchedFailed;
+    }
+    for (i32 i = 0; i < nd->adapters.data.size(); i++)
+    {
+        const SysNetworkAdapterInfo& a = nd->adapters.data[i];
+        MainAdapterInfo c;
+        ASSERT(a.ipv4_ips.size() == 1);
+        SysConvertWideCharToMultiByte(c.name, a.friendly_name);
+        SysConvertWideCharToMultiByte(c.desc, a.description);
+        c.config.ip = a.ipv4_ips[0];
+        c.config.gateway = a.ipv4_gateways.size() > 0 ? a.ipv4_gateways[0] : SysIP4();
+        c.config.dns1 = a.ipv4_dns.size() > 0 ? a.ipv4_dns[0] : SysIP4();
+        c.config.dns2 = a.ipv4_dns.size() > 1 ? a.ipv4_dns[1] : SysIP4();
+        c.config.dhcp_enabled = a.dhcpv4_enabled;
+        c.config.ddns_enabled = a.ddns_enabled;
+        s_current_adapters.push_back(c);
+    }
+}
+
+void NetworkingInit(NetworkData** nd)
 {
     ZoneScopedN("Networking Init");
+    VALIDATE(nd && !(*nd));
+    *nd = new NetworkData();
 #if _DEBUG
     double start = SysGetTime();
 #endif
 
+    //TODO: Async these:
     ReadEnvironmentVariables(&s_network.env, s_network.env_filename);
+    (*nd)->is_admin = SysHasAdminPrivledge();
+    UpdateNetworkAdaptersInfo(*nd);
 
 #if _DEBUG
     double end = SysGetTime();
@@ -232,20 +270,117 @@ void NetworkingInit()
     i32 test = 1;
 #endif
 }
+void NetworkingDestroy(NetworkData** network_data)
+{
+    VALIDATE(network_data && *network_data);
+    delete (*network_data);
+}
 
 void NetworkImGui(NetworkData& data)
 {
-    if (data.adapters.state == AsyncStatus_Empty)
-    {
-        TRACY_LOCK(data.adapters.lock);
-        data.adapters.state = SysGetNetworkAdapters(data.adapters.data) ? AsyncStatus_FetchedSuccess : AsyncStatus_FetchedFailed;
-    }
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    Threading& threading = Threading::GetInstance();
+    ImGuiWindowFlags section_flags =
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoFocusOnAppearing |
+        ImGuiWindowFlags_NoMove;
 
-    TRACY_LOCK(data.adapters.lock);
-    for (i32 i = 0; i < data.adapters.data.size(); i++)
+    #define ADAPTERS_TITLE "Adapters"
+    if (ImGui::BeginChild(ADAPTERS_TITLE, { 0, 0 }, true, section_flags))
     {
-        
+        ZoneScopedN(ADAPTERS_TITLE);
+        ImguiTextCentered(ADAPTERS_TITLE);
+        ImGui::NewLine();
+
+        std::error_code ec;
+        ImGui::BeginDisabled(data.is_admin);
+        float height = 40;
+        const ImVec2 adapter_child_size(300.0f, 300.0f);
+        const float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+        for (i32 i = 0; i < s_current_adapters.size(); i++)
+        {
+            MainAdapterInfo& a = s_current_adapters[i];
+            ImGui::PushID(i);
+            //ImGui::BeginDisabled(FlagIntersects(s.completed, AsyncStatus_Completed));
+            if (ImGui::BeginChild("##AdapterChild", adapter_child_size, true, section_flags))
+            {
+                //*********************
+                //    Name
+                // description  
+                //
+                //DHCP Enabled:   [ ]
+                //IP Address:
+                //Subnet Mask:
+                //Default gateway:
+                //
+                //Preferred DNS Server:
+                //Alternate DNS Server:
+                //*********************
+                ImguiTextCentered(a.name);
+                ImGui::Separator();
+                ImGui::PushFont(g_data.fonts[FontIndex_Small]);
+                ImguiTextCentered(a.desc);
+                ImGui::PopFont();
+                NetAdapterConfig& c = a.config;
+
+                ImGui::Checkbox("DHCP Enabled", &c.dhcp_enabled);
+                ImGui::BeginDisabled(c.dhcp_enabled);
+                ImGui::PushID("ipv4_ips");
+                ImguiEdit(&c.ip);
+                ImGui::PopID();
+
+                ImGui::PushID("ipv4_gateways");
+                ImGui::Text("Gateway:");
+                ImGui::SameLine();
+                ImguiEdit(&c.gateway, true);
+                ImGui::PopID();
+                ImGui::EndDisabled();
+
+
+                ImGui::Checkbox("Dynamic DNS Enabled", &c.ddns_enabled);
+                ImGui::BeginDisabled(c.ddns_enabled);
+                ImGui::PushID("ipv4_dns1");
+                ImGui::Text("DNS 1:");
+                ImGui::SameLine();
+                ImguiEdit(&c.dns1, true);
+                ImGui::PopID();
+                ImGui::PushID("ipv4_dns2");
+                ImGui::Text("DNS 2:");
+                ImGui::SameLine();
+                ImguiEdit(&c.dns2, true);
+                ImGui::PopID();
+                ImGui::EndDisabled();
+            }
+            static i32 item_selection = 0;
+            //if (ImGui::Combo("Config", item_selection, ))
+            //{
+            //    
+            //}
+            //ImGui::SameLine();
+            if (ImGui::Button("Apply"))
+            {
+                
+            }
+			ImGui::SameLine();
+            if (ImGui::Button("Create Config"))
+            {
+                
+            }
+            ImGui::EndChild();
+            ImGui::PopID();
+
+            float last_button_x2 = ImGui::GetItemRectMax().x;
+            float next_button_x2 = last_button_x2 + ImGui::GetStyle().ItemSpacing.x + adapter_child_size.x; // Expected position if next button was on same line
+
+            float text_start = ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x / 2;
+            if (i + 1 < data.adapters.data.size() && next_button_x2 < window_visible_x2)
+                ImGui::SameLine();
+        }
+        ImGui::EndDisabled();
     }
+    ImGui::EndChild();
 }
 
 void NetworkShutdown()

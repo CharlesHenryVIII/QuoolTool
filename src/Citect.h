@@ -25,5 +25,7 @@ struct RunCitectCreateZipJob : Job
     virtual void RunJob() override;
 };
 
+void CitectInit(CitectData** citect_data);
+void CitectDestroy(CitectData** citect_data);
 void CitectImGui(CitectData& citect_data);
 

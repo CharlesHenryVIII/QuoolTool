@@ -1315,7 +1315,7 @@ ScriptInfo s_scripts[] = {
 
 std::string s_log;
 
-void GetOutputFolder(Path& out, const ToolsData& td)
+void GetOutputFolder(Path& out, const DataCollectionData& td)
 {
     out.clear();
     if (fs::exists(td.output_path))
@@ -1334,7 +1334,18 @@ void ImguiLog(const std::wstring& ws)
     ImguiLog(s);
 }
 
-void ToolsImGui(ToolsData& td)
+void DataCollectionInit(DataCollectionData** dcd)
+{
+    VALIDATE(dcd && !(*dcd));
+    *dcd = new DataCollectionData();
+}
+void DataCollectionDestroy(DataCollectionData** dcd)
+{
+    VALIDATE(dcd && *dcd);
+    delete (*dcd);
+}
+
+void DataCollectionImGui(DataCollectionData& td)
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     Threading& threading = Threading::GetInstance();

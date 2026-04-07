@@ -14,6 +14,7 @@
 #include "Citect.h"
 #include "Rendering.h"
 #include "Networking.h"
+#include "DataCollection.h"
 
 #include <stdio.h>
 #include <string>
@@ -92,13 +93,17 @@ i32 SysMain(i32 argc, char** argv)
         DebugPrint("Error: OSInit() failed");
     }
     Threading& threading = Threading::GetInstance();
-    NetworkingInit();
+    AppData app_data = {};
+    DataCollectionInit(&app_data.data_collection_data);
+    NetworkingInit(&app_data.network_data);
+    CitectInit(&app_data.citect_data);
     ImguiInit();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
     ThemesInit();
     ThemeSetColor(g_data.settings.color);
     ThemeSetStyle(g_data.settings.style);
+
 
 #if _DEBUG
     {
@@ -130,6 +135,7 @@ i32 SysMain(i32 argc, char** argv)
     // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
     style.FontSizeBase = 16.0f;
     g_data.fonts[FontIndex_Default] = SysLoadFontForImgui(IDR_FONT1, 16.0f);
+    g_data.fonts[FontIndex_Small] = SysLoadFontForImgui(IDR_FONT1, 12.0f);
     g_data.fonts[FontIndex_Imgui] = io.Fonts->AddFontDefault();
     g_data.fonts[FontIndex_Monospace] = SysLoadFontForImgui(IDR_FONT2, 16.0f);
 
@@ -137,7 +143,6 @@ i32 SysMain(i32 argc, char** argv)
     bool keepProcessWindowAlive = true;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     u64 frameStartTicks = 0;
-    AppData app_data;
 
     // Main loop
 #ifdef __EMSCRIPTEN__
@@ -181,6 +186,9 @@ i32 SysMain(i32 argc, char** argv)
     // Cleanup
     //(Threading::GetInstance()).ForceQuit();
     ImguiDestroy();
+    DataCollectionDestroy(&app_data.data_collection_data);
+    NetworkingDestroy(&app_data.network_data);
+    CitectDestroy(&app_data.citect_data);
     RenderDestroy();
     SysDestroy(gfx.window);
     SDL_Quit();

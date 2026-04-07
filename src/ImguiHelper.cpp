@@ -127,7 +127,7 @@ bool InputTextDynamicSize(const std::string& title, Path& path, ImGuiInputTextFl
     return r;
 }
 
-void ImguiTextCentered(std::string text)
+void ImguiTextCentered(const std::string& text)
 {
     float win_width = ImGui::GetWindowSize().x;
     float text_width = ImGui::CalcTextSize(text.c_str()).x;
@@ -345,17 +345,17 @@ void ImguiMain(AppData& data)
         {
             if (ImGui::BeginTabItem("Data Collection"))
             {
-                ToolsImGui(data.tools_data);
+                DataCollectionImGui(*data.data_collection_data);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Network"))
             {
-                NetworkImGui(data.network_data);
+                NetworkImGui(*data.network_data);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Citect/AVEVA"))
             {
-                CitectImGui(data.citect_data);
+                CitectImGui(*data.citect_data);
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
@@ -434,3 +434,69 @@ void ImguiDrawDashedRect(ImDrawList* drawList, ImVec2 p_min, ImVec2 p_max, ImU32
     ImguiDrawDashedLine(drawList, p_max, bl, col, thickness, dash_len, dash_gap); // Bottom
     ImguiDrawDashedLine(drawList, bl, p_min, col, thickness, dash_len, dash_gap); // Left
 }
+
+bool ImguiEdit(SysIP4* a, bool align_right)
+{
+    const u8 step = 1;
+    const u8 fast_step = 16;
+    bool edited = false;
+
+
+
+    const float label_size = ImGui::CalcTextSize("255", NULL, true).x;
+    const float width = label_size + ImGui::GetStyle().ItemInnerSpacing.x + 5.0f;
+    if (align_right)
+    {
+        const float window_visible_x = ImGui::GetWindowContentRegionMax().x;
+        const float cursor_pos_x = window_visible_x - (4 * 1) - (4 * width) - (4 * ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SetCursorPosX(cursor_pos_x);
+    }
+
+    const ImVec2 default_item_spacing = ImGui::GetStyle().ItemSpacing;
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, default_item_spacing.y));
+    ImGui::PushItemWidth(width);
+    edited |= ImGui::InputScalar("##IPv4_a", ImGuiDataType_U8, &(a->a));
+    ImGui::SameLine();
+    ImGui::Text(".");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(width);
+    edited |= ImGui::InputScalar("##IPv4_b", ImGuiDataType_U8, &(a->b));
+    ImGui::SameLine();
+    ImGui::Text(".");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(width);
+    edited |= ImGui::InputScalar("##IPv4_c", ImGuiDataType_U8, &(a->c));
+    ImGui::SameLine();
+    ImGui::Text(".");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(width);
+    edited |= ImGui::InputScalar("##IPv4_d", ImGuiDataType_U8, &(a->d));
+    ImGui::PopStyleVar();
+    return edited;
+}
+bool ImguiEdit(SysIP4Subnet* a)
+{
+    SysIP4 ip = a->ToIP4();
+    return ImguiEdit(&ip, true);
+}
+bool ImguiEdit(SysIP4AndSubnet* a)
+{
+    bool edited = false;
+    ImGui::PushID("IPv4_IP");
+    ImGui::Text("IP:");
+    ImGui::SameLine();
+    edited |= ImguiEdit(&a->ip, true);
+    ImGui::PopID();
+
+    ImGui::PushID("IPv4_Subnet");
+    ImGui::Text("Subnet:");
+    ImGui::SameLine();
+    edited |= ImguiEdit(&a->subnet);
+    ImGui::PopID();
+    return edited;
+}
+//bool ImguiEdit(SysIP6& a)
+//bool ImguiEdit(SysIP6AndSubnet& a)
+//bool ImguiEdit(SysIP4Subnet& a)
+//bool ImguiEdit(SysIP6Subnet& a)
+//bool ImguiView(SysMacAddress& a)

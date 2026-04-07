@@ -17,7 +17,7 @@ enum ScriptState : u32 {
 };
 ENUMOPS_PURE(ScriptState);
 
-struct ToolsData {
+struct DataCollectionData {
     Path output_path;
     std::wstring computer_name;
     Atomic<ScriptState> state = {};
@@ -26,4 +26,6 @@ struct ToolsData {
     TRACY_MUTEX(lock);
 };
 
-void ToolsImGui(ToolsData& td);
+void DataCollectionInit(DataCollectionData** dcd);
+void DataCollectionDestroy(DataCollectionData** dcd);
+void DataCollectionImGui(DataCollectionData& dcd);
