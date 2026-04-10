@@ -2,12 +2,6 @@
 #include "Math.h"
 #include "Themes.h"
 
-
-struct Settings {
-    ThemeColor color = ThemeColor_Quantum;
-    ThemeStyle style = ThemeStyle_SimpleRounding;
-};
-
 enum FontIndex : u32 {
     FontIndex_Default,
     FontIndex_Small,
@@ -28,7 +22,6 @@ struct AppData {
 struct ImFont;
 struct GlobalData
 {
-    Settings settings;
     ImFont* fonts[FontIndex_Count] = {};
 };
 

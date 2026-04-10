@@ -24,7 +24,6 @@
 #include <fstream>
 #include <iostream>
 
-const wchar_t* g_settings_filename = L"settings.json";
 bool s_show_demo_window = false;
 
 bool ImguiInit()
@@ -120,14 +119,14 @@ bool InputTextDynamicSize(const std::string& title, Path& path, ImGuiInputTextFl
     std::string s;
     SysConvertWideCharToMultiByte(s, path.wstring());
     bool r = ImGui::InputText(title.c_str(), s.data(), s.capacity(), flags | ImGuiInputTextFlags_CallbackResize, DynamicTextCallback, &s);
-    if (s.back() == '\0')
+    if (s.size() && s.back() == '\0')
         path = s.substr(0, s.size() - 1);// remove nullterminator
     else
         path = s;
     return r;
 }
 
-void ImguiTextCentered(const std::string& text)
+void ImguiTextCentered(const std::string& text, const Color* color)
 {
     float win_width = ImGui::GetWindowSize().x;
     float text_width = ImGui::CalcTextSize(text.c_str()).x;
@@ -145,7 +144,10 @@ void ImguiTextCentered(const std::string& text)
 
     ImGui::SameLine(text_indentation);
     ImGui::PushTextWrapPos(win_width - text_indentation);
-    ImGui::Text(text.c_str());
+    if (color)
+        ImGui::TextColored(ToImguiColor(*color), text.c_str());
+    else
+        ImGui::Text(text.c_str());
     ImGui::PopTextWrapPos();
 }
 
@@ -305,26 +307,26 @@ void ImguiMain(AppData& data)
                 ImGui::Text("Color:");
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(100);
-                i32 colorSelection = g_data.settings.color;
+                i32 colorSelection = g_theme_settings.color;
 
-                if (ImGui::Combo("##Color", (i32*)&g_data.settings.color, GetCStringFromThemes, &g_ThemeColorOptions, (i32)ThemeColor_Count))
+                if (ImGui::Combo("##Color", (i32*)&g_theme_settings.color, GetCStringFromThemes, &g_ThemeColorOptions, (i32)ThemeColor_Count))
                 {
-                    if (colorSelection != g_data.settings.color)
+                    if (colorSelection != g_theme_settings.color)
                     {
-                        ThemeSetColor(g_data.settings.color);
-                        WriteSettings(&g_data.settings, g_settings_filename);
+                        ThemeSetColor(g_theme_settings.color);
+                        WriteSettings();
                     }
                 }
                 ImGui::Text("Style:");
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(100);
-                i32 styleSelection = g_data.settings.style;
-                if (ImGui::Combo("##Style", (i32*)&g_data.settings.style, GetCStringFromThemes, &g_ThemeStyleOptions, (i32)ThemeStyle_Count))
+                i32 styleSelection = g_theme_settings.style;
+                if (ImGui::Combo("##Style", (i32*)&g_theme_settings.style, GetCStringFromThemes, &g_ThemeStyleOptions, (i32)ThemeStyle_Count))
                 {
-                    if (styleSelection != g_data.settings.style)
+                    if (styleSelection != g_theme_settings.style)
                     {
-                        ThemeSetStyle(g_data.settings.style);
-                        WriteSettings(&g_data.settings, g_settings_filename);
+                        ThemeSetStyle(g_theme_settings.style);
+                        WriteSettings();
                     }
                 }
 
@@ -350,7 +352,7 @@ void ImguiMain(AppData& data)
             }
             if (ImGui::BeginTabItem("Network"))
             {
-                NetworkImGui(*data.network_data);
+                NetworkImgui(*data.network_data);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Citect/AVEVA"))

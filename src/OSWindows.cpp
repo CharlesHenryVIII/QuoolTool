@@ -1,4 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
+#define _WIN32_DCOM
 #include <Windows.h>
 #include <shellapi.h>
 #include <combaseapi.h>
@@ -18,6 +19,8 @@
 #include "Json.hpp"
 #include "Rendering.h"
 #include "Tracy.hpp"
+#include "Networking.h"
+#include "System.h"
 
 #include <fstream>
 #include <filesystem>
@@ -27,32 +30,44 @@
 #include <chrono>
 #include <charconv>
 
-void SysIP4::ToString(std::string& out) const
+std::string SysIP4::ToString() const
 {
-    out.clear();
+    std::string r = {};
     if (!IsValid())
-        return;
+        return r;
     //"-1" to remove the length of null terminator
-    out.resize(INET_ADDRSTRLEN - 1);
-    if (inet_ntop(AF_INET, (IN_ADDR*)(&addr), out.data(), out.size()) == NULL)
+    r.resize(INET_ADDRSTRLEN - 1);
+    if (InetNtopA(AF_INET, (IN_ADDR*)(&addr), r.data(), r.size()) == NULL)
     {
         DebugPrint("Error: Failed to convert IPv4 to string: {%i}", addr);
         FAIL;
     }
+    return r;
+}
+void SysIP4::FromString(const std::string& in)
+{
+    if (in.size() == 0)
+        return;
+    if (InetPtonA(AF_INET, in.c_str(), e) == NULL)
+    {
+        DebugPrint("Error: Failed to convert string to IPv4: {%s}", in.c_str());
+        FAIL;
+    }
 }
 
-void SysIP6::ToString(std::string& out) const
+std::string SysIP6::ToString() const
 {
-    out.clear();
+    std::string r = {};
     if (!IsValid())
-        return;
+        return r;
     //"-1" to remove the length of null terminator
-    out.resize(INET6_ADDRSTRLEN - 1);
-    if (inet_ntop(AF_INET6, (IN6_ADDR*)(&addr), out.data(), out.size()) == NULL)
+    r.resize(INET6_ADDRSTRLEN - 1);
+    if (InetNtopA(AF_INET6, (IN6_ADDR*)(&addr), r.data(), r.size()) == NULL)
     {
         DebugPrint("Error: Failed to convert IPv6 to string: {%i, %i}", addr[0], addr[1]);
         FAIL;
     }
+    return r;
 }
 
 SysIP4 SysIP4Subnet::ToIP4() const
@@ -60,6 +75,10 @@ SysIP4 SysIP4Subnet::ToIP4() const
     SysIP4 r;
     r.addr = htonl(mask);
     return r;
+}
+void SysIP4Subnet::FromIP(const SysIP4 ip)
+{
+    mask = htonl(ip.addr);
 }
 
 SysIP6 SysIP6Subnet::ToIP6() const
@@ -119,6 +138,44 @@ void OSDebugOutput(const wchar_t* s)
     OutputDebugStringW(s);
 }
 
+struct CoInitializer
+{
+    HRESULT result;
+    CoInitializer()
+    {
+        const DWORD param1 = COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE;
+        const DWORD param2 = COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE;
+        result = CoInitializeEx(NULL, param1);
+        if (result == S_FALSE)
+        {
+            DebugPrint("Verbose: CoInitializeEx() already ran on this thread with %u", param1);
+        }
+        else if (result == RPC_E_CHANGED_MODE)
+        {
+            DebugPrint("Warning: CoInitializeEx() previously ran with different parameters: %u", param1);
+            result = CoInitializeEx(NULL, param2);
+			ASSERT(result == S_OK || result == S_FALSE);
+        }
+
+        HRESULT r = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
+        if (r == RPC_E_TOO_LATE)
+        {
+            DebugPrint("Warning: CoInitializeSecurity() already ran");
+        }
+        else if (r == RPC_E_NO_GOOD_SECURITY_PACKAGES)
+        {
+            DebugPrint("Error: CoInitializeSecurity() got issues");
+            FAIL;
+            return;
+        }
+    }
+    ~CoInitializer()
+    {
+        CoUninitialize();
+    }
+
+};
+
 i32 OSRunShellProcess(const wchar_t* path, const wchar_t* args, std::string* output, Mutex* output_lock, RunProcessFlags flags)
 {
     //TODO: Allow this to work for ASCII AND Unicode
@@ -139,8 +196,11 @@ i32 OSRunShellProcess(const wchar_t* path, const wchar_t* args, std::string* out
     info.dwHotKey;
     info.hProcess; //out
 
-    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    Defer { CloseHandle(info.hProcess); };
+    CoInitializer co_initializer;
+    Defer {
+        CloseHandle(info.hProcess);
+        CoUninitialize();
+    };
     if (!ShellExecuteEx(&info))
     {
         std::wstring errorBoxTitle = ToString(L"ShellExecuteEx Error: %i", GetLastError());
@@ -467,7 +527,6 @@ SysIP6 GetIP6FromSockaddr(const sockaddr* sa)
 
 bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
 {
-    ZoneScoped;
     WSADATA wsa_data;
     if (WSAStartup(MAKEWORD(2, 2), &wsa_data))
     {
@@ -497,6 +556,7 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
     while (adapter)
     {
         SysNetworkAdapterInfo ad = {};
+        ad.index = adapter->IfIndex;
         ad.name = adapter->AdapterName;
         ad.friendly_name = adapter->FriendlyName;
         ad.description = adapter->Description;
@@ -616,24 +676,371 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
     return true;
 }
 
-void OSNetAdapterSetIP(const std::string& adapter_name, const SysIP4AndSubnet& ip)
+IWbemServices* ConnectToWMI()
 {
-    VALIDATE(ip.ip.IsValid());
-    VALIDATE(ip.subnet.IsValid());
-    std::string ip_str;
-    std::string sub_str;
-    ip.ip.ToString(ip_str);
-    ip.subnet.ToString(sub_str);
-    const std::string command = "netsh interface ipv4 set address name=\"" + adapter_name + "\" static " + ip_str + " " + sub_str;
-    system(command.c_str());
+    IWbemLocator* locator = NULL;
+    if (FAILED(CoCreateInstance(CLSID_WbemLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&locator)))
+    {
+        DebugPrint("Error: Failed to create instance for WbemLocator");
+        FAIL;
+        return NULL;
+    }
+    Defer{ locator->Release(); };
+    IWbemServices* service = NULL;
+    if (FAILED(locator->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL, NULL, NULL, NULL, &service)))
+    {
+        DebugPrint("Error: Failed to ConnectServer() with locator");
+        FAIL;
+        return NULL;
+    }
+    if (FAILED(CoSetProxyBlanket(service, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE)))
+    {
+        DebugPrint("Error: Failed to CoSetProxyBlanket()");
+        FAIL;
+        service->Release();
+        return NULL;
+    }
+    return service;
 }
 
-void OSNetAdapterSetDNSServers(const std::string& adapter_name, const SysIP4& ip)
+// Creates a COM SafeArray containing a single string
+VARIANT CreateSafeArray(const std::string& str)
 {
-    std::string ip_str;
-    ip.ToString(ip_str);
-    std::string command = "netsh interface ipv4 set dnsservers name=\"" + adapter_name + "\" static " + ip_str;
-    system(command.c_str());
+    VARIANT r;
+    r.vt = VT_ARRAY | VT_BSTR;
+    r.parray = SafeArrayCreateVector(VT_BSTR, 0, 1);
+    long index = 0;
+    _bstr_t bstrVal(str.c_str());
+    HRESULT result = SafeArrayPutElement(r.parray, &index, bstrVal.GetBSTR());
+    if (result == DISP_E_BADINDEX)
+    {
+        DebugPrint("Error: SafeArrayPutElement() has invalid index: %i", index);
+        FAIL;
+    }
+    else if (result == E_INVALIDARG)
+    {
+        DebugPrint("Error: SafeArrayPutElement() has an invalid argument");
+        FAIL;
+    }
+    else if (result == E_OUTOFMEMORY)
+    {
+        DebugPrint("Error: SafeArrayPutElement() ran out of memory");
+        FAIL;
+    }
+    return r;
+}
+
+VARIANT CreateSafeArray(const ArrayView<std::string>& strings)
+{
+    VARIANT var;
+    VariantInit(&var);
+    var.vt = VT_ARRAY | VT_BSTR; 
+    SAFEARRAY* safe_array = SafeArrayCreateVector(VT_BSTR, 0, (ULONG)strings.size());
+    for (LONG i = 0; i < strings.size(); i++)
+    {
+        _bstr_t bstr(strings[i].c_str());
+        SafeArrayPutElement(safe_array, &i, (void*)bstr.GetBSTR());
+    }
+    var.parray = safe_array;
+    return var;
+}
+
+i32 GetAdapterIndexByGuid(IWbemServices* service, const std::string& adapter_guid)
+{
+    std::string query = ToString("SELECT Index FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '%hs'", adapter_guid.c_str());
+    IEnumWbemClassObject* enumerator = NULL;
+
+    if (FAILED(service->ExecQuery(_bstr_t(L"WQL"), _bstr_t(query.c_str()), WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &enumerator)))
+    {
+        DebugPrint("Error: Failed to find adapter for guid: %hs", adapter_guid.c_str());
+        FAIL;
+        return -1;
+    }
+
+    IWbemClassObject* adapter = NULL;
+    ULONG return_val = 0;
+    i32 index = -1;
+
+    if (SUCCEEDED(enumerator->Next(WBEM_INFINITE, 1, &adapter, &return_val)) && return_val != 0)
+    {
+        VARIANT var;
+        adapter->Get(L"Index", 0, &var, 0, 0);
+        index = var.intVal;
+        VariantClear(&var);
+        adapter->Release();
+    }
+    enumerator->Release();
+    return index;
+}
+
+struct ClassFuncSig
+{
+    IWbemClassObject* in = nullptr;
+    IWbemClassObject* out = nullptr;
+};
+ClassFuncSig GetClassFunctionSignature(IWbemClassObject* class_obj, const wchar_t* name)
+{
+    VALIDATE_V(class_obj, {});
+    VALIDATE_V(name, {});
+    ClassFuncSig r;
+    if (FAILED(class_obj->GetMethod(name, 0, &r.in, &r.out)))
+    {
+        DebugPrint("Error: GetMethod() failed: %i", GetLastError());
+        FAIL;
+        return {};
+    }
+    return r;
+}
+
+bool OSSetNetAdapterIP(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter)
+{
+    VALIDATE_V((adapter.ip.ip.IsValid() && adapter.ip.subnet.IsValid()) || adapter.dhcp_enabled, false);
+    VALIDATE_V(adapter_guid.size(), false);
+
+    CoInitializer co_initializer;
+    IWbemServices* service = ConnectToWMI();
+    Defer{ service->Release(); };
+    if (!service)
+    {
+        DebugPrint("Error: Failed to connect to WMI");
+        FAIL;
+        return false;
+    }
+
+    i32 adapter_index = GetAdapterIndexByGuid(service, adapter_guid);
+    if (adapter_index == -1)
+    {
+        DebugPrint("Error: Could not find network adapter named '%s'", adapter_guid.c_str());
+        FAIL;
+        return false;
+    }
+
+    // Construct the WMI target path
+    const std::wstring pathw = ToString(L"Win32_NetworkAdapterConfiguration.Index=%i", adapter_index);
+    _bstr_t path_bstr(pathw.c_str());
+
+    // 3. Apply the Configuration natively!
+    if (adapter.dhcp_enabled) 
+    {
+        HRESULT r = service->ExecMethod(path_bstr, _bstr_t(L"EnableDHCP"), 0, NULL, NULL, NULL, NULL);
+        if (r != S_OK)
+        {
+            DebugPrint("Error: ExecMethod() failed, EnableDHCP, %i, GetLastError(): %i", r, GetLastError());
+            FAIL;
+            return false;
+        }
+    } 
+    else 
+    {
+        IWbemClassObject* net_adapter_class = nullptr;
+        if (FAILED(service->GetObjectW(_bstr_t(L"Win32_NetworkAdapterConfiguration"), 0, NULL, &net_adapter_class, NULL)))
+        {
+            DebugPrint("Error: GetObjectW() failed to get Win32_NetworkAdapterConfiguration: %i", GetLastError());
+            FAIL;
+            return false;
+        }
+        Defer{ net_adapter_class->Release(); };
+
+        ClassFuncSig enable_static_func_sig = GetClassFunctionSignature(net_adapter_class, L"EnableStatic");
+        IWbemClassObject* enable_static_in_func_inst = NULL;
+        if (FAILED(enable_static_func_sig.in->SpawnInstance(0, &enable_static_in_func_inst)))
+        {
+            DebugPrint("Error: SpawnInstance() failed: %i", GetLastError());
+            FAIL;
+            return false;
+        }
+
+        VARIANT ip_variant = CreateSafeArray(adapter.ip.ip.ToString());
+        VARIANT subnet_variant = CreateSafeArray(adapter.ip.subnet.ToIP4().ToString());
+
+        if (FAILED(enable_static_in_func_inst->Put(L"IPAddress", 0, &ip_variant, 0)))
+        {
+            DebugPrint("Error: Put(IPAddress) failed: %i", GetLastError());
+            FAIL;
+            return false;
+        }
+        if (FAILED(enable_static_in_func_inst->Put(L"SubnetMask", 0, &subnet_variant, 0)))
+        {
+            DebugPrint("Error: Put(SubnetMask) failed: %i", GetLastError());
+            FAIL;
+            return false;
+        }
+        {
+            const HRESULT r = service->ExecMethod(path_bstr, _bstr_t(L"EnableStatic"), 0, NULL, enable_static_in_func_inst, &enable_static_func_sig.out, NULL);
+            if (FAILED(r))
+            {
+                DebugPrint("Error: ExecMethod(EnableStatic) failed: %i, HRESULT: 0x%X", GetLastError(), r);
+                FAIL;
+                return false;
+            }
+            if (enable_static_func_sig.out)
+            {
+                VARIANT ret_val;
+                VariantInit(&ret_val);
+                if (SUCCEEDED(enable_static_func_sig.out->Get(L"ReturnValue", 0, &ret_val, NULL, 0)))
+                {
+                    if (ret_val.vt == VT_I4)
+                    {
+                        i32 status = ret_val.intVal;
+                        DebugPrint("WMI EnableStatic Result Code: %i", status);
+
+                        // 0 = Success, 1 = Success (Reboot required)
+                        if (status != 0 && status != 1)
+                        {
+                            DebugPrint("Error: WMI rejected the IP change. (See MS documentation for code %i)", status);
+                            VariantClear(&ret_val);
+                            enable_static_func_sig.out->Release();
+                            FAIL;
+                            return false;
+                        }
+                    }
+                }
+                VariantClear(&ret_val);
+                enable_static_func_sig.out->Release();
+            }
+        }
+
+        VariantClear(&ip_variant);
+        VariantClear(&subnet_variant);
+        enable_static_in_func_inst->Release();
+        //enable_static_out_func_inst->Release();
+        enable_static_func_sig.in->Release();
+        enable_static_func_sig.out->Release();
+
+        if (adapter.gateway.IsValid()) 
+        {
+            ClassFuncSig gateway_func_sig = GetClassFunctionSignature(net_adapter_class, L"SetGateways");
+            IWbemClassObject* gateway_inst = NULL;
+            gateway_func_sig.in->SpawnInstance(0, &gateway_inst);
+            VARIANT gateway_variant = CreateSafeArray(adapter.gateway.ToString());
+
+            gateway_inst->Put(L"DefaultIPGateway", 0, &gateway_variant, 0);
+
+            // Execute SetGateways
+            service->ExecMethod(path_bstr, _bstr_t(L"SetGateways"), 0, NULL, gateway_inst, NULL, NULL);
+
+            VariantClear(&gateway_variant);
+            gateway_inst->Release();
+            gateway_func_sig.in->Release();
+        }
+    }
+    return true;
+}
+
+bool OSSetNetAdapterDNS(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter)
+{
+    VALIDATE_V((adapter.dns[0].IsValid() || adapter.dns[1].IsValid()) || adapter.dhcp_enabled, false);
+    if (adapter.ddns_enabled && !adapter.dhcp_enabled)
+    {
+        DebugPrint("Warning: Attempting to set Dynamic DNS with static IP");
+        return false;
+    }
+
+    CoInitializer co_initializer;
+    IWbemServices* service = ConnectToWMI();
+    Defer{ service->Release(); };
+    if (!service)
+    {
+        DebugPrint("Error: Failed to connect to WMI");
+        FAIL;
+        return false;
+    }
+
+    i32 adapter_index = GetAdapterIndexByGuid(service, adapter_guid);
+    if (adapter_index == -1)
+    {
+        DebugPrint("Error: Could not find network adapter named '%s'", adapter_guid.c_str());
+        FAIL;
+        return false;
+    }
+
+    // Construct the WMI target path
+    const std::wstring pathw = ToString(L"Win32_NetworkAdapterConfiguration.Index=%i", adapter_index);
+    _bstr_t path_bstr(pathw.c_str());
+
+    IWbemClassObject* net_adapter_class = nullptr;
+    if (FAILED(service->GetObjectW(_bstr_t(L"Win32_NetworkAdapterConfiguration"), 0, NULL, &net_adapter_class, NULL)))
+    {
+        DebugPrint("Error: GetObjectW() failed to get Win32_NetworkAdapterConfiguration: %i", GetLastError());
+        FAIL;
+        return false;
+    }
+    Defer{ net_adapter_class->Release(); };
+
+
+    ClassFuncSig dns_func_sig = GetClassFunctionSignature(net_adapter_class, L"SetDNSServerSearchOrder");
+    IWbemClassObject* dns_inst = NULL;
+    Defer{ if (dns_func_sig.in) dns_func_sig.in->Release(); };
+
+    if (FAILED(dns_func_sig.in->SpawnInstance(0, &dns_inst)))
+    {
+        DebugPrint("Error: Failed to SpawnInstance for SetDNSServerSearchOrder(): %i", GetLastError());
+        FAIL;
+        return false;
+    }
+    Defer{ dns_inst->Release(); };
+
+    VARIANT dns_variant;
+    if (adapter.ddns_enabled)
+    {
+        dns_variant.vt = VT_NULL;
+    }
+    else
+    {
+        std::string dns_strings[SYS_NET_CONFIG_MAX_DNS];
+        for (i32 i = 0; i < SYS_NET_CONFIG_MAX_DNS; i++)
+        {
+            dns_strings[i] = adapter.dns[i].ToString();
+        }
+        dns_variant = CreateSafeArray(CreateArrayView(dns_strings));
+    }
+    Defer{ VariantClear(&dns_variant); };
+
+    if (FAILED(dns_inst->Put(L"DNSServerSearchOrder", 0, &dns_variant, 0)))
+    {
+        DebugPrint("Error: Put(DNSServerSearchOrder) failed: %i", GetLastError());
+        FAIL;
+        return false;
+    }
+    const HRESULT r = service->ExecMethod(path_bstr, _bstr_t(L"SetDNSServerSearchOrder"), 0, NULL, dns_inst, &dns_func_sig.out, NULL);
+    if (FAILED(r))
+    {
+        DebugPrint("Error: ExecMethod(SetDNSServerSearchOrder) failed: HRESULT: 0x%X", r);
+        FAIL;
+        return false;
+    }
+    if (dns_func_sig.out)
+    {
+        Defer{ dns_func_sig.out->Release(); };
+        VARIANT ret_val;
+        VariantInit(&ret_val);
+        Defer{ VariantClear(&ret_val); };
+        if (SUCCEEDED(dns_func_sig.out->Get(L"ReturnValue", 0, &ret_val, NULL, 0)))
+        {
+            if (ret_val.vt == VT_I4)
+            {
+                i32 status = ret_val.intVal;
+                DebugPrint("WMI SetDNSServerSearchOrder Result Code: %i", status);
+
+                // 0 = Success, 1 = Success (Reboot required)
+                switch (status)
+                {
+                case 0: break;
+                case 1: DebugPrint("SetDNSServerSearchOrder suceeded but system needst to reboot"); break;
+                case 84: DebugPrint("Error: SetDNSServerSearchOrder failed with %i: 'IP not enabled on adapter.'", status); return false;
+                default:
+                {
+                    DebugPrint("Error: WMI rejected the DNS change. (See MS documentation for code %i)", status);
+                    VariantClear(&ret_val);
+                    dns_func_sig.out->Release();
+                    FAIL;
+                    return false;
+                }
+                }
+            }
+        }
+    }
+    return true;
 }
 
 bool OSHasAdminPrivledge()
@@ -853,7 +1260,7 @@ bool OSGetDirectoryFromUser(const std::wstring& currentDir, std::wstring& dir)
         .lParam = (LPARAM)baseDir.c_str(), //NULL,
         .iImage = imageIndex,
     };
-    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    CoInitializer co_initializer;
     PIDLIST_ABSOLUTE pidl = SHBrowseForFolder(&info);
     if (pidl == NULL)
         return false;
@@ -932,6 +1339,8 @@ void OSConvertWideCharToMultiByte(std::string& out, const std::wstring& in)
     );
     ASSERT(multibyte_char_actual > 0);
     ASSERT(multibyte_char_actual == multibyte_char_count);
+    if (out.size() && out.back() == '\0')
+        out.pop_back();
 }
 
 void OSExpandEnvironemntVariable(std::wstring& out, const std::wstring& in)

@@ -124,5 +124,57 @@
     </Expand>
   </Type>
 
+  <Type Name="SysIP4">
+    <DisplayString> ({(unsigned int)a,u}.{(unsigned int)b,u}.{(unsigned int)c,u}.{(unsigned int)d,u}) </DisplayString>
+  </Type>
+
+  <Type Name="SysIP4Subnet">
+    <!--==============  This is stupid but it works  ===============-->
+    <DisplayString Condition="mask == 0xFFFFFFFF">(/32)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFFFE">(/31)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFFFC">(/30)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFFF8">(/29)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFFF0">(/28)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFFE0">(/27)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFFC0">(/26)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFF80">(/25)</DisplayString>
+    <!--============================================================-->
+    <DisplayString Condition="mask == 0xFFFFFF00">(/24)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFE00">(/23)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFFC00">(/22)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFF800">(/21)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFF000">(/20)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFE000">(/19)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFFC000">(/18)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFF8000">(/17)</DisplayString>
+    <!--============================================================-->
+    <DisplayString Condition="mask == 0xFFFF0000">(/16)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFE0000">(/15)</DisplayString>
+    <DisplayString Condition="mask == 0xFFFC0000">(/14)</DisplayString>
+    <DisplayString Condition="mask == 0xFFF80000">(/13)</DisplayString>
+    <DisplayString Condition="mask == 0xFFF00000">(/12)</DisplayString>
+    <DisplayString Condition="mask == 0xFFE00000">(/11)</DisplayString>
+    <DisplayString Condition="mask == 0xFFC00000">(/10)</DisplayString>
+    <DisplayString Condition="mask == 0xFF800000">(/09)</DisplayString>
+    <!--============================================================-->
+    <DisplayString Condition="mask == 0xFF000000">(/08)</DisplayString>
+    <DisplayString Condition="mask == 0xFE000000">(/07)</DisplayString>
+    <DisplayString Condition="mask == 0xFC000000">(/06)</DisplayString>
+    <DisplayString Condition="mask == 0xF8000000">(/05)</DisplayString>
+    <DisplayString Condition="mask == 0xF0000000">(/04)</DisplayString>
+    <DisplayString Condition="mask == 0xE0000000">(/03)</DisplayString>
+    <DisplayString Condition="mask == 0xC0000000">(/02)</DisplayString>
+    <DisplayString Condition="mask == 0x80000000">(/01)</DisplayString>
+    <DisplayString Condition="mask == 0x00000000">(/00)</DisplayString>
+  </Type>
+
+  <Type Name="SysIP6">
+<DisplayString> {a,x}:{b,x}:{c,x}:{d,x}:{e,x}:{f,x}:{g,x}:{h,x} </DisplayString>
+  </Type>
+
+  <Type Name="SysIP6Subnet">
+    <DisplayString> (/{mask[0],b} {mask[1],b}) </DisplayString>
+  </Type>
+
 </AutoVisualizer>
 

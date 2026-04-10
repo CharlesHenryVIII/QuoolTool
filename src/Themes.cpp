@@ -3,6 +3,7 @@
 
 Theme g_ThemeColorOptions[ThemeColor_Count] = {};
 Theme g_ThemeStyleOptions[ThemeStyle_Count] = {};
+ThemeSettings g_theme_settings = {};
 
 /*********************
  *
@@ -491,6 +492,9 @@ void ThemesInit()
     STYLING(Basic);
     STYLING(SimpleRounding);
     STYLING(Grey);
+
+    ThemeSetColor(g_theme_settings.color);
+    ThemeSetStyle(g_theme_settings.style);
 }
 
 void ThemeSetColor(i32 color)

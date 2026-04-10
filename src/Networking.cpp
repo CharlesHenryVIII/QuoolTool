@@ -25,6 +25,7 @@ Version g_online_version = {};
 Atomic<AsyncStatus> g_version_state;
 Atomic<AsyncStatus> g_download_state;
 Atomic<float> g_download_update_progress = 0;
+NetworkSettings g_network_settings;
 
 std::string GetUrlFromVersion(Version v)
 {
@@ -194,7 +195,7 @@ void GetOnlineVersionJob::RunJob()
     curl_easy_cleanup(curl);
 
     std::string tag;
-    auto json = Json::parse(response);
+    Json json = Json::parse(response);
     if (!JsonSafeGet(tag, &json, "tag_name"))
     {
         DebugPrint("Error: failed to get tag_name, url: %s", s_network.url.c_str());
@@ -218,11 +219,12 @@ void GetOnlineVersionJob::RunJob()
 }
 
 struct MainAdapterInfo {
-    std::string name;
     std::string desc;
-    NetAdapterConfig config;
+    std::string guid;
+    SysNetAdapterConfig config;
 };
-static std::vector<MainAdapterInfo> s_current_adapters;
+static std::vector<SysNetAdapterConfig> s_current_adapter_configs;
+static std::vector<MainAdapterInfo> s_modified_adapters;
 
 void UpdateNetworkAdaptersInfo(NetworkData* nd)
 {
@@ -232,20 +234,32 @@ void UpdateNetworkAdaptersInfo(NetworkData* nd)
     {
         nd->adapters.state = SysGetNetworkAdapters(nd->adapters.data) ? AsyncStatus_FetchedSuccess : AsyncStatus_FetchedFailed;
     }
+    s_current_adapter_configs.clear();
+    s_modified_adapters.clear();
     for (i32 i = 0; i < nd->adapters.data.size(); i++)
     {
         const SysNetworkAdapterInfo& a = nd->adapters.data[i];
         MainAdapterInfo c;
-        ASSERT(a.ipv4_ips.size() == 1);
-        SysConvertWideCharToMultiByte(c.name, a.friendly_name);
+        if (a.ipv4_ips.size() > 1)
+        {
+            DebugPrint("Warning: Network adapter '%s' has multiple IPv4 addresses:");
+            for (const auto& ip : a.ipv4_ips)
+            {
+                DebugPrint("    %s", ip.ip.ToString().c_str());
+            }
+            DebugPrint("    Selecting: '%s'", a.ipv4_ips.back().ip.ToString().c_str());
+        }
+        SysConvertWideCharToMultiByte(c.config.name, a.friendly_name);
         SysConvertWideCharToMultiByte(c.desc, a.description);
-        c.config.ip = a.ipv4_ips[0];
+        c.guid = a.name;
+        c.config.ip = a.ipv4_ips.back();
         c.config.gateway = a.ipv4_gateways.size() > 0 ? a.ipv4_gateways[0] : SysIP4();
-        c.config.dns1 = a.ipv4_dns.size() > 0 ? a.ipv4_dns[0] : SysIP4();
-        c.config.dns2 = a.ipv4_dns.size() > 1 ? a.ipv4_dns[1] : SysIP4();
+        for (i32 i = 0; i < a.ipv4_dns.size() && i < SYS_NET_CONFIG_MAX_DNS; i++)
+            c.config.dns[i] = a.ipv4_dns.size() > 0 ? a.ipv4_dns[i] : SysIP4();
         c.config.dhcp_enabled = a.dhcpv4_enabled;
         c.config.ddns_enabled = a.ddns_enabled;
-        s_current_adapters.push_back(c);
+        s_modified_adapters.push_back(c);
+        s_current_adapter_configs.push_back(c.config);
     }
 }
 
@@ -254,6 +268,7 @@ void NetworkingInit(NetworkData** nd)
     ZoneScopedN("Networking Init");
     VALIDATE(nd && !(*nd));
     *nd = new NetworkData();
+    VALIDATE(*nd);
 #if _DEBUG
     double start = SysGetTime();
 #endif
@@ -269,6 +284,40 @@ void NetworkingInit(NetworkData** nd)
     DebugPrint("Time to get response: %fms", total_time);
     i32 test = 1;
 #endif
+
+    {
+        SysNetAdapterConfig c = {
+            .name = "First Test",
+            .ip = {.ip = { 192, 168, 0, 4}, .subnet = 24 },
+            .gateway = { 192, 168, 0, 1},
+            .dns = { { 1, 1, 1, 1}, { 1, 0, 0, 1} },
+            .dhcp_enabled = false,
+            .ddns_enabled = false,
+        };
+        g_network_settings.configs.push_back(c);
+    }
+    {
+        SysNetAdapterConfig c = {
+            .name = "Second Test",
+            .ip = {.ip = { 10, 10, 10, 45}, .subnet = 16 },
+            .gateway = { 10, 10, 10, 1},
+            .dns = { },
+            .dhcp_enabled = false,
+            .ddns_enabled = true,
+        };
+        g_network_settings.configs.push_back(c);
+    }
+    {
+        SysNetAdapterConfig c = {
+            .name = "DHCP + DDNS",
+            .ip = { },
+            .gateway = {},
+            .dns = { },
+            .dhcp_enabled = true,
+            .ddns_enabled = true,
+        };
+        g_network_settings.configs.push_back(c);
+    }
 }
 void NetworkingDestroy(NetworkData** network_data)
 {
@@ -276,8 +325,28 @@ void NetworkingDestroy(NetworkData** network_data)
     delete (*network_data);
 }
 
-void NetworkImGui(NetworkData& data)
+bool NetAdapterConfigsMatchIPs(const SysNetAdapterConfig& a, const SysNetAdapterConfig& b)
 {
+    ZoneScoped;
+    bool r = true;
+    r &= a.ip.ip.addr == b.ip.ip.addr;
+    r &= a.ip.subnet.mask == b.ip.subnet.mask;
+    r &= a.gateway.addr == b.gateway.addr;
+    r &= a.dhcp_enabled == b.dhcp_enabled;
+    return r;
+}
+bool NetAdapterConfigsMatchDNS(const SysNetAdapterConfig& a, const SysNetAdapterConfig& b)
+{
+    bool r = true;
+    r &= a.ddns_enabled == b.ddns_enabled;
+    for (i32 i = 0; i < SYS_NET_CONFIG_MAX_DNS; i++)
+        r &= a.dns[i].addr == b.dns[i].addr;
+    return r;
+}
+
+void NetworkImgui(NetworkData& data)
+{
+    ZoneScoped;
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     Threading& threading = Threading::GetInstance();
     ImGuiWindowFlags section_flags =
@@ -293,15 +362,17 @@ void NetworkImGui(NetworkData& data)
         ZoneScopedN(ADAPTERS_TITLE);
         ImguiTextCentered(ADAPTERS_TITLE);
         ImGui::NewLine();
+        if (!data.is_admin)
+            ImguiTextCentered("WARNING!:  Must be ran as admin for this feature!", &Yellow);
 
         std::error_code ec;
-        ImGui::BeginDisabled(data.is_admin);
+        ImGui::BeginDisabled(!data.is_admin);
         float height = 40;
         const ImVec2 adapter_child_size(300.0f, 300.0f);
         const float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-        for (i32 i = 0; i < s_current_adapters.size(); i++)
+        for (i32 i = 0; i < s_modified_adapters.size(); i++)
         {
-            MainAdapterInfo& a = s_current_adapters[i];
+            MainAdapterInfo& a = s_modified_adapters[i];
             ImGui::PushID(i);
             //ImGui::BeginDisabled(FlagIntersects(s.completed, AsyncStatus_Completed));
             if (ImGui::BeginChild("##AdapterChild", adapter_child_size, true, section_flags))
@@ -318,14 +389,18 @@ void NetworkImGui(NetworkData& data)
                 //Preferred DNS Server:
                 //Alternate DNS Server:
                 //*********************
-                ImguiTextCentered(a.name);
+                SysNetAdapterConfig& c = a.config;
+                ImguiTextCentered(c.name);
                 ImGui::Separator();
                 ImGui::PushFont(g_data.fonts[FontIndex_Small]);
                 ImguiTextCentered(a.desc);
                 ImGui::PopFont();
-                NetAdapterConfig& c = a.config;
 
-                ImGui::Checkbox("DHCP Enabled", &c.dhcp_enabled);
+                if (ImGui::Checkbox("DHCP Enabled", &c.dhcp_enabled))
+                {
+                    if (!c.dhcp_enabled)
+                        c.ddns_enabled = false;
+                }
                 ImGui::BeginDisabled(c.dhcp_enabled);
                 ImGui::PushID("ipv4_ips");
                 ImguiEdit(&c.ip);
@@ -339,17 +414,19 @@ void NetworkImGui(NetworkData& data)
                 ImGui::EndDisabled();
 
 
+                ImGui::BeginDisabled(!c.dhcp_enabled);
                 ImGui::Checkbox("Dynamic DNS Enabled", &c.ddns_enabled);
+                ImGui::EndDisabled();
                 ImGui::BeginDisabled(c.ddns_enabled);
                 ImGui::PushID("ipv4_dns1");
                 ImGui::Text("DNS 1:");
                 ImGui::SameLine();
-                ImguiEdit(&c.dns1, true);
+                ImguiEdit(&c.dns[0], true);
                 ImGui::PopID();
                 ImGui::PushID("ipv4_dns2");
                 ImGui::Text("DNS 2:");
                 ImGui::SameLine();
-                ImguiEdit(&c.dns2, true);
+                ImguiEdit(&c.dns[1], true);
                 ImGui::PopID();
                 ImGui::EndDisabled();
             }
@@ -359,10 +436,24 @@ void NetworkImGui(NetworkData& data)
             //    
             //}
             //ImGui::SameLine();
+
+            const bool ips_match = NetAdapterConfigsMatchIPs(a.config, s_current_adapter_configs[i]);
+            const bool dns_match = NetAdapterConfigsMatchDNS(a.config, s_current_adapter_configs[i]);
+            ImGui::BeginDisabled(ips_match && dns_match);
             if (ImGui::Button("Apply"))
             {
-                
+                if (!ips_match)
+                {
+                    SysSetNetAdapterIP(a.guid, a.config, s_current_adapter_configs[i]);
+                    UpdateNetworkAdaptersInfo(&data);
+                }
+                if (!dns_match)
+                {
+                    SysSetNetAdapterDNS(a.guid, a.config, s_current_adapter_configs[i]);
+                    UpdateNetworkAdaptersInfo(&data);
+                }
             }
+            ImGui::EndDisabled();
 			ImGui::SameLine();
             if (ImGui::Button("Create Config"))
             {

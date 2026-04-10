@@ -1230,32 +1230,22 @@ void ScriptNetwork(ScriptData& data)
         {
             const SysIP4AndSubnet& ips = net.ipv4_ips[i];
             std::string ip_key_name = ToString("IPv4 #%i", i + 1);
-            std::string ip_str;
-            ips.ip.ToString(ip_str);
-            WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, ip_key_name, ip_str, column_widths);
+            WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, ip_key_name, ips.ip.ToString(), column_widths);
             std::string sub_key_name = ToString("IPv4 Subnet #%i", i + 1);
-            std::string sub_str;
-            ips.subnet.ToString(sub_str);
-            WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, sub_key_name, sub_str, column_widths);
+            WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, sub_key_name, ips.subnet.ToString(), column_widths);
         }
         for (i32 i = 0; i < net.ipv4_gateways.size(); i++)
         {
-            std::string gateway;
-            net.ipv4_gateways[i].ToString(gateway);
             std::string key_name = ToString("IPv4 Gateway #%i", i + 1);
-            WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, key_name, gateway, column_widths);
+            WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, key_name, net.ipv4_gateways[i].ToString(), column_widths);
         }
         for (i32 i = 0; i < net.ipv4_dns.size(); i++)
         {
-            std::string dns;
-            net.ipv4_dns[i].ToString(dns);
             std::string key_name = ToString("IPv4 DNS #%i", i + 1);
-            WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, key_name, dns, column_widths);
+            WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, key_name, net.ipv4_dns[i].ToString(), column_widths);
         }
         WriteKeyValueBoolXlsx(sheet, key_left_format, val_right_format, row_i, "DHCPv4", net.dhcpv4_enabled, column_widths);
-        std::string ipv4_dhcp;
-        net.ipv4_dhcp.ToString(ipv4_dhcp);
-        WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, "IPv4 DHCP", ipv4_dhcp, column_widths);
+        WriteKeyValueStringXlsx(sheet, key_left_format, val_right_format, row_i, "IPv4 DHCP", net.ipv4_dhcp.ToString(), column_widths);
         WriteKeyValueNumberXlsx(sheet, key_bot_left_format, val_bot_right_format, row_i, "IPv4 Metric", (double)net.ipv4_metric, column_widths);
 
 
@@ -1267,31 +1257,21 @@ void ScriptNetwork(ScriptData& data)
         {
             const SysIP6AndSubnet& ips = net.ipv6_ips[i];
             std::string ip_key_name = ToString("IPv6 #%i", i + 1);
-            std::string ip_str;
-            ips.ip.ToString(ip_str);
-            WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, ip_key_name, ip_str, column_widths);
+            WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, ip_key_name, ips.ip.ToString(), column_widths);
             std::string sub_key_name = ToString("IPv6 Subnet #%i", i + 1);
-            std::string sub_str;
-            ips.subnet.ToString(sub_str);
-            WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, sub_key_name, sub_str, column_widths);
+            WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, sub_key_name, ips.subnet.ToString(), column_widths);
         }
         for (i32 i = 0; i < net.ipv6_gateways.size(); i++)
         {
-            std::string gateway;
-            net.ipv6_gateways[i].ToString(gateway);
             std::string key_name = ToString("IPv6 Gateway #%i", i + 1);
-            WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, key_name, gateway, column_widths);
+            WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, key_name, net.ipv6_gateways[i].ToString(), column_widths);
         }
         for (i32 i = 0; i < net.ipv6_dns.size(); i++)
         {
-            std::string dns;
-            net.ipv6_dns[i].ToString(dns);
             std::string key_name = ToString("IPv6 DNS #%i", i + 1);
-            WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, key_name, dns, column_widths);
+            WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, key_name, net.ipv6_dns[i].ToString(), column_widths);
         }
-        std::string ipv6_dhcp;
-        net.ipv6_dhcp.ToString(ipv6_dhcp);
-        WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, "IPv6 DHCP", ipv6_dhcp, column_widths);
+        WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, "IPv6 DHCP", net.ipv6_dhcp.ToString(), column_widths);
         WORKSHEET_WRITE_KEY_VAL_NUMBER(net, ipv6_metric);
 
         WORKSHEET_WRITE_KEY_VAL_BOOL(net, ddns_enabled);
@@ -1391,8 +1371,7 @@ void DataCollectionImGui(DataCollectionData& td)
             Defer{ td.lock.unlock(); };
             ImGui::BeginDisabled(!locked);
             ImGui::BeginGroup();
-            if (ImguiPath("Output Folder", "Please select the folder to output data to", td.output_path))
-                WriteSettings(&g_data.settings, g_settings_filename);
+            ImguiPath("Output Folder", "Please select the folder to output data to", td.output_path);
             ImGui::EndGroup();
             ImGui::EndDisabled();
         }

@@ -56,7 +56,8 @@ union SysIP4 {
     SysIP4() = default;
     SysIP4(u8 v) : a(v), b(v), c(v), d(v) {};
     SysIP4(u8 _a, u8 _b, u8 _c, u8 _d) : a(_a), b(_b), c(_c), d(_d) {};
-    void ToString(std::string& out) const;
+    std::string ToString() const;
+    void FromString(const std::string& in);
     bool IsValid() const
     {
         return (addr != 0);
@@ -71,7 +72,7 @@ union SysIP6 {
     SysIP6() = default;
     SysIP6(u16 v) : a(v), b(v), c(v), d(v), e(v), f(v), g(v), h(v) {};
     SysIP6(u8 _a, u8 _b, u8 _c, u8 _d, u8 _e, u8 _f, u8 _g, u8 _h) : a(_a), b(_b), c(_c), d(_d), e(_e), f(_f), g(_g), h(_h) {};
-    void ToString(std::string& out) const;
+    std::string ToString() const;
     bool IsValid() const
     {
         return (addr[0] != 0 || addr[1] != 0);
@@ -87,25 +88,25 @@ struct SysIP4Subnet
     {
         mask = (length == 0) ? 0 : (~0UL << (32 - length));
     }
-    void ToString(std::string& out) const
+    std::string ToString() const
     {
-        out.clear();
+        std::string r;
         //"-1" to remove null terminator
-        SysIP4 ip = ToIP4();
-        std::string ips;
-        ip.ToString(ips);
-        out = ::ToString("%s (/%i)", ips.c_str(), GetLength());
+        const SysIP4 ip = ToIP4();
+        const std::string ips = ip.ToString();
+        r = ::ToString("%s (/%i)", ips.c_str(), GetLength());
+        return r;
+    }
+    void FromIP(const SysIP4 ip);
+    void FromString(const std::string& in)
+    {
+        SysIP4 ip;
+        ip.FromString(in);
+        FromIP(ip);
     }
     i32 GetLength() const
     {
-        i32 zerobits = 0;
-        u32 m = mask;
-        while ((m & 0x1) == 0)
-        {
-            m = m >> 1;
-            zerobits++;
-        }
-        return ((sizeof(mask) * 8) - zerobits);
+        return std::countl_one(mask);
     }
     bool IsValid() const
     {
@@ -132,14 +133,14 @@ struct SysIP6Subnet
         }
         i32 test = 1;
     }
-    void ToString(std::string& out) const
+    std::string ToString() const
     {
-        out.clear();
+        std::string r;
         //"-1" to remove null terminator
         SysIP6 ip = ToIP6();
-        std::string ips;
-        ip.ToString(ips);
-        out = ::ToString("%s (/%i)", ips.c_str(), GetLength());
+        const std::string ips = ip.ToString();
+        r = ::ToString("%s (/%i)", ips.c_str(), GetLength());
+        return r;
     }
     i32 GetLength() const
     {
@@ -192,6 +193,16 @@ struct SysMacAddress {
     }
 };
 
+#define SYS_NET_CONFIG_MAX_DNS 2
+struct SysNetAdapterConfig {
+    std::string name;
+    SysIP4AndSubnet ip;
+    SysIP4 gateway;
+    SysIP4 dns[SYS_NET_CONFIG_MAX_DNS];
+    bool dhcp_enabled; //DHCP Enabled
+    bool ddns_enabled; //Dynamic DNS Enabled
+};
+
 struct SysNetworkAdapterInfo
 {
     std::string name;
@@ -209,6 +220,7 @@ struct SysNetworkAdapterInfo
     std::vector<SysIP4>          ipv4_gateways;
     std::vector<SysIP6>          ipv6_gateways;
 
+    i32 index;
     u32 ipv4_metric;
     u32 ipv6_metric;
     bool ipv4_enabled;
@@ -242,6 +254,8 @@ i32 SysRunProcess(const std::string&  path, const std::string&  args, AsyncData<
 i32 SysRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<std::string>* output = nullptr, AsyncData<Path>* output_file = nullptr, RunProcessFlags flags = RunProcess_None);
 bool SysGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters);
 bool SysHasAdminPrivledge();
+bool SysSetNetAdapterIP(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter);
+bool SysSetNetAdapterDNS(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter);
 
 void SysSleep(u64 ms);
 double SysGetTime();

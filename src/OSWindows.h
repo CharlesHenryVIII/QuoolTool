@@ -22,8 +22,8 @@ void* OSGetWindowHandle(SDL_Window* window);
 
 bool OSHasAdminPrivledge();
 bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters);
-void OSNetAdapterSetIP(const std::string& adapter_name, const SysIP4AndSubnet& ip);
-void OSNetAdapterSetDNSServers(const std::string& adapter_name, const SysIP4& ip);
+bool OSSetNetAdapterIP(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter);
+bool OSSetNetAdapterDNS(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter);
 
 bool OSIsConsoleAttached();
 bool OSIsDebuggerAttached();

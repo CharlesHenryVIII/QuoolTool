@@ -109,6 +109,7 @@ project "QuoolTool"
         "SDL3-lib",
         "iphlpapi",
         "ws2_32",
+        "wbemuuid",
     }
 
     includedirs {
@@ -225,6 +226,7 @@ project "contrib"
         "libarchive",
         "curl-lib",
         "zlib",
+        "wbemuuid",
     }
 
     warnings ("Default");

@@ -84,6 +84,7 @@ i32 SysMain(i32 argc, char** argv)
     HideConsole();
 #endif
 
+    ReadSettings();
     if (!RenderInit())
     {
         return 1;
@@ -101,29 +102,10 @@ i32 SysMain(i32 argc, char** argv)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
     ThemesInit();
-    ThemeSetColor(g_data.settings.color);
-    ThemeSetStyle(g_data.settings.style);
+    ThemeSetColor(g_theme_settings.color);
+    ThemeSetStyle(g_theme_settings.style);
 
 
-#if _DEBUG
-    {
-        std::ifstream file(g_settings_filename);
-        bool file_exists = file.good();
-        file.close();
-        if (file_exists)
-        {
-            ReadSettings(&g_data.settings, g_settings_filename);
-            ThemeSetColor(g_data.settings.color);
-            ThemeSetStyle(g_data.settings.style);
-        }
-        else
-        {
-            WriteSettings(&g_data.settings, g_settings_filename);
-            ThemeSetColor(g_data.settings.color);
-            ThemeSetStyle(g_data.settings.style);
-        }
-    }
-#endif
 
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.

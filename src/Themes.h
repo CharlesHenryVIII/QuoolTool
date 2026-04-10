@@ -6,7 +6,6 @@ struct Theme {
     void (*function)(void);
 };
 
-
 enum ThemeColor : i32 {
     ThemeColor_DefaultDark,
     ThemeColor_DefaultLight,
@@ -28,6 +27,12 @@ enum ThemeStyle : i32 {
     ThemeStyle_Count,
 };
 
+
+struct ThemeSettings {
+    ThemeColor color = ThemeColor_Quantum;
+    ThemeStyle style = ThemeStyle_SimpleRounding;
+};
+extern ThemeSettings g_theme_settings;
 
 extern Theme g_ThemeColorOptions[ThemeColor_Count];
 extern Theme g_ThemeStyleOptions[ThemeStyle_Count];

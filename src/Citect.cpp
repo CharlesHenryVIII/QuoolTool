@@ -188,14 +188,10 @@ void CitectImGui(CitectData& cd)
             Defer{ cd.lock.unlock(); };
             ImGui::BeginDisabled(!locked);
             ImGui::BeginGroup();
-            if (ImguiPath("Backup Folder", "Please select removable media folder to backup to", cd.backup_path))
-                WriteSettings(&g_data.settings, g_settings_filename);
-            if (ImguiPath("Program Folder", "%PROGRAMDATA%/AVEVA/Citect SCADA 2018 R2", cd.program_files_path))
-                WriteSettings(&g_data.settings, g_settings_filename);
-            if (ImguiPath("Project Folder", "%PROGRAMDATA%/AVEVA Plant SCADA/User/<project>", cd.project_path))
-                WriteSettings(&g_data.settings, g_settings_filename);
-            if (ImguiPath("Program Files (x86)", "%PROGRAMDATA%/AVEVA/Citect SCADA", cd.program_files_86))
-                WriteSettings(&g_data.settings, g_settings_filename);
+            ImguiPath("Backup Folder", "Please select removable media folder to backup to", cd.backup_path);
+            ImguiPath("Program Folder", "%PROGRAMDATA%/AVEVA/Citect SCADA 2018 R2", cd.program_files_path);
+            ImguiPath("Project Folder", "%PROGRAMDATA%/AVEVA Plant SCADA/User/<project>", cd.project_path);
+            ImguiPath("Program Files (x86)", "%PROGRAMDATA%/AVEVA/Citect SCADA", cd.program_files_86);
             ImGui::EndGroup();
 
             ImVec2 size = ImGui::GetItemRectSize();
@@ -246,7 +242,6 @@ void CitectImGui(CitectData& cd)
                 {
                     cd.program_files_path = found_path.wstring();
                     cd.project_path = cd.program_files_path / L"User" / L"UNKNOWN";
-                    WriteSettings(&g_data.settings, g_settings_filename);
                 }
                 else
                 {

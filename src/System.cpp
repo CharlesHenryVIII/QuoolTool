@@ -118,6 +118,7 @@ i32 SysRunProcess(const std::wstring& path, const std::wstring& args, AsyncData<
 
 bool SysGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& out_adapters)
 {
+    ZoneScoped;
     return OSGetNetworkAdapters(out_adapters);
 }
 bool SysHasAdminPrivledge()
@@ -126,8 +127,20 @@ bool SysHasAdminPrivledge()
     return OSHasAdminPrivledge();
 }
 
+bool SysSetNetAdapterIP(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter)
+{
+    ZoneScoped;
+    return OSSetNetAdapterIP(adapter_guid, adapter, src_adapter);
+}
+bool SysSetNetAdapterDNS(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter)
+{
+    ZoneScoped;
+    return OSSetNetAdapterDNS(adapter_guid, adapter, src_adapter);
+}
+
 void SysSleep(u64 _ms)
 {
+    ZoneScoped;
     std::this_thread::sleep_for(std::chrono::milliseconds(_ms));
 }
 
@@ -140,6 +153,7 @@ double SysGetTime()
 }
 float SysMonitorScale()
 {
+    ZoneScoped;
     const static float scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     return scale;
 }

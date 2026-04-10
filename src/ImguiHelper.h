@@ -11,7 +11,7 @@ void ImguiProcessEvent(const SDL_Event* event);
 void ImguiNewFrame();
 
 void ImguiMain(AppData& data);
-void ImguiTextCentered(const std::string& text);
+void ImguiTextCentered(const std::string& text, const Color* color = nullptr);
 bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& out_path, const bool add_final_slash);
 bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path);
 void ImguiText(const std::wstring& ws);
@@ -36,9 +36,13 @@ bool ImguiEdit(SysIP4AndSubnet* a);
 //bool ImguiEdit(SysIP6AndSubnet* a);
 //bool ImguiView(SysMacAddress* a);
 
-[[nodiscard]] inline ImVec2 HadamardProduct(const ImVec2& a, const ImVec2& b)
+MATH_PREFIX ImVec2 HadamardProduct(const ImVec2& a, const ImVec2& b)
 {
     return { a.x * b.x, a.y * b.y };
 }
 
-extern const wchar_t* g_settings_filename;
+MATH_PREFIX ImVec4 ToImguiColor(Color c)
+{
+    ImVec4 r = *((ImVec4*)&c);
+    return r;
+}
