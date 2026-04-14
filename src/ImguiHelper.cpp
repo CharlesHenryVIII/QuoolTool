@@ -479,7 +479,12 @@ bool ImguiEdit(SysIP4* a, bool align_right)
 bool ImguiEdit(SysIP4Subnet* a)
 {
     SysIP4 ip = a->ToIP4();
-    return ImguiEdit(&ip, true);
+    bool edited = ImguiEdit(&ip, true);
+    if (edited)
+    {
+        a->FromIP(ip);
+    }
+    return edited;
 }
 bool ImguiEdit(SysIP4AndSubnet* a)
 {

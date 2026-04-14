@@ -44,6 +44,20 @@ std::string SysIP4::ToString() const
     }
     return r;
 }
+std::wstring SysIP4::ToWString() const
+{
+    std::wstring r = {};
+    if (!IsValid())
+        return r;
+    //"-1" to remove the length of null terminator
+    r.resize(INET_ADDRSTRLEN - 1);
+    if (InetNtopW(AF_INET, (IN_ADDR*)(&addr), r.data(), r.size()) == NULL)
+    {
+        DebugPrint("Error: Failed to convert IPv4 to string: {%i}", addr);
+        FAIL;
+    }
+    return r;
+}
 void SysIP4::FromString(const std::string& in)
 {
     if (in.size() == 0)
@@ -676,33 +690,6 @@ bool OSGetNetworkAdapters(std::vector<SysNetworkAdapterInfo>& adapters)
     return true;
 }
 
-IWbemServices* ConnectToWMI()
-{
-    IWbemLocator* locator = NULL;
-    if (FAILED(CoCreateInstance(CLSID_WbemLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&locator)))
-    {
-        DebugPrint("Error: Failed to create instance for WbemLocator");
-        FAIL;
-        return NULL;
-    }
-    Defer{ locator->Release(); };
-    IWbemServices* service = NULL;
-    if (FAILED(locator->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL, NULL, NULL, NULL, &service)))
-    {
-        DebugPrint("Error: Failed to ConnectServer() with locator");
-        FAIL;
-        return NULL;
-    }
-    if (FAILED(CoSetProxyBlanket(service, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE)))
-    {
-        DebugPrint("Error: Failed to CoSetProxyBlanket()");
-        FAIL;
-        service->Release();
-        return NULL;
-    }
-    return service;
-}
-
 // Creates a COM SafeArray containing a single string
 VARIANT CreateSafeArray(const std::string& str)
 {
@@ -745,52 +732,253 @@ VARIANT CreateSafeArray(const ArrayView<std::string>& strings)
     return var;
 }
 
-i32 GetAdapterIndexByGuid(IWbemServices* service, const std::string& adapter_guid)
+struct WMIClassObject
 {
-    std::string query = ToString("SELECT Index FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '%hs'", adapter_guid.c_str());
-    IEnumWbemClassObject* enumerator = NULL;
-
-    if (FAILED(service->ExecQuery(_bstr_t(L"WQL"), _bstr_t(query.c_str()), WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &enumerator)))
+    IWbemClassObject* obj = nullptr;
+    ~WMIClassObject()
     {
-        DebugPrint("Error: Failed to find adapter for guid: %hs", adapter_guid.c_str());
-        FAIL;
-        return -1;
+        Clear();
+    }
+    bool IsValid() const { return !!obj; }
+    void Clear()
+    {
+        obj->Release();
+        obj = nullptr;
+    }
+};
+
+struct WMIServices
+{
+    IWbemServices* services = nullptr;
+    IWbemLocator* locator = nullptr;
+    WMIServices()
+    {
+        if (FAILED(CoCreateInstance(CLSID_WbemLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&locator)))
+        {
+            DebugPrint("Error: Failed to create instance for WbemLocator");
+            FAIL;
+            return;
+        }
+        if (FAILED(locator->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL, NULL, NULL, NULL, &services)))
+        {
+            DebugPrint("Error: Failed to ConnectServer() with locator");
+            FAIL;
+            Clear();
+            return;
+        }
+        if (FAILED(CoSetProxyBlanket(services, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE)))
+        {
+            DebugPrint("Error: Failed to CoSetProxyBlanket()");
+            FAIL;
+            Clear();
+            return;
+        }
     }
 
-    IWbemClassObject* adapter = NULL;
-    ULONG return_val = 0;
-    i32 index = -1;
-
-    if (SUCCEEDED(enumerator->Next(WBEM_INFINITE, 1, &adapter, &return_val)) && return_val != 0)
+    void Clear()
     {
+        locator->Release();
+        services->Release();
+        services = nullptr;
+    }
+    bool IsValid() const
+    {
+        return !!locator && !!services;
+    }
+    ~WMIServices()
+    {
+        Clear();
+    }
+
+    i32 GetAdapterIndexByGuid(const std::string& adapter_guid)
+    {
+        const std::string query = ToString("SELECT Index FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '%hs'", adapter_guid.c_str());
+        IEnumWbemClassObject* enumerator = nullptr;
+        if (FAILED(services->ExecQuery(_bstr_t(L"WQL"), _bstr_t(query.c_str()), WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &enumerator)))
+        {
+            DebugPrint("Error: Failed to find adapter for guid: %hs", adapter_guid.c_str());
+            FAIL;
+            return -1;
+        }
+        Defer{ enumerator->Release(); };
+        IWbemClassObject* adapter = NULL;
+        ULONG return_val = 0;
+        i32 index = -1;
+        if (FAILED(enumerator->Next(WBEM_INFINITE, 1, &adapter, &return_val)) || return_val == 0)
+        {
+            DebugPrint("Error: enumerator->Next(WBEM_INFINITE, 1, &adapter, &return_val)) failed: return: %i", return_val);
+            return -1;
+            FAIL;
+        }
         VARIANT var;
         adapter->Get(L"Index", 0, &var, 0, 0);
         index = var.intVal;
         VariantClear(&var);
         adapter->Release();
+        return index;
     }
-    enumerator->Release();
-    return index;
+
+    WMIClassObject GetClassObject(const _bstr_t* class_object_path_bstr, const char* class_object_path_str)
+    {
+        WMIClassObject class_object = {};
+        if (FAILED(services->GetObjectW(*class_object_path_bstr, 0, NULL, &class_object.obj, NULL)))
+        {
+            DebugPrint("Error: GetObjectW() failed to get %s: %i", class_object_path_str, GetLastError());
+            ASSERT(!class_object.IsValid());
+            FAIL;
+        }
+        return class_object;
+    }
+    WMIClassObject GetClassObject(const char* object_str)
+    {
+        _bstr_t object_bstr(object_str);
+        return GetClassObject(&object_bstr, object_str);
+    }
+};
+
+template <typename T>
+void SafeRelease(T*& unknown)
+{
+    if (unknown)
+    {
+        unknown->Release();
+        unknown = nullptr;
+    }
 }
 
-struct ClassFuncSig
+struct WinFunc
 {
-    IWbemClassObject* in = nullptr;
-    IWbemClassObject* out = nullptr;
-};
-ClassFuncSig GetClassFunctionSignature(IWbemClassObject* class_obj, const wchar_t* name)
-{
-    VALIDATE_V(class_obj, {});
-    VALIDATE_V(name, {});
-    ClassFuncSig r;
-    if (FAILED(class_obj->GetMethod(name, 0, &r.in, &r.out)))
+    WMIServices* services;
+    std::string  func_name;
+    std::wstring func_namew;
+    std::string inst_object_path;
+    _bstr_t     inst_object_path_bstr;
+    std::string class_object_path;
+    _bstr_t     class_object_path_bstr;
+    IWbemClassObject* args_in = nullptr;
+    IWbemClassObject* args_out = nullptr;
+    IWbemClassObject* args_inst_in = nullptr;
+    std::vector<VARIANT> input_params;
+    bool is_valid = false;
+
+    WinFunc(WMIServices* in_services, const std::wstring& w_str_inst_object_path, const std::wstring& w_str_class_object_path, const wchar_t* function_name) :
+        inst_object_path_bstr(w_str_inst_object_path.c_str()),
+        class_object_path_bstr(w_str_class_object_path.c_str()),
+        services(in_services),
+        func_namew(function_name)
     {
-        DebugPrint("Error: GetMethod() failed: %i", GetLastError());
-        FAIL;
-        return {};
+        OSConvertWideCharToMultiByte(inst_object_path,  w_str_inst_object_path);
+        OSConvertWideCharToMultiByte(class_object_path, w_str_class_object_path);
+        OSConvertWideCharToMultiByte(func_name, func_namew);
+
+        WMIClassObject class_object = services->GetClassObject(&class_object_path_bstr, class_object_path.c_str());
+        if (!class_object.IsValid())
+        {
+            FAIL;
+            return;
+        }
+
+        if (FAILED(class_object.obj->GetMethod(func_namew.c_str(), 0, &args_in, &args_out)))
+        {
+            DebugPrint("Error: GetMethod(%s) failed: %i", func_name.c_str(), GetLastError());
+            FAIL;
+            return;
+        }
+
+        if (args_in)
+        {
+            if (FAILED(args_in->SpawnInstance(0, &args_inst_in)))
+            {
+                DebugPrint("Error: SpawnInstance() for in args for %s() failed: %i", func_name.c_str(), GetLastError());
+                FAIL;
+                return;
+            }
+        }
+        is_valid = true;
     }
-    return r;
-}
+
+    bool AddInputParam(const wchar_t* var_name, const char* var_val)
+    {
+        VALIDATE_V(args_inst_in, false);
+        VALIDATE_V(is_valid, false);
+        VALIDATE_V(var_name, false);
+        VALIDATE_V(var_val, false);
+
+        VARIANT v = CreateSafeArray(var_val);
+        return AddInputParam(var_name, &v);
+    }
+    bool AddInputParam(const wchar_t* var_name, VARIANT* var_val)
+    {
+        VALIDATE_V(args_inst_in, false);
+        VALIDATE_V(is_valid, false);
+        VALIDATE_V(var_name, false);
+        VALIDATE_V(var_val, false);
+
+        input_params.push_back(*var_val);
+        VARIANT& v = input_params.back();
+        if (FAILED(args_inst_in->Put(var_name, 0, &v, 0)))
+        {
+            std::string s;
+            OSConvertWideCharToMultiByte(s, var_name);
+            DebugPrint("Error: Put(%s) failed: %i", s.c_str(), GetLastError());
+            FAIL;
+            return false;
+        }
+        return true;
+    }
+    
+
+    bool Execute(i32* return_val = nullptr)
+    {
+        const HRESULT r = services->services->ExecMethod(inst_object_path_bstr, _bstr_t(func_namew.c_str()), 0, NULL, args_inst_in, &args_out, NULL);
+        if (FAILED(r))
+        {
+            DebugPrint("Error: ExecMethod(%s) failed: %i, HRESULT: 0x%X", func_name.c_str(), GetLastError(), r);
+            FAIL;
+            return false;
+        }
+
+        if (args_out)
+        {
+            VARIANT ret_val;
+            VariantInit(&ret_val);
+            if (SUCCEEDED(args_out->Get(L"ReturnValue", 0, &ret_val, NULL, 0)))
+            {
+                switch (ret_val.vt)
+                {
+                case VT_I4:
+                {
+                    i32 status = ret_val.intVal;
+                    DebugPrint("%s() Result Code: %i", func_name.c_str(), status);
+                    if (return_val)
+                        *return_val = status;
+                    break;
+                }
+                default:
+                {
+                    DebugPrint("Warning: Unsupported return value type (%u) for function: %s()", ret_val.vt, func_name.c_str());
+                    FAIL;
+                    break;
+                }
+                }
+            }
+            VariantClear(&ret_val);
+        }
+        return true;
+    }
+
+    ~WinFunc()
+    {
+        SafeRelease(args_in);
+        SafeRelease(args_out);
+        SafeRelease(args_inst_in);
+        for (i32 i = 0; i < input_params.size(); i++)
+        {
+            VariantClear(&input_params[i]);
+        }
+        is_valid = false;
+    }
+};
 
 bool OSSetNetAdapterIP(const std::string& adapter_guid, const SysNetAdapterConfig& adapter, const SysNetAdapterConfig& src_adapter)
 {
@@ -798,130 +986,49 @@ bool OSSetNetAdapterIP(const std::string& adapter_guid, const SysNetAdapterConfi
     VALIDATE_V(adapter_guid.size(), false);
 
     CoInitializer co_initializer;
-    IWbemServices* service = ConnectToWMI();
-    Defer{ service->Release(); };
-    if (!service)
-    {
-        DebugPrint("Error: Failed to connect to WMI");
-        FAIL;
+    WMIServices service;
+    if (!service.IsValid())
         return false;
-    }
 
-    i32 adapter_index = GetAdapterIndexByGuid(service, adapter_guid);
+    i32 adapter_index = service.GetAdapterIndexByGuid(adapter_guid);
     if (adapter_index == -1)
-    {
-        DebugPrint("Error: Could not find network adapter named '%s'", adapter_guid.c_str());
-        FAIL;
         return false;
-    }
 
-    // Construct the WMI target path
-    const std::wstring pathw = ToString(L"Win32_NetworkAdapterConfiguration.Index=%i", adapter_index);
-    _bstr_t path_bstr(pathw.c_str());
-
-    // 3. Apply the Configuration natively!
+    const wchar_t* wmi_class_str = L"Win32_NetworkAdapterConfiguration";
+    const std::wstring class_inst_name = ToString(L"%s.Index=%i", wmi_class_str, adapter_index);
     if (adapter.dhcp_enabled) 
     {
-        HRESULT r = service->ExecMethod(path_bstr, _bstr_t(L"EnableDHCP"), 0, NULL, NULL, NULL, NULL);
-        if (r != S_OK)
-        {
-            DebugPrint("Error: ExecMethod() failed, EnableDHCP, %i, GetLastError(): %i", r, GetLastError());
-            FAIL;
+        WinFunc enable_dhcp_func(&service, class_inst_name, wmi_class_str, L"EnableDHCP");
+        if (!enable_dhcp_func.Execute())
             return false;
-        }
-    } 
+    }
     else 
     {
-        IWbemClassObject* net_adapter_class = nullptr;
-        if (FAILED(service->GetObjectW(_bstr_t(L"Win32_NetworkAdapterConfiguration"), 0, NULL, &net_adapter_class, NULL)))
-        {
-            DebugPrint("Error: GetObjectW() failed to get Win32_NetworkAdapterConfiguration: %i", GetLastError());
-            FAIL;
+        WinFunc enable_static_func(&service, class_inst_name, wmi_class_str, L"EnableStatic");
+        if (!enable_static_func.AddInputParam(L"IPAddress", adapter.ip.ip.ToString().c_str()))
             return false;
-        }
-        Defer{ net_adapter_class->Release(); };
-
-        ClassFuncSig enable_static_func_sig = GetClassFunctionSignature(net_adapter_class, L"EnableStatic");
-        IWbemClassObject* enable_static_in_func_inst = NULL;
-        if (FAILED(enable_static_func_sig.in->SpawnInstance(0, &enable_static_in_func_inst)))
-        {
-            DebugPrint("Error: SpawnInstance() failed: %i", GetLastError());
-            FAIL;
+        if (!enable_static_func.AddInputParam(L"SubnetMask", adapter.ip.subnet.ToIP4().ToString().c_str()))
             return false;
-        }
-
-        VARIANT ip_variant = CreateSafeArray(adapter.ip.ip.ToString());
-        VARIANT subnet_variant = CreateSafeArray(adapter.ip.subnet.ToIP4().ToString());
-
-        if (FAILED(enable_static_in_func_inst->Put(L"IPAddress", 0, &ip_variant, 0)))
-        {
-            DebugPrint("Error: Put(IPAddress) failed: %i", GetLastError());
-            FAIL;
+        i32 result_code = 0;
+        if (!enable_static_func.Execute(&result_code))
             return false;
-        }
-        if (FAILED(enable_static_in_func_inst->Put(L"SubnetMask", 0, &subnet_variant, 0)))
+
+        //0 = Success, 1 = Success (Reboot required)
+        if (result_code != 0 && result_code != 1)
         {
-            DebugPrint("Error: Put(SubnetMask) failed: %i", GetLastError());
+            DebugPrint("Error: WMI rejected the IP change. (See MS documentation for code %i)", result_code);
             FAIL;
-            return false;
         }
-        {
-            const HRESULT r = service->ExecMethod(path_bstr, _bstr_t(L"EnableStatic"), 0, NULL, enable_static_in_func_inst, &enable_static_func_sig.out, NULL);
-            if (FAILED(r))
-            {
-                DebugPrint("Error: ExecMethod(EnableStatic) failed: %i, HRESULT: 0x%X", GetLastError(), r);
-                FAIL;
-                return false;
-            }
-            if (enable_static_func_sig.out)
-            {
-                VARIANT ret_val;
-                VariantInit(&ret_val);
-                if (SUCCEEDED(enable_static_func_sig.out->Get(L"ReturnValue", 0, &ret_val, NULL, 0)))
-                {
-                    if (ret_val.vt == VT_I4)
-                    {
-                        i32 status = ret_val.intVal;
-                        DebugPrint("WMI EnableStatic Result Code: %i", status);
-
-                        // 0 = Success, 1 = Success (Reboot required)
-                        if (status != 0 && status != 1)
-                        {
-                            DebugPrint("Error: WMI rejected the IP change. (See MS documentation for code %i)", status);
-                            VariantClear(&ret_val);
-                            enable_static_func_sig.out->Release();
-                            FAIL;
-                            return false;
-                        }
-                    }
-                }
-                VariantClear(&ret_val);
-                enable_static_func_sig.out->Release();
-            }
-        }
-
-        VariantClear(&ip_variant);
-        VariantClear(&subnet_variant);
-        enable_static_in_func_inst->Release();
-        //enable_static_out_func_inst->Release();
-        enable_static_func_sig.in->Release();
-        enable_static_func_sig.out->Release();
 
         if (adapter.gateway.IsValid()) 
         {
-            ClassFuncSig gateway_func_sig = GetClassFunctionSignature(net_adapter_class, L"SetGateways");
-            IWbemClassObject* gateway_inst = NULL;
-            gateway_func_sig.in->SpawnInstance(0, &gateway_inst);
-            VARIANT gateway_variant = CreateSafeArray(adapter.gateway.ToString());
-
-            gateway_inst->Put(L"DefaultIPGateway", 0, &gateway_variant, 0);
-
-            // Execute SetGateways
-            service->ExecMethod(path_bstr, _bstr_t(L"SetGateways"), 0, NULL, gateway_inst, NULL, NULL);
-
-            VariantClear(&gateway_variant);
-            gateway_inst->Release();
-            gateway_func_sig.in->Release();
+            WinFunc set_gatway_fun(&service, class_inst_name, wmi_class_str, L"SetGateways");
+            if (!set_gatway_fun.is_valid)
+                return false;
+            if (!set_gatway_fun.AddInputParam(L"DefaultIPGateway", adapter.gateway.ToString().c_str()))
+                return false;
+            if (!set_gatway_fun.Execute())
+                return false;
         }
     }
     return true;
@@ -937,49 +1044,18 @@ bool OSSetNetAdapterDNS(const std::string& adapter_guid, const SysNetAdapterConf
     }
 
     CoInitializer co_initializer;
-    IWbemServices* service = ConnectToWMI();
-    Defer{ service->Release(); };
-    if (!service)
-    {
-        DebugPrint("Error: Failed to connect to WMI");
-        FAIL;
+    WMIServices service;
+    if (!service.IsValid())
         return false;
-    }
 
-    i32 adapter_index = GetAdapterIndexByGuid(service, adapter_guid);
+    i32 adapter_index = service.GetAdapterIndexByGuid(adapter_guid);
     if (adapter_index == -1)
-    {
-        DebugPrint("Error: Could not find network adapter named '%s'", adapter_guid.c_str());
-        FAIL;
         return false;
-    }
 
-    // Construct the WMI target path
-    const std::wstring pathw = ToString(L"Win32_NetworkAdapterConfiguration.Index=%i", adapter_index);
-    _bstr_t path_bstr(pathw.c_str());
+    const wchar_t* wmi_class_str = L"Win32_NetworkAdapterConfiguration";
+    const std::wstring class_inst_name = ToString(L"%s.Index=%i", wmi_class_str, adapter_index);
 
-    IWbemClassObject* net_adapter_class = nullptr;
-    if (FAILED(service->GetObjectW(_bstr_t(L"Win32_NetworkAdapterConfiguration"), 0, NULL, &net_adapter_class, NULL)))
-    {
-        DebugPrint("Error: GetObjectW() failed to get Win32_NetworkAdapterConfiguration: %i", GetLastError());
-        FAIL;
-        return false;
-    }
-    Defer{ net_adapter_class->Release(); };
-
-
-    ClassFuncSig dns_func_sig = GetClassFunctionSignature(net_adapter_class, L"SetDNSServerSearchOrder");
-    IWbemClassObject* dns_inst = NULL;
-    Defer{ if (dns_func_sig.in) dns_func_sig.in->Release(); };
-
-    if (FAILED(dns_func_sig.in->SpawnInstance(0, &dns_inst)))
-    {
-        DebugPrint("Error: Failed to SpawnInstance for SetDNSServerSearchOrder(): %i", GetLastError());
-        FAIL;
-        return false;
-    }
-    Defer{ dns_inst->Release(); };
-
+    WinFunc Set_dns_func(&service, class_inst_name, wmi_class_str, L"SetDNSServerSearchOrder");
     VARIANT dns_variant;
     if (adapter.ddns_enabled)
     {
@@ -994,51 +1070,24 @@ bool OSSetNetAdapterDNS(const std::string& adapter_guid, const SysNetAdapterConf
         }
         dns_variant = CreateSafeArray(CreateArrayView(dns_strings));
     }
-    Defer{ VariantClear(&dns_variant); };
+    if (!Set_dns_func.AddInputParam(L"DNSServerSearchOrder", &dns_variant))
+        return false;
 
-    if (FAILED(dns_inst->Put(L"DNSServerSearchOrder", 0, &dns_variant, 0)))
+    i32 return_value = 0;
+    if (!Set_dns_func.Execute(&return_value))
+        return false;
+
+    switch (return_value)
     {
-        DebugPrint("Error: Put(DNSServerSearchOrder) failed: %i", GetLastError());
+    case 0: break;
+    case 1: DebugPrint("SetDNSServerSearchOrder suceeded but system needst to reboot"); break;
+    case 84: DebugPrint("Error: SetDNSServerSearchOrder failed with %i: 'IP not enabled on adapter.'", return_value); return false;
+    default:
+    {
+        DebugPrint("Error: WMI rejected the DNS change. (See MS documentation for code %i)", return_value);
         FAIL;
         return false;
     }
-    const HRESULT r = service->ExecMethod(path_bstr, _bstr_t(L"SetDNSServerSearchOrder"), 0, NULL, dns_inst, &dns_func_sig.out, NULL);
-    if (FAILED(r))
-    {
-        DebugPrint("Error: ExecMethod(SetDNSServerSearchOrder) failed: HRESULT: 0x%X", r);
-        FAIL;
-        return false;
-    }
-    if (dns_func_sig.out)
-    {
-        Defer{ dns_func_sig.out->Release(); };
-        VARIANT ret_val;
-        VariantInit(&ret_val);
-        Defer{ VariantClear(&ret_val); };
-        if (SUCCEEDED(dns_func_sig.out->Get(L"ReturnValue", 0, &ret_val, NULL, 0)))
-        {
-            if (ret_val.vt == VT_I4)
-            {
-                i32 status = ret_val.intVal;
-                DebugPrint("WMI SetDNSServerSearchOrder Result Code: %i", status);
-
-                // 0 = Success, 1 = Success (Reboot required)
-                switch (status)
-                {
-                case 0: break;
-                case 1: DebugPrint("SetDNSServerSearchOrder suceeded but system needst to reboot"); break;
-                case 84: DebugPrint("Error: SetDNSServerSearchOrder failed with %i: 'IP not enabled on adapter.'", status); return false;
-                default:
-                {
-                    DebugPrint("Error: WMI rejected the DNS change. (See MS documentation for code %i)", status);
-                    VariantClear(&ret_val);
-                    dns_func_sig.out->Release();
-                    FAIL;
-                    return false;
-                }
-                }
-            }
-        }
     }
     return true;
 }

@@ -252,8 +252,8 @@ void UpdateNetworkAdaptersInfo(NetworkData* nd)
         SysConvertWideCharToMultiByte(c.config.name, a.friendly_name);
         SysConvertWideCharToMultiByte(c.desc, a.description);
         c.guid = a.name;
-        c.config.ip = a.ipv4_ips.back();
-        c.config.gateway = a.ipv4_gateways.size() > 0 ? a.ipv4_gateways[0] : SysIP4();
+        c.config.ip = a.ipv4_ips.size() > 0 ? a.ipv4_ips.back() : SysIP4AndSubnet();
+        c.config.gateway = a.ipv4_gateways.size() > 0 ? a.ipv4_gateways.front() : SysIP4();
         for (i32 i = 0; i < a.ipv4_dns.size() && i < SYS_NET_CONFIG_MAX_DNS; i++)
             c.config.dns[i] = a.ipv4_dns.size() > 0 ? a.ipv4_dns[i] : SysIP4();
         c.config.dhcp_enabled = a.dhcpv4_enabled;
@@ -455,10 +455,12 @@ void NetworkImgui(NetworkData& data)
             }
             ImGui::EndDisabled();
 			ImGui::SameLine();
+            ImGui::BeginDisabled();
             if (ImGui::Button("Create Config"))
             {
                 
             }
+            ImGui::EndDisabled();
             ImGui::EndChild();
             ImGui::PopID();
 

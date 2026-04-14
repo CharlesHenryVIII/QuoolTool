@@ -57,6 +57,7 @@ union SysIP4 {
     SysIP4(u8 v) : a(v), b(v), c(v), d(v) {};
     SysIP4(u8 _a, u8 _b, u8 _c, u8 _d) : a(_a), b(_b), c(_c), d(_d) {};
     std::string ToString() const;
+    std::wstring ToWString() const;
     void FromString(const std::string& in);
     bool IsValid() const
     {
