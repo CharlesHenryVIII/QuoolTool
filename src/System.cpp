@@ -1,5 +1,6 @@
 #include "System.h"
 #include "Rendering.h"
+#include <array>
 
 
 #if WIN32
@@ -183,7 +184,7 @@ void ParseCSV(PowershellResponse& out, const std::string& in, bool using_quotes)
             strings = TextToStringArray(row.c_str(), ",");
         if (!strings.size())
             continue;
-        out.push_back({});
+        out.emplace_back();
         if (strings.size() >= PWSH_MAX_COLUMNS)
         {
             FAIL;

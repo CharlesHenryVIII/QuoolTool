@@ -242,7 +242,7 @@ void UpdateNetworkAdaptersInfo(NetworkData* nd)
         MainAdapterInfo c;
         if (a.ipv4_ips.size() > 1)
         {
-            DebugPrint("Warning: Network adapter '%s' has multiple IPv4 addresses:");
+            DebugPrint("Warning: Network adapter '%s' has multiple IPv4 addresses:", c.config.name.c_str());
             for (const auto& ip : a.ipv4_ips)
             {
                 DebugPrint("    %s", ip.ip.ToString().c_str());
