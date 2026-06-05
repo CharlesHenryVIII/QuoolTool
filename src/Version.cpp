@@ -1,7 +1,7 @@
 #include "Version.h"
 #include "System.h"
 
-Version g_version = { .major = 1, .minor = 7 };
+Version g_version = { .major = 1, .minor = 8 };
 
 std::string Version::AsTagString() const
 {
