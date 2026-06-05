@@ -284,40 +284,6 @@ void NetworkingInit(NetworkData** nd)
     DebugPrint("Time to get response: %fms", total_time);
     i32 test = 1;
 #endif
-
-    {
-        SysNetAdapterConfig c = {
-            .name = "First Test",
-            .ip = {.ip = { 192, 168, 0, 4}, .subnet = 24 },
-            .gateway = { 192, 168, 0, 1},
-            .dns = { { 1, 1, 1, 1}, { 1, 0, 0, 1} },
-            .dhcp_enabled = false,
-            .ddns_enabled = false,
-        };
-        g_network_settings.configs.push_back(c);
-    }
-    {
-        SysNetAdapterConfig c = {
-            .name = "Second Test",
-            .ip = {.ip = { 10, 10, 10, 45}, .subnet = 16 },
-            .gateway = { 10, 10, 10, 1},
-            .dns = { },
-            .dhcp_enabled = false,
-            .ddns_enabled = true,
-        };
-        g_network_settings.configs.push_back(c);
-    }
-    {
-        SysNetAdapterConfig c = {
-            .name = "DHCP + DDNS",
-            .ip = { },
-            .gateway = {},
-            .dns = { },
-            .dhcp_enabled = true,
-            .ddns_enabled = true,
-        };
-        g_network_settings.configs.push_back(c);
-    }
 }
 void NetworkingDestroy(NetworkData** network_data)
 {
@@ -344,6 +310,13 @@ bool NetAdapterConfigsMatchDNS(const SysNetAdapterConfig& a, const SysNetAdapter
     return r;
 }
 
+const char* GetConfigsForImgui(void* user_data, int idx)
+{
+    VALIDATE_V(idx < g_network_settings.configs.size(), nullptr);
+    VALIDATE_V(idx >= 0, nullptr);
+    return g_network_settings.configs[idx].name.c_str();
+}
+
 void NetworkImgui(NetworkData& data)
 {
     ZoneScoped;
@@ -355,6 +328,11 @@ void NetworkImgui(NetworkData& data)
         ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoMove;
+
+    static SysNetAdapterConfig adapter_config_save = {};
+    static bool create_popup_open = false;
+    static i32 set_adapter_index = 0;
+    static bool set_popup_open = false;
 
     #define ADAPTERS_TITLE "Adapters"
     if (ImGui::BeginChild(ADAPTERS_TITLE, { 0, 0 }, true, section_flags))
@@ -377,70 +355,33 @@ void NetworkImgui(NetworkData& data)
             //ImGui::BeginDisabled(FlagIntersects(s.completed, AsyncStatus_Completed));
             if (ImGui::BeginChild("##AdapterChild", adapter_child_size, true, section_flags))
             {
-                //*********************
-                //    Name
-                // description  
-                //
-                //DHCP Enabled:   [ ]
-                //IP Address:
-                //Subnet Mask:
-                //Default gateway:
-                //
-                //Preferred DNS Server:
-                //Alternate DNS Server:
-                //*********************
                 SysNetAdapterConfig& c = a.config;
                 ImguiTextCentered(c.name);
                 ImGui::Separator();
                 ImGui::PushFont(g_data.fonts[FontIndex_Small]);
                 ImguiTextCentered(a.desc);
                 ImGui::PopFont();
-
-                if (ImGui::Checkbox("DHCP Enabled", &c.dhcp_enabled))
-                {
-                    if (!c.dhcp_enabled)
-                        c.ddns_enabled = false;
-                }
-                ImGui::BeginDisabled(c.dhcp_enabled);
-                ImGui::PushID("ipv4_ips");
-                ImguiEdit(&c.ip);
-                ImGui::PopID();
-
-                ImGui::PushID("ipv4_gateways");
-                ImGui::Text("Gateway:");
-                ImGui::SameLine();
-                ImguiEdit(&c.gateway, true);
-                ImGui::PopID();
-                ImGui::EndDisabled();
-
-
-                ImGui::BeginDisabled(!c.dhcp_enabled);
-                ImGui::Checkbox("Dynamic DNS Enabled", &c.ddns_enabled);
-                ImGui::EndDisabled();
-                ImGui::BeginDisabled(c.ddns_enabled);
-                ImGui::PushID("ipv4_dns1");
-                ImGui::Text("DNS 1:");
-                ImGui::SameLine();
-                ImguiEdit(&c.dns[0], true);
-                ImGui::PopID();
-                ImGui::PushID("ipv4_dns2");
-                ImGui::Text("DNS 2:");
-                ImGui::SameLine();
-                ImguiEdit(&c.dns[1], true);
-                ImGui::PopID();
-                ImGui::EndDisabled();
+                ImguiEdit(c);
             }
-            static i32 item_selection = 0;
-            //if (ImGui::Combo("Config", item_selection, ))
-            //{
-            //    
-            //}
+
             //ImGui::SameLine();
+            if (ImGui::Button("Set From Config", ImVec2(-1, 0)))
+            {
+                adapter_config_save = s_modified_adapters[i].config;
+                adapter_config_save.name.clear();
+                set_popup_open = true;
+                set_adapter_index = i;
+            }
+
 
             const bool ips_match = NetAdapterConfigsMatchIPs(a.config, s_current_adapter_configs[i]);
             const bool dns_match = NetAdapterConfigsMatchDNS(a.config, s_current_adapter_configs[i]);
             ImGui::BeginDisabled(ips_match && dns_match);
-            if (ImGui::Button("Apply"))
+            const float button_count = 2;
+            const ImVec2 button_size = { (adapter_child_size.x / button_count) -
+                                         (ImGui::GetStyle().FramePadding.x) -
+                                         (ImGui::GetStyle().ItemSpacing.x * (button_count - 1)), 30};
+            if (ImGui::Button("Apply", button_size))
             {
                 if (!ips_match)
                 {
@@ -455,12 +396,12 @@ void NetworkImgui(NetworkData& data)
             }
             ImGui::EndDisabled();
 			ImGui::SameLine();
-            ImGui::BeginDisabled();
-            if (ImGui::Button("Create Config"))
+            if (ImGui::Button("Create Config", button_size))
             {
-                
+                adapter_config_save = s_modified_adapters[i].config;
+                adapter_config_save.name.clear();
+                create_popup_open = true;
             }
-            ImGui::EndDisabled();
             ImGui::EndChild();
             ImGui::PopID();
 
@@ -474,6 +415,101 @@ void NetworkImgui(NetworkData& data)
         ImGui::EndDisabled();
     }
     ImGui::EndChild();
+
+    const ImVec2 popup_size = { 300, 350 };//{ 1024, 600 }
+    if (create_popup_open)
+    {
+        ImGui::SetNextWindowSize(popup_size);
+        ImGui::SetNextWindowPos((viewport->Size - popup_size) / 2.0f);
+        const char* config_popup_name = "IP Configuration Popup";
+        ImGui::OpenPopup(config_popup_name);
+        if (ImGui::BeginPopupModal(config_popup_name, NULL, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+            ImGui::SeparatorText("Config To Be Saved");
+            ImguiEdit(adapter_config_save.name, "Configuration Name", "Name:");
+            ImguiEdit(adapter_config_save);
+
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            const float button_count = 2;
+            const ImVec2 button_size = { (popup_size.x / button_count) -
+                                         (ImGui::GetStyle().FramePadding.x) -
+                                         (ImGui::GetStyle().ItemSpacing.x * (button_count - 1)), 30};
+            ImGui::BeginDisabled(adapter_config_save.name.size() < 2);
+            if (ImGui::Button("Save", button_size))
+            {
+                g_network_settings.configs.push_back(adapter_config_save);
+                WriteSettings();
+                ImGui::CloseCurrentPopup();
+                create_popup_open = false;
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", button_size))
+            {
+                ImGui::CloseCurrentPopup();
+                create_popup_open = false;
+            }
+
+            ImGui::EndPopup();
+        }
+    }
+
+    if (set_popup_open)
+    {
+        ImGui::SetNextWindowSize(popup_size);
+        ImGui::SetNextWindowPos((viewport->Size - popup_size) / 2.0f);
+        const char* config_popup_name = "IP Set Popup";
+        ImGui::OpenPopup(config_popup_name);
+        if (ImGui::BeginPopupModal(config_popup_name, NULL, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+
+            if (set_adapter_index < 0 || set_adapter_index >= s_modified_adapters.size())
+            {
+                DebugPrint("Invalid adapter index: %i", set_adapter_index);
+                return;
+            }
+            const MainAdapterInfo& adapter = s_modified_adapters[set_adapter_index];
+
+            ImGui::Text("Config:");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(175);
+            static i32 config_selection = 0;
+            if (ImGui::Combo("##Config", &config_selection, GetConfigsForImgui, nullptr, (i32)g_network_settings.configs.size(), -1))
+            {
+            }
+            if (config_selection < 0 || config_selection >= s_modified_adapters.size())
+            {
+                DebugPrint("Invalid config index: %i", config_selection);
+                return;
+            }
+            const SysNetAdapterConfig& config = g_network_settings.configs[config_selection];
+
+            ImGui::SeparatorText("Config To Set");
+            ImguiView(config);
+
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            const float button_count = 2;
+            const ImVec2 button_size = { (popup_size.x / button_count) -
+                                         (ImGui::GetStyle().FramePadding.x) -
+                                         (ImGui::GetStyle().ItemSpacing.x * (button_count - 1)), 30};
+            ImGui::BeginDisabled(adapter_config_save.name.size() < 2);
+            if (ImGui::Button("Set", button_size))
+            {
+                SysSetNetAdapterIP(adapter.guid, config, adapter.config);
+                UpdateNetworkAdaptersInfo(&data);
+                set_popup_open = false;
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", button_size))
+            {
+                ImGui::CloseCurrentPopup();
+                set_popup_open = false;
+            }
+
+            ImGui::EndPopup();
+        }
+    }
 }
 
 void NetworkShutdown()

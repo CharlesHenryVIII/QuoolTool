@@ -49,7 +49,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(NetworkSettings, configs)
 void to_json(Json& j, const SysIP4 & ip)
 {
     const std::string s = ip.ToString();
-    j = s;
+    j = s.c_str();
 }
 void from_json(const Json& j, SysIP4& ip) 
 {

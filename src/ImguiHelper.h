@@ -27,14 +27,18 @@ struct SysIP4AndSubnet;
 struct SysIP4Subnet;
 //union SysIP6Subnet;
 //union SysMacAddress;
+struct SysNetAdapterConfig;
 
-bool ImguiEdit(SysIP4* a, bool align_right);
+bool ImguiEdit(SysIP4& a, bool align_right);
 //bool ImguiEdit(SysIP6* a);
-bool ImguiEdit(SysIP4Subnet* a);
+bool ImguiEdit(SysIP4Subnet& a);
 //bool ImguiEdit(SysIP6Subnet* a);
-bool ImguiEdit(SysIP4AndSubnet* a);
+bool ImguiEdit(SysIP4AndSubnet& a);
 //bool ImguiEdit(SysIP6AndSubnet* a);
 //bool ImguiView(SysMacAddress* a);
+bool ImguiEdit(std::string& s, const char* hint, const std::string& title, ImGuiInputTextFlags flags = ImGuiInputTextFlags_None);
+bool ImguiEdit(      SysNetAdapterConfig& c);
+void ImguiView(const SysNetAdapterConfig& c);
 
 MATH_PREFIX ImVec2 HadamardProduct(const ImVec2& a, const ImVec2& b)
 {

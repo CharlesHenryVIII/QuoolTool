@@ -101,9 +101,15 @@ struct SysIP4Subnet
     void FromIP(const SysIP4 ip);
     void FromString(const std::string& in)
     {
-        SysIP4 ip;
-        ip.FromString(in);
-        FromIP(ip);
+        const size_t begin = in.find_last_of('/') + 1;
+        const size_t end = in.find_last_of(')');
+        VALIDATE(begin != std::string::npos);
+        VALIDATE(end != std::string::npos);
+        const std::string num = in.substr(begin, end - begin);
+        i32 val;
+        std::from_chars_result r = std::from_chars(&num.front(), num.c_str() + num.size(), val, 10);
+        VALIDATE(r.ec == std::errc());
+        FromLength(val);
     }
     i32 GetLength() const
     {

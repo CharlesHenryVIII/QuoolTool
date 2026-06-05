@@ -220,6 +220,23 @@ bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path)
     return modified;
 }
 
+#include "pugixml.hpp"
+pugi::xml_document GetXmlDocFromFile2(const char* filename)
+{
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(filename);
+    if (!result)
+    {
+        DebugPrint("Error XML [%s] parsed with errors", filename);
+        DebugPrint("Error description: %s", result.description());
+        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (filename + result.offset));
+        FAIL;
+        return {};
+    }
+    return doc;
+}
+
+
 void ImguiMain(AppData& data)
 {
     ZoneScoped;
@@ -437,7 +454,7 @@ void ImguiDrawDashedRect(ImDrawList* drawList, ImVec2 p_min, ImVec2 p_max, ImU32
     ImguiDrawDashedLine(drawList, bl, p_min, col, thickness, dash_len, dash_gap); // Left
 }
 
-bool ImguiEdit(SysIP4* a, bool align_right)
+bool ImguiEdit(SysIP4& a, bool align_right)
 {
     const u8 step = 1;
     const u8 fast_step = 16;
@@ -457,48 +474,48 @@ bool ImguiEdit(SysIP4* a, bool align_right)
     const ImVec2 default_item_spacing = ImGui::GetStyle().ItemSpacing;
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, default_item_spacing.y));
     ImGui::PushItemWidth(width);
-    edited |= ImGui::InputScalar("##IPv4_a", ImGuiDataType_U8, &(a->a));
+    edited |= ImGui::InputScalar("##IPv4_a", ImGuiDataType_U8, &(a.a));
     ImGui::SameLine();
     ImGui::Text(".");
     ImGui::SameLine();
     ImGui::PushItemWidth(width);
-    edited |= ImGui::InputScalar("##IPv4_b", ImGuiDataType_U8, &(a->b));
+    edited |= ImGui::InputScalar("##IPv4_b", ImGuiDataType_U8, &(a.b));
     ImGui::SameLine();
     ImGui::Text(".");
     ImGui::SameLine();
     ImGui::PushItemWidth(width);
-    edited |= ImGui::InputScalar("##IPv4_c", ImGuiDataType_U8, &(a->c));
+    edited |= ImGui::InputScalar("##IPv4_c", ImGuiDataType_U8, &(a.c));
     ImGui::SameLine();
     ImGui::Text(".");
     ImGui::SameLine();
     ImGui::PushItemWidth(width);
-    edited |= ImGui::InputScalar("##IPv4_d", ImGuiDataType_U8, &(a->d));
+    edited |= ImGui::InputScalar("##IPv4_d", ImGuiDataType_U8, &(a.d));
     ImGui::PopStyleVar();
     return edited;
 }
-bool ImguiEdit(SysIP4Subnet* a)
+bool ImguiEdit(SysIP4Subnet& a)
 {
-    SysIP4 ip = a->ToIP4();
-    bool edited = ImguiEdit(&ip, true);
+    SysIP4 ip = a.ToIP4();
+    bool edited = ImguiEdit(ip, true);
     if (edited)
     {
-        a->FromIP(ip);
+        a.FromIP(ip);
     }
     return edited;
 }
-bool ImguiEdit(SysIP4AndSubnet* a)
+bool ImguiEdit(SysIP4AndSubnet& a)
 {
     bool edited = false;
     ImGui::PushID("IPv4_IP");
     ImGui::Text("IP:");
     ImGui::SameLine();
-    edited |= ImguiEdit(&a->ip, true);
+    edited |= ImguiEdit(a.ip, true);
     ImGui::PopID();
 
     ImGui::PushID("IPv4_Subnet");
     ImGui::Text("Subnet:");
     ImGui::SameLine();
-    edited |= ImguiEdit(&a->subnet);
+    edited |= ImguiEdit(a.subnet);
     ImGui::PopID();
     return edited;
 }
@@ -507,3 +524,58 @@ bool ImguiEdit(SysIP4AndSubnet* a)
 //bool ImguiEdit(SysIP4Subnet& a)
 //bool ImguiEdit(SysIP6Subnet& a)
 //bool ImguiView(SysMacAddress& a)
+
+bool ImguiEdit(std::string& s, const char* hint, const std::string& title, ImGuiInputTextFlags flags)
+{
+    ImGui::Text(title.c_str());
+    ImGui::SameLine();
+    const std::string hashed_title = ToString("##%s", title.c_str());
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    return ImGui::InputTextWithHint(hashed_title.c_str(), hint, s.data(), s.capacity(), flags | ImGuiInputTextFlags_CallbackResize, DynamicTextCallback, &s);
+}
+
+bool ImguiEdit(SysNetAdapterConfig& c)
+{
+    bool edited = false;
+    if (ImGui::Checkbox("DHCP Enabled", &c.dhcp_enabled))
+    {
+        edited = true;
+        if (!c.dhcp_enabled)
+            c.ddns_enabled = false;
+    }
+    ImGui::BeginDisabled(c.dhcp_enabled);
+    ImGui::PushID("ipv4_ips");
+    edited |= ImguiEdit(c.ip);
+    ImGui::PopID();
+
+    ImGui::PushID("ipv4_gateways");
+    ImGui::Text("Gateway:");
+    ImGui::SameLine();
+    edited |= ImguiEdit(c.gateway, true);
+    ImGui::PopID();
+    ImGui::EndDisabled();
+
+    ImGui::BeginDisabled(!c.dhcp_enabled);
+    edited |= ImGui::Checkbox("Dynamic DNS Enabled", &c.ddns_enabled);
+    ImGui::EndDisabled();
+    ImGui::BeginDisabled(c.ddns_enabled);
+    for (i32 i = 0; i < SYS_NET_CONFIG_MAX_DNS; i++)
+    {
+        const std::string ipv4_dns_name = ToString("ipv4_dns%i", i);
+        const std::string ipv4_dns_text = ToString("DNS %i:", i);
+        ImGui::PushID(ipv4_dns_name.c_str());
+        ImGui::Text(ipv4_dns_text.c_str());
+        ImGui::SameLine();
+        edited |= ImguiEdit(c.dns[i], true);
+        ImGui::PopID();
+    }
+    ImGui::EndDisabled();
+    return edited;
+}
+
+void ImguiView(const SysNetAdapterConfig& c)
+{
+    ImGui::BeginDisabled(true);
+    ImguiEdit(const_cast<SysNetAdapterConfig&>(c));
+    ImGui::EndDisabled();
+}
