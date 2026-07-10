@@ -593,7 +593,7 @@ void ScriptNetworkXML(const ScriptData& data)
     }
 
     const pugi::xml_node inters = settings_doc.child("NetworkInterfaces");
-    for (pugi::xml_node interface = inters.child("Interface"); interface; interface = interface.next_sibling("interfaceANCE"))
+    for (pugi::xml_node interface = inters.child("Interface"); interface; interface = interface.next_sibling("Interface"))
     {
         NetworkSettings set = {};
         set.guid = interface.attribute("GUID").value();
