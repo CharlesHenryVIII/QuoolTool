@@ -1,0 +1,3 @@
+[submodule "contrib/CashUtil"]
+	path = contrib/CashUtil
+	url = https://github.com/CharlesHenryVIII/CashUtil.git
