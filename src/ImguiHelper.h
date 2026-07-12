@@ -1,5 +1,5 @@
 #pragma once
-#include "String.h"
+#include "CashUtil\CashUtil.h"
 #include "Imgui.h"
 #include "Settings.h"
 
@@ -7,7 +7,6 @@ struct CitectData;
 bool ImguiInit();
 void ImguiDestroy();
 union SDL_Event;
-void ImguiProcessEvent(const SDL_Event* event);
 void ImguiNewFrame();
 
 void ImguiMain(AppData& data);

@@ -120,6 +120,7 @@ project "QuoolTool"
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
         "contrib/pugixml/src",
+        "contrib/CashUtil",
         "resources",
     }
     defines {
@@ -130,6 +131,8 @@ project "QuoolTool"
     }
     files {
         "src/**",
+        "contrib/CashUtil/**.cpp",
+        "contrib/CashUtil/**.h",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
         "contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
@@ -183,6 +186,7 @@ project "Packager"
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
         "contrib/pugixml/src",
+        "contrib/CashUtil",
         "resources",
         --"src",
     }
@@ -194,6 +198,8 @@ project "Packager"
     }
     files {
         "src/**",
+        "contrib/CashUtil/**.cpp",
+        "contrib/CashUtil/**.h",
         "packager/packager.cpp",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_sdl3.*",

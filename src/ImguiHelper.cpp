@@ -1,18 +1,12 @@
 #include "ImguiHelper.h"
 #include "Tracy.hpp"
 
-#include "System.h"
-#include "WinInterop_File.h"
-#include "Math.h"
-#include "Threading.h"
-#include "Themes.h"
 #include "Settings.h"
 #include "LoadJson.h"
 #include "Citect.h"
 #include "DataCollection.h"
 #include "Version.h"
 #include "Networking.h"
-#include "Rendering.h"
 
 #include "SDL3/SDL.h"
 #include "ImGui/backends/imgui_impl_sdl3.h"
@@ -56,11 +50,6 @@ void ImguiDestroy()
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
-}
-
-void ImguiProcessEvent(const SDL_Event* event)
-{
-    ImGui_ImplSDL3_ProcessEvent(event);
 }
 
 void ImguiNewFrame()
