@@ -12,7 +12,6 @@ require "ecc/ecc"
 local windows_version = "0x0602" -- Windows 8
 --local windows_version = "0x0603" -- Windows 8.1
 --local windows_version = "0x0A00" -- Windows 10
---local windows_version = "0x0A00" -- Windows 10
 
 local windows_defines = {
     "WIN32",

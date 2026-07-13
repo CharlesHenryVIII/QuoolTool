@@ -1,5 +1,9 @@
 @echo off
 
+REM --- SET YOUR PROJECT NAME HERE ---
+set "PROJECT_NAME=QuoolTool"
+REM ----------------------------------
+
 pushd %~dp0
 
 REM if "%SHELLSETUP%"=="" (
@@ -31,10 +35,10 @@ echo %BAR%
 echo %ROOTTAB% %COMPILETAB% GENERATE EXE:
 echo %BAR%
 
-if not exist "QuoolTool.slnx" (
-    msbuild /t:QuoolTool /nologo /verbosity:minimal -p:Configuration=Debug QuoolTool.sln
+if not exist "%PROJECT_NAME%.slnx" (
+    msbuild /t:%PROJECT_NAME% /nologo /verbosity:minimal -p:Configuration=Debug %PROJECT_NAME%.sln
 ) else (
-    msbuild /t:QuoolTool /nologo /verbosity:minimal -p:Configuration=Debug QuoolTool.slnx
+    msbuild /t:%PROJECT_NAME% /nologo /verbosity:minimal -p:Configuration=Debug %PROJECT_NAME%.slnx
 )
 
 

@@ -3,7 +3,6 @@
 #include "Tracy.hpp"
 #include "cmdline.h"
 
-#include "Math.h"
 #include "Settings.h"
 #include "LoadJson.h"
 #include "ImguiHelper.h"
@@ -116,11 +115,6 @@ i32 SysMain(i32 argc, char** argv)
     g_data.fonts[FontIndex_Small] = SysLoadFontForImgui(IDR_FONT1, 12.0f);
     g_data.fonts[FontIndex_Imgui] = io.Fonts->AddFontDefault();
     g_data.fonts[FontIndex_Monospace] = SysLoadFontForImgui(IDR_FONT2, 16.0f);
-
-    // Our state
-    bool keepProcessWindowAlive = true;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    u64 frameStartTicks = 0;
 
     // Main loop
 #ifdef __EMSCRIPTEN__
