@@ -87,12 +87,18 @@ project "QuoolTool"
     cppdialect "C++20"
     targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
-
-    --usestandardpreprocessor 'On'
-    --characterset "ASCII"
-
-    --Flags
-    fatalwarnings { "All" }
+    filter { "toolset:msc" }
+        fatalwarnings { "All" }
+    filter { "toolset:clang" }
+        fatalwarnings { "All" }
+        disablewarnings {
+            "missing-declarations",
+            "unused-variable",
+            "unused-function",
+            "unused-value",
+            "c23-extensions",
+    }
+    filter {}
 
     dependson {
         "libarchive",
@@ -130,8 +136,9 @@ project "QuoolTool"
     }
     files {
         "src/**",
-        "contrib/CashUtil/**.cpp",
-        "contrib/CashUtil/**.h",
+        "contrib/CashUtil/CashUtil.h",
+        "contrib/CashUtil/include/*.cpp",
+        "contrib/CashUtil/include/*.h",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
         "contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
@@ -141,6 +148,28 @@ project "QuoolTool"
         "contrib/pugixml/src/*.hpp",
         "resources/**",
     }
+
+    filter { "system:Windows" }
+        files {
+            "contrib/CashUtil/include/Windows/**.cpp",
+            "contrib/CashUtil/include/Windows/**.h",
+            "resources/**",
+        }
+        postbuildcommands
+        {
+            "{COPY} contrib/SDL3/lib/%{cfg.system}/%{cfg.platform}/SDL3.dll %{cfg.targetdir}",
+        }
+
+    filter { "system:linux" }
+        links {
+            "GL",
+        }
+        files {
+            "contrib/CashUtil/include/Linux/**.cpp",
+            "contrib/CashUtil/include/Linux/**.h",
+        }
+
+    filter {}
 
     CommonFilters()
 
@@ -197,8 +226,9 @@ project "Packager"
     }
     files {
         "src/**",
-        "contrib/CashUtil/**.cpp",
-        "contrib/CashUtil/**.h",
+        "contrib/CashUtil/CashUtil.h",
+        "contrib/CashUtil/include/*.cpp",
+        "contrib/CashUtil/include/*.h",
         "packager/packager.cpp",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
