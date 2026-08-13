@@ -10,8 +10,8 @@
 
 using Json = nlohmann::json;
 
-#define TO_JSON_COMMON_MEMBER(_name, _struct) j[#_name] = _struct ## . ## _name
-#define FROM_JSON_COMMON_MEMBER(_name, _struct) j.at(#_name).get_to(_struct ## . ## _name)
+#define TO_JSON_COMMON_MEMBER(_name, _struct) j[#_name] = _struct._name
+#define FROM_JSON_COMMON_MEMBER(_name, _struct) j.at(#_name).get_to(_struct._name)
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec2,   x, y      );
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3,   x, y, z   );
@@ -165,7 +165,6 @@ void WriteSettings()
     JSON_WRITE_COMMON(network);
     JSON_WRITE_COMMON(theme);
 
-
     const Path path = s_settings_filename;
 	std::ofstream file(path); //TODO(CSH): Update to file system
     VALIDATE(file.good());
@@ -174,7 +173,8 @@ void WriteSettings()
 }
 bool ReadSettings()
 {
-	std::ifstream file(s_settings_filename); // TODO : Update to file system
+    const Path path = s_settings_filename;
+	std::ifstream file(path); //TODO(CSH): Update to file system
     if (!file.good())
     {
         return false;

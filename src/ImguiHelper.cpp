@@ -134,9 +134,9 @@ void ImguiTextCentered(const std::string& text, const Color* color)
     ImGui::SameLine(text_indentation);
     ImGui::PushTextWrapPos(win_width - text_indentation);
     if (color)
-        ImGui::TextColored(ToImguiColor(*color), text.c_str());
+        ImGui::TextColored(ToImguiColor(*color), "%s", text.c_str());
     else
-        ImGui::Text(text.c_str());
+        ImGui::Text("%s", text.c_str());
     ImGui::PopTextWrapPos();
 }
 
@@ -171,7 +171,7 @@ void HelpMarker(const std::string& desc)
 bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& out_path, const bool add_final_slash)
 {
     ImGui::PushID(name.c_str());
-    ImGui::Text(name.c_str());
+    ImGui::Text("%s", name.c_str());
     ImGui::SameLine();
     HelpMarker(hint.c_str());
     ImGui::SameLine();
@@ -192,7 +192,7 @@ bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& o
 bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path)
 {
     ImGui::PushID(name.c_str());
-    ImGui::Text(name.c_str());
+    ImGui::Text("%s", name.c_str());
     ImGui::SameLine();
     HelpMarker(hint.c_str());
     ImGui::SameLine();
@@ -517,7 +517,7 @@ bool ImguiEdit(SysIP4AndSubnet& a)
 
 bool ImguiEdit(std::string& s, const char* hint, const std::string& title, ImGuiInputTextFlags flags)
 {
-    ImGui::Text(title.c_str());
+    ImGui::Text("%s", title.c_str());
     ImGui::SameLine();
     const std::string hashed_title = ToString("##%s", title.c_str());
     ImGui::SetNextItemWidth(-FLT_MIN);
@@ -554,7 +554,7 @@ bool ImguiEdit(SysNetAdapterConfig& c)
         const std::string ipv4_dns_name = ToString("ipv4_dns%i", i);
         const std::string ipv4_dns_text = ToString("DNS %i:", i);
         ImGui::PushID(ipv4_dns_name.c_str());
-        ImGui::Text(ipv4_dns_text.c_str());
+        ImGui::Text("%s", ipv4_dns_text.c_str());
         ImGui::SameLine();
         edited |= ImguiEdit(c.dns[i], true);
         ImGui::PopID();

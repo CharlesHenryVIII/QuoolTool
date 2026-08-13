@@ -1,4 +1,4 @@
-require "ecc/ecc"
+require "make/ecc/ecc"
 
 --local windows_version = "0x0400" -- Windows NT 4.0
 --local windows_version = "0x0500" -- Windows 2000

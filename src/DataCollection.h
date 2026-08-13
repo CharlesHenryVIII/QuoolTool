@@ -1,6 +1,5 @@
 #pragma once
 #include "CashUtil/CashUtil.h"
-#include "String.h"
 
 enum ScriptInfoFlags : u32 {
     ScriptInfoFlags_None            = 0,

@@ -1,6 +1,6 @@
 #pragma once
 #include "CashUtil/CashUtil.h"
-#include "Imgui.h"
+#include "imgui.h"
 #include "Settings.h"
 
 struct CitectData;

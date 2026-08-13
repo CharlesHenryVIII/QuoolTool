@@ -34,10 +34,17 @@ struct ScriptJob : Job
     {
         ZoneScopedN("ScriptJob");
 
+        [[maybe_unused]] bool success = false;
         if (!args.empty())
         {
+            //FAIL;
+            DebugPrint("ScriptJob Created with no args");
+            //return;
+        }
+        else
+        {
             i32 r = SysRunProcess(args, &data.output);
-            bool success = !r;
+            success = !r;
         }
 
         if (func)
@@ -547,9 +554,9 @@ void WriteKeyValueStringXlsx(lxw_worksheet* sheet, lxw_format* key_format, lxw_f
     SysConvertWideCharToMultiByte(s, value);
     WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, key, s.c_str(), column_widths);
 }
-#define WORKSHEET_WRITE_KEY_VAL_STRING(_struct, _name) WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, #_name, _struct ## . ## _name, column_widths)
-#define WORKSHEET_WRITE_KEY_VAL_NUMBER(_struct, _name) WriteKeyValueNumberXlsx(sheet, key_format, value_format, row_i, #_name, (double) ## _struct ## . ## _name, column_widths)
-#define WORKSHEET_WRITE_KEY_VAL_BOOL(_struct, _name) WriteKeyValueBoolXlsx(sheet, key_format, value_format, row_i, #_name, _struct ## . ## _name, column_widths)
+#define WORKSHEET_WRITE_KEY_VAL_STRING(_struct, _name) WriteKeyValueStringXlsx(sheet, key_format, value_format, row_i, #_name, _struct._name, column_widths)
+#define WORKSHEET_WRITE_KEY_VAL_NUMBER(_struct, _name) WriteKeyValueNumberXlsx(sheet, key_format, value_format, row_i, #_name, (double)_struct._name, column_widths)
+#define WORKSHEET_WRITE_KEY_VAL_BOOL(_struct, _name) WriteKeyValueBoolXlsx(sheet, key_format, value_format, row_i, #_name, _struct._name, column_widths)
 
 void ScriptNetworkXML(const ScriptData& data)
 {
@@ -713,7 +720,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-            i32 i = 1;
+            [[maybe_unused]] i32 i = 1;
             for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
             {
                 KeyValPair p;
@@ -734,7 +741,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-            i32 i = 1;
+            [[maybe_unused]] i32 i = 1;
             for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
             {
                 KeyValPair p;
@@ -767,7 +774,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-            i32 i = 1;
+            [[maybe_unused]] i32 i = 1;
             for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
             {
                 KeyValPair p;
@@ -788,7 +795,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-            i32 i = 1;
+            [[maybe_unused]] i32 i = 1;
             for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
             {
                 KeyValPair p;
@@ -810,7 +817,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-            i32 i = 1;
+            [[maybe_unused]] i32 i = 1;
             for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
             {
                 KeyValPair p;
@@ -832,7 +839,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
-            i32 i = 0;
+            [[maybe_unused]] i32 i = 0;
             for (pugi::xml_node prop = inst.child("PROPERTY"); prop; prop = prop.next_sibling("PROPERTY"))
             {
                 KeyValPair p;
@@ -1609,6 +1616,7 @@ void DataCollectionImGui(DataCollectionData& td)
             ImGui::TextColored(ImVec4(0, 1, 0, 1), "Finished");
             break;
         }
+        case ScriptState_Standby: break;
         }
 
     }

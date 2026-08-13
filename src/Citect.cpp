@@ -209,7 +209,7 @@ void CitectImGui(CitectData& cd)
                 //2. search ProgramData for AVEVA folders
                 if (!found)
                 {
-                    for (const auto pd_folder : program_data_folders)
+                    for (const auto& pd_folder : program_data_folders)
                     {
                         if (!pd_folder.dir)
                             continue;
@@ -243,7 +243,7 @@ void CitectImGui(CitectData& cd)
                 }
 
                 //3. search ProgramData for AVEVA folders
-                //C:\Program Files (x86)\AVEVA Plant SCADA\
+                //C:/Program Files (x86)/AVEVA Plant SCADA/
 
                 std::wstring program_files_86;
                 SysExpandEnvironemntVariable(program_files_86, L"%programfiles(x86)%");
