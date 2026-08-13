@@ -1,19 +1,9 @@
 @echo off
+pushd %~dp0
 
 REM --- SET YOUR PROJECT NAME HERE ---
 set "PROJECT_NAME=QuoolTool"
 REM ----------------------------------
-
-pushd %~dp0
-
-REM if "%SHELLSETUP%"=="" (
-REM     call shell.bat
-REM ) ELSE (
-REM     echo Skipping setup
-REM )
-
-REM echo premake5.exe --file=premake5.lua vs2015
-REM premake5.exe --file=premake5.lua vs2015
 
 set "ROOTTAB=  "
 set BAR===============================
@@ -28,11 +18,11 @@ set "COMMANDSTAB="
 echo %BAR%
 echo %ROOTTAB% %COMMANDSTAB% GENERATE BUILD COMMANDS:
 echo %BAR%
-call make\premake5.exe ecc
+call make\windows\premake5.exe ecc
 
 set "COMPILETAB=    "
 echo %BAR%
-echo %ROOTTAB% %COMPILETAB% GENERATE EXE:
+echo %ROOTTAB% %COMPILETAB% COMPILING:
 echo %BAR%
 
 if not exist "%PROJECT_NAME%.slnx" (

@@ -75,7 +75,7 @@
 		args = table.join(args, toolset.getcppflags(cfg)) -- Preprocessor
 		args = table.join(args, toolset.getdefines(cfg.defines))
 		args = table.join(args, toolset.getundefines(cfg.undefines))
-		args = table.join(args, toolset.getincludedirs(cfg, cfg.includedirs, cfg.sysincludedirs))
+		args = table.join(args, toolset.getincludedirs(cfg, cfg.includedirs, cfg.externalincludedirs or cfg.sysincludedirs))
 		if project.iscpp(prj) then
 			args = table.join(args, toolset.getcxxflags(cfg))
 		else

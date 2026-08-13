@@ -41,7 +41,7 @@ if not defined PREMAKE_ACTION (
     exit /b 1
 )
 
-make\premake5.exe %PREMAKE_ACTION%
+make\windows\premake5.exe %PREMAKE_ACTION%
 if errorlevel 1 exit /b %errorlevel%
 
 endlocal
