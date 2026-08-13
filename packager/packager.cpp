@@ -1,4 +1,4 @@
-#include "../CashUtil/CashUtil.h"
+#include "CashUtil/CashUtil.h"
 #include "../src/Version.h"
 #include "../src/Archive.h"
 

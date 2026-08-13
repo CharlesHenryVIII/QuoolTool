@@ -1,6 +1,6 @@
 #include "Version.h"
 
-Version g_version = { .major = 1, .minor = 8 };
+Version g_version = { .major = 1, .minor = 9 };
 
 std::string Version::AsTagString() const
 {

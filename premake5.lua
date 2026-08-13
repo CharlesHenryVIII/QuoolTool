@@ -178,7 +178,7 @@ project "Packager"
     kind "ConsoleApp"
     language "C++"
     cppdialect "C++20"
-    targetdir "Packager"
+    targetdir "build/Packager"
     targetname "QuoolToolPackager_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     objdir "build/Packager/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
@@ -248,6 +248,32 @@ project "Packager"
     removefiles {
         "src/main.cpp",
     }
+
+    filter { "system:Windows" }
+        links {
+            "OpenGL32",
+            "libarchive",
+            "contrib",
+            "curl-lib",
+            "SDL3-lib",
+            "iphlpapi",
+            "ws2_32",
+            "wbemuuid",
+        }
+        files {
+            "contrib/CashUtil/include/Windows/**.cpp",
+            "contrib/CashUtil/include/Windows/**.h",
+            "resources/**",
+        }
+
+    filter { "system:linux" }
+        links {
+            "GL",
+        }
+        files {
+            "contrib/CashUtil/include/Linux/**.cpp",
+            "contrib/CashUtil/include/Linux/**.h",
+        }
 
     CommonFilters()
 

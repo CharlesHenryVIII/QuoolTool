@@ -419,14 +419,14 @@ void WriteTypeToXLSX(lxw_worksheet* sheet, u32 row, u32 col, const char* s, cons
 
 #define FROM_UCHARS_AND_ERROR_OR_WRITE(_type)                   \
 {                                                               \
-    _type v = (_type)strtoull(s, nullptr, 10);                         \
+    _type v = (_type)strtoull(s, nullptr, 10);                  \
     worksheet_write_number(sheet, row, col, (double)v, format); \
     break;                                                      \
 }REQUIRE_SEMICOLON
 
 #define FROM_ICHARS_AND_ERROR_OR_WRITE(_type)                   \
 {                                                               \
-    _type v = (_type)strtoll(s, nullptr, 10);                         \
+    _type v = (_type)strtoll(s, nullptr, 10);                   \
     worksheet_write_number(sheet, row, col, (double)v, format); \
     break;                                                      \
 }REQUIRE_SEMICOLON
