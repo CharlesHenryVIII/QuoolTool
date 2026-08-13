@@ -16,6 +16,7 @@ imgui.ini
 *.cap
 .env
 *.xlsx
+*.pdb
 
 tags
 shell.bat
