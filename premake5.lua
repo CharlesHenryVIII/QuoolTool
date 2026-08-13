@@ -107,14 +107,8 @@ project "QuoolTool"
         "SDL3-lib",
     }
 
-    links {
-        "libarchive",
-        "contrib",
-        "curl-lib",
-        "SDL3-lib",
-        "iphlpapi",
-        "ws2_32",
-        "wbemuuid",
+    libdirs {
+        "build/",
     }
 
     includedirs {
@@ -150,14 +144,20 @@ project "QuoolTool"
     }
 
     filter { "system:Windows" }
+        links {
+            "OpenGL32",
+            "libarchive",
+            "contrib",
+            "curl-lib",
+            "SDL3-lib",
+            "iphlpapi",
+            "ws2_32",
+            "wbemuuid",
+        }
         files {
             "contrib/CashUtil/include/Windows/**.cpp",
             "contrib/CashUtil/include/Windows/**.h",
             "resources/**",
-        }
-        postbuildcommands
-        {
-            "{COPY} contrib/SDL3/lib/%{cfg.system}/%{cfg.platform}/SDL3.dll %{cfg.targetdir}",
         }
 
     filter { "system:linux" }
@@ -178,7 +178,8 @@ project "Packager"
     kind "ConsoleApp"
     language "C++"
     cppdialect "C++20"
-    targetname "Packager/QuoolToolPackager_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    targetdir "Packager"
+    targetname "QuoolToolPackager_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     objdir "build/Packager/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     --targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
@@ -204,6 +205,10 @@ project "Packager"
         "SDL3-lib",
         "iphlpapi",
         "ws2_32",
+    }
+
+    libdirs {
+        "Packager",
     }
 
     includedirs {

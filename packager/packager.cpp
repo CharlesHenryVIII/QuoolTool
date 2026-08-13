@@ -34,18 +34,27 @@ i32 SysMain(i32 argc, char** argv)
         }
     }
 
-    std::string build_command = ToString("msbuild /t:%s /nologo /verbosity:minimal -p:Configuration=Release %s", project_name, sln.c_str());
-    std::wstring build_commandw;
-    SysConvertMultibyteToWideChar(build_commandw, build_command);
-    std::string empty;
+    //std::string build_command = ToString("msbuild /t:%s /nologo /verbosity:minimal -p:Configuration=Release %s", project_name, sln.c_str());
+    const std::string proj_name_s = ToString("/t:%s", project_name);
+    const char* build_commands[] = {
+        "msbuild",
+        proj_name_s.c_str(),
+        "/nologo",
+        "/verbosity:minimal",
+        "-p:Configuration=Release",
+        sln.c_str(),
+        nullptr,
+    };
+
     DebugPrint("=====================");
     DebugPrint("     Compiling:      ");
+    DebugPrint("=====================");
 #if 1
     RunProcessJob* job = new RunProcessJob();
     AsyncData<std::string> build_log;
     Atomic<AsyncStatus> build_status;
-    job->args = build_commandw;
-    job->output = &build_log;
+    job->m_args_array = CreateArrayView(build_commands);
+    job->m_output = &build_log;
     job->status = &build_status;
     threading.SubmitJob(job);
 #else
@@ -53,6 +62,7 @@ i32 SysMain(i32 argc, char** argv)
 #endif
     DebugPrint("=====================");
     DebugPrint("   Build Output:");
+    DebugPrint("=====================");
     size_t build_log_written = 0;
 
     while (!FlagIntersects(build_status, AsyncStatus_Completed))

@@ -10,6 +10,7 @@
 #include "Citect.h"
 #include "Networking.h"
 #include "DataCollection.h"
+#include "stb/stb_image.h"
 
 #include <stdio.h>
 #include <string>
@@ -80,7 +81,21 @@ i32 SysMain(i32 argc, char** argv)
 #endif
 
     ReadSettings();
-    if (!RenderInit())
+
+    ArrayView<const u8> embedded_images[IDB_PNGEND - IDB_PNGFULL] = {};
+    for (i32 icon_id = IDB_PNGFULL; icon_id < IDB_PNGEND; icon_id++)
+    {
+        i32 size;
+        const u8* data = (u8*)SysGetDataFromResource(&size, icon_id);
+        if (!data)
+        {
+            DebugPrint("Error: failed to get data from resource: %i", icon_id);
+            FAIL;
+            continue;
+        }
+        embedded_images[icon_id - IDB_PNGFULL] = CreateArrayView(data, size);
+    }
+    if (!RenderInit(CreateArrayView(embedded_images)))
     {
         return 1;
     }
@@ -96,9 +111,7 @@ i32 SysMain(i32 argc, char** argv)
     ImguiInit();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
-    ThemesInit();
-    ThemeSetColor(g_theme_settings.color);
-    ThemeSetStyle(g_theme_settings.style);
+    ThemesInit(g_theme_settings.color, g_theme_settings.style);
 
 
 

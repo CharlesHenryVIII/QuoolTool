@@ -337,7 +337,8 @@ void ImguiMain(AppData& data)
                 }
 
                 if (ImGui::MenuItem("Github Releases"))
-                    SysRunShellProcess(L"https://github.com/CharlesHenryVIII/QuoolTool/releases", nullptr);
+                    if (!SDL_OpenURL("https://github.com/CharlesHenryVIII/QuoolTool/releases"))
+                        DebugPrint("Failed to open URL: %s", SDL_GetError());
 #if _DEBUG
                 if (ImGui::MenuItem("imgui demo"))
                     s_show_demo_window = !s_show_demo_window;

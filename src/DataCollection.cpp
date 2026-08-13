@@ -16,6 +16,8 @@ AsyncData<lxw_workbook*> s_workbook;
 
 struct ScriptData {
     std::string name;
+    Path filepath;
+    StringEncoding file_encoding = StringEncoding_Invalid;
     AsyncData<std::string> output;
     AsyncData<lxw_workbook*>* workbook;
     bool using_quotes = true;
@@ -24,8 +26,7 @@ struct ScriptData {
 typedef void (*ScriptFunction)(ScriptData&);
 struct ScriptJob : Job
 {
-    std::wstring path;
-    std::wstring args;
+    std::string args;
     ScriptFunction func;
     ScriptData data;
     
@@ -33,9 +34,9 @@ struct ScriptJob : Job
     {
         ZoneScopedN("ScriptJob");
 
-        if (!path.empty() || !args.empty())
+        if (!args.empty())
         {
-            i32 r = SysRunProcess(path, args, &data.output);
+            i32 r = SysRunProcess(args, &data.output);
             bool success = !r;
         }
 
@@ -76,7 +77,7 @@ struct ScriptInfo {
     std::string name;
     Atomic<ScriptInfoFlags> flags = ScriptInfoFlags(ScriptInfoFlags_Enabled);
     ScriptFunction func = nullptr;
-    std::wstring cmdline; //function
+    std::string cmdline; //function
     //break
     Atomic<AsyncStatus> completed = AsyncStatus_Empty;
 };
@@ -305,15 +306,47 @@ VarType GetVarTypeFromString(const char* s)
     }
 }
 
-pugi::xml_document GetXmlDocFromFile(const char* filename)
+pugi::xml_document GetXmlDocFromFile(const Path& path, StringEncoding encoding)
 {
     pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(filename);
+    pugi::xml_parse_result result;
+    if (encoding != StringEncoding_UTF8)
+    {
+#if 1
+        std::string raw;
+        FileReadAll(raw, path);
+        std::wstring ws;
+        SysConvertMultibyteToWideChar(ws, raw, StringEncoding_OEM);
+        std::string s;
+        SysConvertWideCharToMultiByte(s, ws, StringEncoding_UTF8);
+#else
+        std::ifstream file(path, std::ios::binary | std::ios::ate);
+        VALIDATE_V(file.good() && file.is_open(), doc);
+        const std::streamsize size = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        std::vector<char> buffer(size);
+        file.read(buffer.data(), size);
+        std::wstring ws;
+        SysConvertMultibyteToWideChar(ws, buffer.data(), StringEncoding_OEM);
+        std::string s;
+        SysConvertWideCharToMultiByte(s, ws, StringEncoding_UTF8);
+#endif
+
+        result = doc.load_string(s.c_str());
+    }
+    else
+    {
+        const std::string filename = ToString(path);
+        const char* f = filename.c_str();
+        result = doc.load_file(f);
+    }
+
     if (!result)
     {
-        DebugPrint("Error XML [%s] parsed with errors", filename);
+        DebugPrint("Error XML [%s] parsed with errors", ToString(path).c_str());
         DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (filename + result.offset));
+        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (ToString(path).c_str() + result.offset));
         FAIL;
         return {};
     }
@@ -347,7 +380,8 @@ lxw_datetime StringToDatetime(const char* s)
 void ScriptProgramsXML(ScriptData& data)
 {
     ZoneScoped;
-    pugi::xml_document doc = GetXmlDocFromFile(data.output.data.c_str());
+
+    pugi::xml_document doc = GetXmlDocFromFile(data.filepath, StringEncoding_OEM);
     if (doc.empty())
         return;
     TRACY_LOCK(data.workbook->lock);
@@ -429,7 +463,7 @@ void WriteTypeToXLSX(lxw_worksheet* sheet, u32 row, u32 col, const char* s, cons
 void ScriptProcessorXML(ScriptData& data)
 {
     ZoneScoped;
-    pugi::xml_document doc = GetXmlDocFromFile(data.output.data.c_str());
+    pugi::xml_document doc = GetXmlDocFromFile(data.filepath, StringEncoding_UTF8);
     if (doc.empty())
         return;
     TRACY_LOCK(data.workbook->lock);
@@ -549,8 +583,8 @@ void ScriptNetworkXML(const ScriptData& data)
 
     const char* interfaces_filename = "networks.xml";
     const char* settings_filename = "network_settings.xml";
-    pugi::xml_document interface_doc = GetXmlDocFromFile(PathConcat(data.output.data, interfaces_filename).c_str());
-    pugi::xml_document settings_doc = GetXmlDocFromFile(PathConcat(data.output.data, settings_filename).c_str());
+    pugi::xml_document interface_doc = GetXmlDocFromFile(data.filepath / interfaces_filename, StringEncoding_UTF8);
+    pugi::xml_document settings_doc = GetXmlDocFromFile(data.filepath / settings_filename, StringEncoding_OEM);
     std::vector<NetworkInterface> interfaces;
     std::vector<NetworkSettings> settings;
 
@@ -647,6 +681,8 @@ void ScriptNetworkXML(const ScriptData& data)
                 WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpDefaultGateway);
                 WORKSHEET_WRITE_KEY_VAL_STRING(set, DhcpDomain);
                 WORKSHEET_WRITE_KEY_VAL_NUMBER(set, DefaultGatewayMetric);
+                //WORKSHEET_WRITE_KEY_VAL_STRING(set, EnableDHCP);
+                //WORKSHEET_WRITE_KEY_VAL_NUMBER(set, DhcpNameServer);
                 ++row_i;
 
                 for (i32 j = 0; j < set.DhcpNameServer.size(); ++j)
@@ -673,7 +709,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("os.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "os.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(data.filepath / "os.xml", StringEncoding_UTF8);
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -694,7 +730,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("computersystem.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "computersystem.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(data.filepath / "computersystem.xml", StringEncoding_UTF8);
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -727,7 +763,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("timezone.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "timezone.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(data.filepath / "timezone.xml", StringEncoding_UTF8);
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -748,7 +784,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("bios.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "bios.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(data.filepath / "bios.xml", StringEncoding_UTF8);
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -770,7 +806,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("gpu.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "gpu.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(data.filepath / "gpu.xml", StringEncoding_UTF8);
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -792,7 +828,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     {
         ZoneScopedN("processor.xml");
-        pugi::xml_document doc = GetXmlDocFromFile(PathConcat(data.output.data, "processor.xml").c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(data.filepath / "processor.xml", StringEncoding_UTF8);
         if (!doc.empty())
         {
             const pugi::xml_node inst = doc.child("COMMAND").child("RESULTS").child("CIM").child("INSTANCE");
@@ -862,8 +898,8 @@ void ScriptDisksXML(const ScriptData& data)
 
     std::vector<PhysicalDisk> physical_disks;
     std::vector<LogicalDisk> logical_disks;
-    const pugi::xml_document physical_doc = GetXmlDocFromFile(PathConcat(data.output.data, "physical_disks.xml").c_str());
-    const pugi::xml_document logical_doc = GetXmlDocFromFile(PathConcat(data.output.data, "logical_disks.xml").c_str());
+    const pugi::xml_document physical_doc = GetXmlDocFromFile(data.filepath / "physical_disks.xml", StringEncoding_UTF8);
+    const pugi::xml_document logical_doc = GetXmlDocFromFile( data.filepath / "logical_disks.xml", StringEncoding_UTF8);
     if (physical_doc.empty() || logical_doc.empty())
         return;
 
@@ -1062,12 +1098,12 @@ void ScriptDisksXML(const ScriptData& data)
 void ConvertFolderToXLSX(const Path& path)
 {
     bool valid = false;
-    Path quool_tool_info_path = path / L"quooltoolinfo.xml";
+    const Path quool_tool_info_path = path / L"quooltoolinfo.xml";
     std::string computer_name;
     if (fs::exists(quool_tool_info_path))
     {
 
-        pugi::xml_document doc = GetXmlDocFromFile(quool_tool_info_path.string().c_str());
+        pugi::xml_document doc = GetXmlDocFromFile(quool_tool_info_path, StringEncoding_OEM);
         if (!doc.empty())
         {
             const pugi::xml_node sys = doc.child("SystemIdentity");
@@ -1104,7 +1140,7 @@ void ConvertFolderToXLSX(const Path& path)
     {
         ScriptData sd = {
             .name = "System Info",
-            .output = path.string(),
+            .filepath = path,
             .workbook = &s_workbook,
         };
         ScriptSystemInfoXML(sd);
@@ -1113,7 +1149,7 @@ void ConvertFolderToXLSX(const Path& path)
     {
         ScriptData sd = {
             .name = "Network",
-            .output = path.string(),
+            .filepath = path,
             .workbook = &s_workbook,
         };
         ScriptNetworkXML(sd);
@@ -1122,19 +1158,20 @@ void ConvertFolderToXLSX(const Path& path)
     {
         ScriptData sd = {
             .name = "Disks",
-            .output = path.string(),
+            .filepath = path,
             .workbook = &s_workbook,
         };
         ScriptDisksXML(sd);
     }
 
     {
-        Path file = path / L"programs.xml";
+        const Path file = path / L"programs.xml";
         if (fs::exists(file))
         {
             ScriptData sd = {
                 .name = "Programs",
-                .output = file.string(),
+                .filepath = file,
+                .file_encoding = StringEncoding_OEM,
                 .workbook = &s_workbook,
             };
             ScriptProgramsXML(sd);
@@ -1142,21 +1179,26 @@ void ConvertFolderToXLSX(const Path& path)
     }
 
     {
-        Path filepath = path / L"netstat.txt";
-        std::string data;
-        FileReadAll(data, filepath);
-        if (data.size())
+        const Path file = path / L"netstat.txt";
+        std::string raw;
+        FileReadAll(raw, file);
+        if (raw.size())
         {
+            std::wstring ws;
+            SysConvertMultibyteToWideChar(ws, raw, StringEncoding_OEM);
+            std::string s;
+            SysConvertWideCharToMultiByte(s, ws, StringEncoding_UTF8);
+
             ScriptData sd = {
                 .name = "Netstat",
-                .output = data,
+                .output = s,
                 .workbook = &s_workbook,
             };
             ScriptNetstat(sd);
         }
         else
         {
-            DebugPrint("Warning: Couldn't locate/load netstat.txt: %s", filepath.string().c_str());
+            DebugPrint("Warning: Couldn't locate/load netstat.txt: %s", ToString(file).c_str());
         }
     }
 
@@ -1488,7 +1530,6 @@ void DataCollectionImGui(DataCollectionData& td)
 
                 ZoneScopedN("Run Script");
                 ScriptJob* job = new ScriptJob();
-                job->path;
                 job->args = s.cmdline;
                 const std::string name = s.name + ".txt";
                 job->func = s.func;

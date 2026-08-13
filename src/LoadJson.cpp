@@ -94,8 +94,11 @@ void WriteJson(const T* s, const std::wstring& filename)
 {
     VALIDATE(s);
 	Json data = *s;
-	File file = File(filename, FileMode_Write, true);
-	file.Write(data.dump(4));
+    const Path path = filename;
+	std::ofstream file(path); //TODO(CSH): Update to file system
+    VALIDATE(file.good());
+    VALIDATE(file.is_open());
+    file << data.dump(4);
 }
 
 template <typename T>
@@ -162,8 +165,12 @@ void WriteSettings()
     JSON_WRITE_COMMON(network);
     JSON_WRITE_COMMON(theme);
 
-	File file = File(s_settings_filename, FileMode_Write, true);
-	file.Write(j.dump(4));
+
+    const Path path = s_settings_filename;
+	std::ofstream file(path); //TODO(CSH): Update to file system
+    VALIDATE(file.good());
+    VALIDATE(file.is_open());
+    file << j.dump(4);
 }
 bool ReadSettings()
 {
