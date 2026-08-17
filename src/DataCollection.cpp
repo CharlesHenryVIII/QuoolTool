@@ -35,7 +35,7 @@ struct ScriptJob : Job
         ZoneScopedN("ScriptJob");
 
         [[maybe_unused]] bool success = false;
-        if (!args.empty())
+        if (args.empty())
         {
             //FAIL;
             DebugPrint("ScriptJob Created with no args");
@@ -317,6 +317,12 @@ pugi::xml_document GetXmlDocFromFile(const Path& path, StringEncoding encoding)
 {
     pugi::xml_document doc;
     pugi::xml_parse_result result;
+    if (!fs::exists(path))
+    {
+        DebugPrint("Failed to find file: %s", ToString(path).c_str());
+        FAIL;
+        return doc;
+    }
     if (encoding != StringEncoding_UTF8)
     {
 #if 1
@@ -854,6 +860,12 @@ void ScriptSystemInfoXML(const ScriptData& data)
         }
     }
 
+    if (!sysinfo_pairs.size())
+    {
+        DebugPrint("No data for System Info... Skipping");
+        return;
+    }
+
     TRACY_LOCK(s_workbook.lock);
     lxw_format* title_format = CreateTitleFormat(s_workbook.data);
     lxw_format* data_format = CreateDataFormat(s_workbook.data);
@@ -1148,27 +1160,43 @@ void ConvertFolderToXLSX(const Path& path)
         ScriptData sd = {
             .name = "System Info",
             .filepath = path,
+            .file_encoding = StringEncoding_UTF8,
             .workbook = &s_workbook,
         };
         ScriptSystemInfoXML(sd);
     }
 
     {
-        ScriptData sd = {
-            .name = "Network",
-            .filepath = path,
-            .workbook = &s_workbook,
-        };
-        ScriptNetworkXML(sd);
+        const Path file_1 = path / "networks.xml";
+        const Path file_2 = path / "network_settings.xml";
+        if (fs::exists(file_1) && fs::exists(file_2))
+        {
+            ScriptData sd = {
+                .name = "Network",
+                .filepath = path,
+                .file_encoding = StringEncoding_UTF8,
+                .workbook = &s_workbook,
+            };
+            ScriptNetworkXML(sd);
+        }
+        else
+            DebugPrint("Missing network files: %s and/or %s", ToString(file_1).c_str(), ToString(file_2).c_str());
     }
 
     {
-        ScriptData sd = {
-            .name = "Disks",
-            .filepath = path,
-            .workbook = &s_workbook,
-        };
-        ScriptDisksXML(sd);
+        const Path file_1 = path / "physical_disks.xml";
+        const Path file_2 = path / "logical_disks.xml";
+        if (fs::exists(file_1) && fs::exists(file_2))
+        {
+            ScriptData sd = {
+                .name = "Disks",
+                .filepath = path,
+                .workbook = &s_workbook,
+            };
+            ScriptDisksXML(sd);
+        }
+        else
+            DebugPrint("Missing disk files: %s and/or %s", ToString(file_1).c_str(), ToString(file_2).c_str());
     }
 
     {
@@ -1183,6 +1211,8 @@ void ConvertFolderToXLSX(const Path& path)
             };
             ScriptProgramsXML(sd);
         }
+        else
+            DebugPrint("Missing file: %s", ToString(file).c_str());
     }
 
     {
@@ -1204,9 +1234,7 @@ void ConvertFolderToXLSX(const Path& path)
             ScriptNetstat(sd);
         }
         else
-        {
             DebugPrint("Warning: Couldn't locate/load netstat.txt: %s", ToString(file).c_str());
-        }
     }
 
     workbook_close(s_workbook.data);
