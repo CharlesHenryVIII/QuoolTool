@@ -18,6 +18,17 @@
 #include <fstream>
 #include <iostream>
 
+static const std::string s_logo =
+R"(  ________  ___  ___  ________  ________  ___               _________  ________  ________  ___          \n)"
+R"( |\   __  \|\  \|\  \|\   __  \|\   __  \|\  \             |\___   ___\\   __  \|\   __  \|\  \         \n)"
+R"( \ \  \|\  \ \  \\\  \ \  \|\  \ \  \|\  \ \  \            \|___ \  \_\ \  \|\  \ \  \|\  \ \  \        \n)"
+R"(  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \                \ \  \ \ \  \\\  \ \  \\\  \ \  \       \n)"
+R"(   \ \  \\\  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \____            \ \  \ \ \  \\\  \ \  \\\  \ \  \____  \n)"
+R"(    \ \_____  \ \_______\ \_______\ \_______\ \_______\           \ \__\ \ \_______\ \_______\ \_______\\n)"
+R"(     \|___| \__\|_______|\|_______|\|_______|\|_______|            \|__|  \|_______|\|_______|\|_______|\n)"
+R"(           \|__|                                                                                        \n)"
+R"(\n)";
+
 i32 SysMain(i32 argc, char** argv)
 {
     DebugPrint("====================");
@@ -112,6 +123,7 @@ i32 SysMain(i32 argc, char** argv)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
     ThemesInit(g_theme_settings.color, g_theme_settings.style, ThemeColor_Quantum, ThemeStyle_SimpleRounding);
+    ConsoleInit(s_logo);
 
 
 
