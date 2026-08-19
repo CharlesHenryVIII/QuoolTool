@@ -136,8 +136,8 @@ bool GetScadaDir(std::filesystem::path& out, ArrayView<ScannedFile> files)
 {
     for (auto file : files)
     {
-        if (ContainsString(file.name, L"AVEVA Plant SCADA", StringCase_Insensitive) ||
-            ContainsString(file.name, L"Citect SCADA", StringCase_Insensitive))
+        if (StringContains(file.name, L"AVEVA Plant SCADA", StringCase_Insensitive) ||
+            StringContains(file.name, L"Citect SCADA", StringCase_Insensitive))
         {
             out = std::filesystem::path(file.name);
             return true;
@@ -214,8 +214,8 @@ void CitectImGui(CitectData& cd)
                         if (!pd_folder.dir)
                             continue;
 
-                        if (ContainsString(pd_folder.name, L"AVEVA", StringCase_Insensitive) ||
-                            ContainsString(pd_folder.name, L"Citect", StringCase_Insensitive))
+                        if (StringContains(pd_folder.name, L"AVEVA", StringCase_Insensitive) ||
+                            StringContains(pd_folder.name, L"Citect", StringCase_Insensitive))
                         {
                             const std::filesystem::path aveva_folder_path = (program_data_path / pd_folder.name).wstring();
                             std::vector<ScannedFile> aveva_folder_files;

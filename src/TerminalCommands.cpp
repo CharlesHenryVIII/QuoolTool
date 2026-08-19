@@ -21,6 +21,8 @@ R"term(WindowsBuildLabEx, WindowsCurrentVersion, WindowsEditionId, WindowsInstal
 R"term(ForEach-Object { $_.PSObject.Properties } | Select Name,Value; )term"
 R"term(Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfEnabledCore, NumberOfLogicalProcessors, ThreadCount, MaxClockSpeed | )term"
 R"term(ForEach-Object { $_.PSObject.Properties } | Select Name,Value) | )term"
+R"term(Get-CimInstance Win32_PhysicalMemory | Select-Object DeviceLocator, Manufacturer, PartNumber, Capacity, Speed | )term"
+R"term(ForEach-Object { $_.PSObject.Properties } | Select Name,Value) | )term"
 CSV_CONVERT_TEXT;
 
 const char* g_script_ipconfig_text = R"term(ipconfig /all)term";
