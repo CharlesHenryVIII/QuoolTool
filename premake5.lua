@@ -19,6 +19,11 @@ local windows_defines = {
     "_WIN32_WINNT=" .. windows_version,
 }
 
+local BGFX_DIR = "contrib/bgfx"
+local BIMG_DIR = "contrib/bimg"
+local BX_DIR   = "contrib/bx"
+local SDL_DIR  = "contrib/SDL3"
+
 function CommonFilters()
     filter "system:Windows"
         system "windows"
@@ -54,6 +59,34 @@ function CommonFilters()
     filter "files:**.natvis"
         buildaction "Natvis"
     --
+end
+
+function BgfxCommon()
+    --This filter is for MSVC:
+    --not sure if this should be "toolset:msc" or "action:vs*"
+	filter "action:vs*"
+		defines "_CRT_SECURE_NO_WARNINGS"
+        buildoptions {
+            "/Zc:__cplusplus",
+            "/Zc:preprocessor",
+		includedirs { "contrib/bx/include/compat/msvc" }
+    }
+    --
+	filter { "system:windows", "action:gmake" }
+		includedirs { "contrib/bx/include/compat/mingw" }
+    --
+	filter { "system:macosx" }
+		includedirs { "contrib/bx/include/compat/osx" }
+		buildoptions { "-x objective-c++" }
+
+    filter "configurations:Debug"
+        defines { "BX_CONFIG_DEBUG=1" }
+    --
+    filter "configurations:Profile"
+        defines { "BX_CONFIG_DEBUG=0" }
+    --
+    filter "configurations:Release"
+        defines { "BX_CONFIG_DEBUG=0" }
 end
 
 workspace "QuoolTool"
@@ -105,6 +138,7 @@ project "QuoolTool"
         "contrib",
         "curl-lib",
         "SDL3-lib",
+        "bgfx",
     }
 
     libdirs {
@@ -114,12 +148,14 @@ project "QuoolTool"
     includedirs {
         "contrib",
         "contrib/ImGui",
-        "contrib/SDL3/include",
+        path.join(SDL_DIR, "include"),
         "contrib/tracy/public/tracy",
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
         "contrib/pugixml/src",
         "contrib/CashUtil",
+        "contrib/bgfx/include",
+        "contrib/bx/include",
         "resources",
     }
     defines {
@@ -142,6 +178,7 @@ project "QuoolTool"
         "contrib/pugixml/src/*.hpp",
         "resources/**",
     }
+    links { "bgfx", "bimg", "bx"}
 
     filter { "system:Windows" }
         links {
@@ -153,6 +190,9 @@ project "QuoolTool"
             "iphlpapi",
             "ws2_32",
             "wbemuuid",
+            "gdi",
+            "kernel32",
+            "psapi",
         }
         files {
             "contrib/CashUtil/include/Windows/**.cpp",
@@ -162,15 +202,27 @@ project "QuoolTool"
 
     filter { "system:linux" }
         links {
+            "dl",
             "GL",
+            "pthread",
+            "X11",
         }
         files {
             "contrib/CashUtil/include/Linux/**.cpp",
             "contrib/CashUtil/include/Linux/**.h",
         }
 
+    filter "system:macosx"
+		links {
+            "QuartzCore.framework",
+            "Metal.framework",
+            "Cocoa.framework",
+            "IOKit.framework",
+            "CoreVideo.framework"
+        }
     filter {}
 
+    BgfxCommon()
     CommonFilters()
 
 
@@ -214,7 +266,7 @@ project "Packager"
     includedirs {
         "contrib",
         "contrib/ImGui",
-        "contrib/SDL3/include",
+        path.join(SDL_DIR, "include"),
         "contrib/tracy/public/tracy",
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
@@ -306,7 +358,7 @@ project "contrib"
     includedirs {
         "contrib",
         "contrib/ImGui",
-        "contrib/SDL3/include",
+        path.join(SDL_DIR, "include"),
         "contrib/tracy/public/tracy",
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
@@ -512,9 +564,9 @@ project "SDL3-lib"
     warnings "Off"
 
     includedirs {
-        "contrib/SDL3/include",
-        "contrib/SDL3/include/build_config",
-        "contrib/SDL3/src",
+        path.join(SDL_DIR, "include"),
+        path.join(SDL_DIR, "include/build_config"),
+        path.join(SDL_DIR, "src"),
     }
     defines {
         "DSDL_FORCE_STATIC_VCRT=ON",
@@ -539,78 +591,77 @@ project "SDL3-lib"
         }
 
         files {
-            "contrib/SDL3/src/*.c",
-            --
-            "contrib/SDL3/src/atomic/*",
-            "contrib/SDL3/src/audio/*",
-            "contrib/SDL3/src/audio/directsound/*",
-            "contrib/SDL3/src/audio/disk/*",
-            "contrib/SDL3/src/audio/dummy/*",
-            "contrib/SDL3/src/audio/wasapi/*",
-            "contrib/SDL3/src/camera/*",
-            "contrib/SDL3/src/camera/dummy/*",
-            "contrib/SDL3/src/camera/mediafoundation/*",
-            "contrib/SDL3/src/core/*",
-            "contrib/SDL3/src/core/windows/*",
-            "contrib/SDL3/src/cpuinfo/*",
-            "contrib/SDL3/src/dialog/*",
-            "contrib/SDL3/src/dialog/windows/*",
-            "contrib/SDL3/src/dynapi/*",
-            "contrib/SDL3/src/events/*",
-            "contrib/SDL3/src/filesystem/*",
-            "contrib/SDL3/src/filesystem/windows/*",
-            "contrib/SDL3/src/gamepad/*.c",
-            "contrib/SDL3/src/gpu/*.c",             "contrib/SDL3/src/gpu/*.h",
-            "contrib/SDL3/src/gpu/d3d12/*.c",       "contrib/SDL3/src/gpu/d3d12/*.h",
-            "contrib/SDL3/src/gpu/vulkan/*.c",      "contrib/SDL3/src/gpu/vulkan/*.h",
-            "contrib/SDL3/src/gpu/xr/*.c",          "contrib/SDL3/src/gpu/xr/*.h",
-            "contrib/SDL3/src/haptic/*",
-            "contrib/SDL3/src/haptic/hidapi/*",
-            "contrib/SDL3/src/haptic/windows/*",
-            "contrib/SDL3/src/hidapi/*",
-            "contrib/SDL3/src/io/*",
-            "contrib/SDL3/src/io/generic/*",
-            "contrib/SDL3/src/io/windows/*",
-            "contrib/SDL3/src/joystick/*",
-            "contrib/SDL3/src/joystick/gdk/*",
-            "contrib/SDL3/src/joystick/hidapi/*",
-            "contrib/SDL3/src/joystick/virtual/*",
-            "contrib/SDL3/src/joystick/windows/*",
-            "contrib/SDL3/src/loadso/windows/*",
-            "contrib/SDL3/src/locale/*",
-            "contrib/SDL3/src/locale/windows/*",
-            "contrib/SDL3/src/main/*",
-            "contrib/SDL3/src/main/generic/*",
-            "contrib/SDL3/src/main/windows/*",
-            "contrib/SDL3/src/misc/*",
-            "contrib/SDL3/src/misc/windows/*",
-            "contrib/SDL3/src/power/*",
-            "contrib/SDL3/src/power/*.c",
-            "contrib/SDL3/src/power/windows/*",
-            "contrib/SDL3/src/process/*",
-            "contrib/SDL3/src/process/windows/*",
-            "contrib/SDL3/src/render/**.c",         "contrib/SDL3/src/render/**.h",
-            "contrib/SDL3/src/sensor/*",
-            "contrib/SDL3/src/sensor/windows/*",
-            "contrib/SDL3/src/stdlib/*",
-            "contrib/SDL3/src/storage/*",
-            "contrib/SDL3/src/storage/generic/*",
-            "contrib/SDL3/src/storage/steam/*",
-            "contrib/SDL3/src/thread/*",
-            "contrib/SDL3/src/thread/generic/*",
-            "contrib/SDL3/src/thread/windows/*",
-            "contrib/SDL3/src/time/*",
-            "contrib/SDL3/src/time/windows/*",
-            "contrib/SDL3/src/timer/*",
-            "contrib/SDL3/src/timer/*.c",
-            "contrib/SDL3/src/timer/windows/*",
-            "contrib/SDL3/src/tray/*",
-            "contrib/SDL3/src/tray/windows/*",
-            "contrib/SDL3/src/video/*",
-            "contrib/SDL3/src/video/dummy/*",
-            "contrib/SDL3/src/video/offscreen/*",
-            "contrib/SDL3/src/video/windows/*",
-            "contrib/SDL3/src/video/yuv2rgb/*",
+            path.join(SDL_DIR, "src/*.c"),
+            path.join(SDL_DIR, "src/atomic/*"),
+            path.join(SDL_DIR, "src/audio/*"),
+            path.join(SDL_DIR, "src/audio/directsound/*"),
+            path.join(SDL_DIR, "src/audio/disk/*"),
+            path.join(SDL_DIR, "src/audio/dummy/*"),
+            path.join(SDL_DIR, "src/audio/wasapi/*"),
+            path.join(SDL_DIR, "src/camera/*"),
+            path.join(SDL_DIR, "src/camera/dummy/*"),
+            path.join(SDL_DIR, "src/camera/mediafoundation/*"),
+            path.join(SDL_DIR, "src/core/*"),
+            path.join(SDL_DIR, "src/core/windows/*"),
+            path.join(SDL_DIR, "src/cpuinfo/*"),
+            path.join(SDL_DIR, "src/dialog/*"),
+            path.join(SDL_DIR, "src/dialog/windows/*"),
+            path.join(SDL_DIR, "src/dynapi/*"),
+            path.join(SDL_DIR, "src/events/*"),
+            path.join(SDL_DIR, "src/filesystem/*"),
+            path.join(SDL_DIR, "src/filesystem/windows/*"),
+            path.join(SDL_DIR, "src/gamepad/*.c"),
+            path.join(SDL_DIR, "src/gpu/*.c"),             path.join(SDL_DIR, "src/gpu/*.h"),
+            path.join(SDL_DIR, "src/gpu/d3d12/*.c"),       path.join(SDL_DIR, "src/gpu/d3d12/*.h"),
+            path.join(SDL_DIR, "src/gpu/vulkan/*.c"),      path.join(SDL_DIR, "src/gpu/vulkan/*.h"),
+            path.join(SDL_DIR, "src/gpu/xr/*.c"),          path.join(SDL_DIR, "src/gpu/xr/*.h"),
+            path.join(SDL_DIR, "src/haptic/*"),
+            path.join(SDL_DIR, "src/haptic/hidapi/*"),
+            path.join(SDL_DIR, "src/haptic/windows/*"),
+            path.join(SDL_DIR, "src/hidapi/*"),
+            path.join(SDL_DIR, "src/io/*"),
+            path.join(SDL_DIR, "src/io/generic/*"),
+            path.join(SDL_DIR, "src/io/windows/*"),
+            path.join(SDL_DIR, "src/joystick/*"),
+            path.join(SDL_DIR, "src/joystick/gdk/*"),
+            path.join(SDL_DIR, "src/joystick/hidapi/*"),
+            path.join(SDL_DIR, "src/joystick/virtual/*"),
+            path.join(SDL_DIR, "src/joystick/windows/*"),
+            path.join(SDL_DIR, "src/loadso/windows/*"),
+            path.join(SDL_DIR, "src/locale/*"),
+            path.join(SDL_DIR, "src/locale/windows/*"),
+            path.join(SDL_DIR, "src/main/*"),
+            path.join(SDL_DIR, "src/main/generic/*"),
+            path.join(SDL_DIR, "src/main/windows/*"),
+            path.join(SDL_DIR, "src/misc/*"),
+            path.join(SDL_DIR, "src/misc/windows/*"),
+            path.join(SDL_DIR, "src/power/*"),
+            path.join(SDL_DIR, "src/power/*.c"),
+            path.join(SDL_DIR, "src/power/windows/*"),
+            path.join(SDL_DIR, "src/process/*"),
+            path.join(SDL_DIR, "src/process/windows/*"),
+            path.join(SDL_DIR, "src/render/**.c"),         path.join(SDL_DIR, "src/render/**.h"),
+            path.join(SDL_DIR, "src/sensor/*"),
+            path.join(SDL_DIR, "src/sensor/windows/*"),
+            path.join(SDL_DIR, "src/stdlib/*"),
+            path.join(SDL_DIR, "src/storage/*"),
+            path.join(SDL_DIR, "src/storage/generic/*"),
+            path.join(SDL_DIR, "src/storage/steam/*"),
+            path.join(SDL_DIR, "src/thread/*"),
+            path.join(SDL_DIR, "src/thread/generic/*"),
+            path.join(SDL_DIR, "src/thread/windows/*"),
+            path.join(SDL_DIR, "src/time/*"),
+            path.join(SDL_DIR, "src/time/windows/*"),
+            path.join(SDL_DIR, "src/timer/*"),
+            path.join(SDL_DIR, "src/timer/*.c"),
+            path.join(SDL_DIR, "src/timer/windows/*"),
+            path.join(SDL_DIR, "src/tray/*"),
+            path.join(SDL_DIR, "src/tray/windows/*"),
+            path.join(SDL_DIR, "src/video/*"),
+            path.join(SDL_DIR, "src/video/dummy/*"),
+            path.join(SDL_DIR, "src/video/offscreen/*"),
+            path.join(SDL_DIR, "src/video/windows/*"),
+            path.join(SDL_DIR, "src/video/yuv2rgb/*"),
         }
 
         defines {
@@ -634,13 +685,120 @@ project "SDL3-lib"
         }
 
         removefiles {
-            "contrib/SDL3/src/*linux*",
-            "contrib/SDL3/src/*posix*",
-            "contrib/SDL3/src/*wayland*",
-            "contrib/SDL3/src/*x11*",
-            "contrib/SDL3/src/*cocoa*",
-            "contrib/SDL3/src/*unix*",
-            "contrib/SDL3/src/*ps2*",
+            path.join(SDL_DIR, "src/video/yuv2rgb/*"),
+            path.join(SDL_DIR, "src/*linux*"),
+            path.join(SDL_DIR, "src/*posix*"),
+            path.join(SDL_DIR, "src/*wayland*"),
+            path.join(SDL_DIR, "src/*x11*"),
+            path.join(SDL_DIR, "src/*cocoa*"),
+            path.join(SDL_DIR, "src/*unix*"),
+            path.join(SDL_DIR, "src/*ps2*"),
         }
 
     CommonFilters()
+
+
+
+--------------------------
+----  BGFX PROJECTS   ----
+--------------------------
+
+project "bgfx"
+	kind "StaticLib"
+	language "C++"
+	cppdialect "C++20"
+	exceptionhandling "Off"
+	rtti "Off"
+	defines "__STDC_FORMAT_MACROS"
+	files
+	{
+		path.join(BGFX_DIR, "include/bgfx/**.h"),
+		path.join(BGFX_DIR, "src/*.cpp"),
+		path.join(BGFX_DIR, "src/*.h"),
+	}
+	excludes
+	{
+		path.join(BGFX_DIR, "src/amalgamated.cpp"),
+	}
+	includedirs
+	{
+		path.join(BX_DIR, "include"),
+		path.join(BIMG_DIR, "include"),
+		path.join(BGFX_DIR, "include"),
+		path.join(BGFX_DIR, "3rdparty"),
+		path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
+		path.join(BGFX_DIR, "3rdparty/khronos"),
+		path.join(BGFX_DIR, "3rdparty/directx-headers/include/directx"),
+	}
+	filter "action:vs*"
+		defines "_CRT_SECURE_NO_WARNINGS"
+		excludes
+		{
+			path.join(BGFX_DIR, "src/glcontext_glx.cpp"),
+			path.join(BGFX_DIR, "src/glcontext_egl.cpp")
+		}
+	filter "system:macosx"
+		files
+		{
+			path.join(BGFX_DIR, "src/*.mm"),
+		}
+    BgfxCommon()
+
+project "bimg"
+	kind "StaticLib"
+	language "C++"
+	cppdialect "C++20"
+	exceptionhandling "Off"
+	rtti "Off"
+	files
+	{
+		path.join(BIMG_DIR, "include/bimg/*.h"),
+		path.join(BIMG_DIR, "src/*.cpp"),
+		path.join(BIMG_DIR, "src/*.h"),
+		--path.join(BIMG_DIR, "3rdparty/astc-codec/source/decoder/*.cc")
+		path.join(BIMG_DIR, "3rdparty/astc-encoder/source/*.cpp"),
+		path.join(BIMG_DIR, "3rdparty/astc-encoder/source/*.h"),
+	}
+	includedirs
+	{
+		path.join(BX_DIR, "include"),
+		path.join(BIMG_DIR, "include"),
+		path.join(BIMG_DIR, "3rdparty"),
+		path.join(BIMG_DIR, "3rdparty/astc-encoder"),
+		path.join(BIMG_DIR, "3rdparty/astc-encoder/include"),
+		path.join(BIMG_DIR, "3rdparty/iqa/include"),
+		path.join(BIMG_DIR, "3rdparty/libavif/include"),
+		path.join(BIMG_DIR, "3rdparty/tinyexr"),
+		path.join(BIMG_DIR, "3rdparty/tinyexr/deps"),
+	}
+    BgfxCommon()
+
+project "bx"
+	kind "StaticLib"
+	language "C++"
+	cppdialect "C++20"
+	exceptionhandling "Off"
+	rtti "Off"
+	defines "__STDC_FORMAT_MACROS"
+	files
+	{
+		path.join(BX_DIR, "include/bx/*.h"),
+		path.join(BX_DIR, "include/bx/inline/*.inl"),
+		path.join(BX_DIR, "src/*.cpp")
+	}
+	excludes
+	{
+		path.join(BX_DIR, "src/amalgamated.cpp"),
+		path.join(BX_DIR, "src/crtnone.cpp")
+	}
+	includedirs
+	{
+		path.join(BX_DIR, "3rdparty"),
+		path.join(BX_DIR, "include")
+	}
+	filter "action:vs*"
+		defines "_CRT_SECURE_NO_WARNINGS"
+	filter "action:vs*" --not sure if this should be "toolset:msc" or "action:vs*"
+        buildoptions { "/Zc:__cplusplus" }
+
+    BgfxCommon()
