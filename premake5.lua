@@ -30,7 +30,7 @@ function CommonFilters()
         defines { windows_defines, }
         files { }
     --
-    filter "system:Unix"
+    filter "system:linux"
         system "linux"
         defines { "LINUX", }
     --
@@ -190,9 +190,19 @@ project "QuoolTool"
             "iphlpapi",
             "ws2_32",
             "wbemuuid",
-            "gdi",
+            "gdi32",
             "kernel32",
             "psapi",
+            "setupapi",
+            "winmm",
+            "user32",
+            "imm32",
+            "version",
+            "ole32",
+            "oleaut32",
+            "shell32",
+            "advapi32",
+            "dxguid",
         }
         files {
             "contrib/CashUtil/include/Windows/**.cpp",
@@ -311,6 +321,16 @@ project "Packager"
             "iphlpapi",
             "ws2_32",
             "wbemuuid",
+            "setupapi",
+            "winmm",
+            "user32",
+            "imm32",
+            "version",
+            "ole32",
+            "oleaut32",
+            "shell32",
+            "advapi32",
+            "dxguid",
         }
         files {
             "contrib/CashUtil/include/Windows/**.cpp",
@@ -576,15 +596,15 @@ project "SDL3-lib"
         system "windows"
 
         links {
-            "setupapi",
-            "winmm",
+            --"setupapi",
+            --"winmm",
             "imm32",
             "version",
             "ole32",
             "oleaut32",
             "shell32",
             "advapi32",
-            "user32",
+            --"user32",
             "gdi32",
             "ws2_32",
             "dxguid",
@@ -620,7 +640,6 @@ project "SDL3-lib"
             path.join(SDL_DIR, "src/haptic/windows/*"),
             path.join(SDL_DIR, "src/hidapi/*"),
             path.join(SDL_DIR, "src/io/*"),
-            path.join(SDL_DIR, "src/io/generic/*"),
             path.join(SDL_DIR, "src/io/windows/*"),
             path.join(SDL_DIR, "src/joystick/*"),
             path.join(SDL_DIR, "src/joystick/gdk/*"),
@@ -631,7 +650,6 @@ project "SDL3-lib"
             path.join(SDL_DIR, "src/locale/*"),
             path.join(SDL_DIR, "src/locale/windows/*"),
             path.join(SDL_DIR, "src/main/*"),
-            path.join(SDL_DIR, "src/main/generic/*"),
             path.join(SDL_DIR, "src/main/windows/*"),
             path.join(SDL_DIR, "src/misc/*"),
             path.join(SDL_DIR, "src/misc/windows/*"),
@@ -648,7 +666,6 @@ project "SDL3-lib"
             path.join(SDL_DIR, "src/storage/generic/*"),
             path.join(SDL_DIR, "src/storage/steam/*"),
             path.join(SDL_DIR, "src/thread/*"),
-            path.join(SDL_DIR, "src/thread/generic/*"),
             path.join(SDL_DIR, "src/thread/windows/*"),
             path.join(SDL_DIR, "src/time/*"),
             path.join(SDL_DIR, "src/time/windows/*"),
@@ -662,6 +679,9 @@ project "SDL3-lib"
             path.join(SDL_DIR, "src/video/offscreen/*"),
             path.join(SDL_DIR, "src/video/windows/*"),
             path.join(SDL_DIR, "src/video/yuv2rgb/*"),
+                path.join(SDL_DIR, "src/io/generic/*"),
+                path.join(SDL_DIR, "src/main/generic/*"),
+                path.join(SDL_DIR, "src/thread/generic/*"),
         }
 
         defines {
@@ -685,7 +705,7 @@ project "SDL3-lib"
         }
 
         removefiles {
-            path.join(SDL_DIR, "src/video/yuv2rgb/*"),
+            --path.join(SDL_DIR, "src/video/yuv2rgb/*"),
             path.join(SDL_DIR, "src/*linux*"),
             path.join(SDL_DIR, "src/*posix*"),
             path.join(SDL_DIR, "src/*wayland*"),
@@ -694,6 +714,14 @@ project "SDL3-lib"
             path.join(SDL_DIR, "src/*unix*"),
             path.join(SDL_DIR, "src/*ps2*"),
         }
+
+        --THIS IS NOT COMPLETE
+        filter "system:linux"
+            files {
+                path.join(SDL_DIR, "src/io/generic/*"),
+                path.join(SDL_DIR, "src/main/generic/*"),
+                path.join(SDL_DIR, "src/thread/generic/*"),
+            }
 
     CommonFilters()
 
