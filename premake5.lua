@@ -149,6 +149,7 @@ project "QuoolTool"
         "contrib",
         "contrib/ImGui",
         path.join(SDL_DIR, "include"),
+		path.join(BGFX_DIR, "3rdparty/dear-imgui"),
         "contrib/tracy/public/tracy",
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
@@ -170,8 +171,15 @@ project "QuoolTool"
         "contrib/CashUtil/include/*.cpp",
         "contrib/CashUtil/include/*.h",
         "contrib/ImGui/*.h",
+        --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
-        "contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
+        --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
+        --
+        --"contrib/imgui_bgfx_sdl/*.h",
+        --"contrib/imgui_bgfx_sdl/*.cpp",
+        path.join(BGFX_DIR, "examples/common/imgui/*.h"),
+        path.join(BGFX_DIR, "examples/common/imgui/*.cpp"),
+        --
         "contrib/json.hpp",
         "contrib/stb/**.h",
         "contrib/libarchive/*.h",
@@ -298,8 +306,13 @@ project "Packager"
         "contrib/CashUtil/include/*.h",
         "packager/packager.cpp",
         "contrib/ImGui/*.h",
+        --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
-        "contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
+        --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
+        --
+        path.join(BGFX_DIR, "examples/common/imgui/*.h"),
+        path.join(BGFX_DIR, "examples/common/imgui/*.cpp"),
+        --
         "contrib/json.hpp",
         "contrib/stb/**.h",
         "contrib/libarchive/*.h",
@@ -394,8 +407,13 @@ project "contrib"
         "contrib/tracy/public/TracyClient.cpp",
         "contrib/ImGui/*.cpp",
         "contrib/ImGui/*.h",
+        --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
-        "contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
+        --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
+        --
+        path.join(BGFX_DIR, "examples/common/imgui/*.h"),
+        path.join(BGFX_DIR, "examples/common/imgui/*.cpp"),
+        --
         "contrib/json.hpp",
         "contrib/stb/**",
         "contrib/libxlsxwriter/src/**",
@@ -757,6 +775,7 @@ project "bgfx"
 		path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
 		path.join(BGFX_DIR, "3rdparty/khronos"),
 		path.join(BGFX_DIR, "3rdparty/directx-headers/include/directx"),
+		path.join(BGFX_DIR, "3rdparty/dear-imgui"),
 	}
 	filter "action:vs*"
 		defines "_CRT_SECURE_NO_WARNINGS"
