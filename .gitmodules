@@ -1,12 +1,6 @@
 [submodule "contrib/CashUtil"]
 	path = contrib/CashUtil
 	url = https://github.com/CharlesHenryVIII/CashUtil.git
-[submodule "contrib/bgfx"]
-	path = contrib/bgfx
-	url = https://github.com/bkaradzic/bgfx
-[submodule "contrib/bx"]
-	path = contrib/bx
-	url = https://github.com/bkaradzic/bx
-[submodule "contrib/bimg"]
-	path = contrib/bimg
-	url = https://github.com/bkaradzic/bimg
+[submodule "contrib/sokol"]
+	path = contrib/sokol
+	url = https://github.com/floooh/sokol

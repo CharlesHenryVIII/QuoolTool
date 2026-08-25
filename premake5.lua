@@ -19,9 +19,6 @@ local windows_defines = {
     "_WIN32_WINNT=" .. windows_version,
 }
 
-local BGFX_DIR = "contrib/bgfx"
-local BIMG_DIR = "contrib/bimg"
-local BX_DIR   = "contrib/bx"
 local SDL_DIR  = "contrib/SDL3"
 
 function CommonFilters()
@@ -59,34 +56,6 @@ function CommonFilters()
     filter "files:**.natvis"
         buildaction "Natvis"
     --
-end
-
-function BgfxCommon()
-    --This filter is for MSVC:
-    --not sure if this should be "toolset:msc" or "action:vs*"
-	filter "action:vs*"
-		defines "_CRT_SECURE_NO_WARNINGS"
-        buildoptions {
-            "/Zc:__cplusplus",
-            "/Zc:preprocessor",
-		includedirs { "contrib/bx/include/compat/msvc" }
-    }
-    --
-	filter { "system:windows", "action:gmake" }
-		includedirs { "contrib/bx/include/compat/mingw" }
-    --
-	filter { "system:macosx" }
-		includedirs { "contrib/bx/include/compat/osx" }
-		buildoptions { "-x objective-c++" }
-
-    filter "configurations:Debug"
-        defines { "BX_CONFIG_DEBUG=1" }
-    --
-    filter "configurations:Profile"
-        defines { "BX_CONFIG_DEBUG=0" }
-    --
-    filter "configurations:Release"
-        defines { "BX_CONFIG_DEBUG=0" }
 end
 
 workspace "QuoolTool"
@@ -138,7 +107,6 @@ project "QuoolTool"
         "contrib",
         "curl-lib",
         "SDL3-lib",
-        "bgfx",
     }
 
     libdirs {
@@ -147,17 +115,17 @@ project "QuoolTool"
 
     includedirs {
         "contrib",
+        "contrib/CashUtil",
         "contrib/ImGui",
-        path.join(SDL_DIR, "include"),
-		path.join(BGFX_DIR, "3rdparty/dear-imgui"),
-        "contrib/tracy/public/tracy",
+        "contrib/bx/include",
         "contrib/curl/include",
         "contrib/libxlsxwriter/include",
         "contrib/pugixml/src",
-        "contrib/CashUtil",
-        "contrib/bgfx/include",
-        "contrib/bx/include",
+        "contrib/sokol",
+        "contrib/sokol/util",
+        "contrib/tracy/public/tracy",
         "resources",
+        path.join(SDL_DIR, "include"),
     }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
@@ -166,7 +134,6 @@ project "QuoolTool"
         "CURL_STATICLIB",
     }
     files {
-        "src/**",
         "contrib/CashUtil/CashUtil.h",
         "contrib/CashUtil/include/*.cpp",
         "contrib/CashUtil/include/*.h",
@@ -174,19 +141,16 @@ project "QuoolTool"
         --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
         --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
-        --
-        --"contrib/imgui_bgfx_sdl/*.h",
-        --"contrib/imgui_bgfx_sdl/*.cpp",
-        path.join(BGFX_DIR, "examples/common/imgui/*.h"),
-        path.join(BGFX_DIR, "examples/common/imgui/*.cpp"),
+        "contrib/sokol/util/sokol_imgui.h",
+        "contrib/sokol/sokol_gfx.h",
         --
         "contrib/json.hpp",
-        "contrib/stb/**.h",
         "contrib/libarchive/*.h",
         "contrib/pugixml/src/*.hpp",
+        "contrib/stb/**.h",
         "resources/**",
+        "src/**",
     }
-    links { "bgfx", "bimg", "bx"}
 
     filter { "system:Windows" }
         links {
@@ -240,7 +204,6 @@ project "QuoolTool"
         }
     filter {}
 
-    BgfxCommon()
     CommonFilters()
 
 
@@ -309,9 +272,6 @@ project "Packager"
         --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
         --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
-        --
-        path.join(BGFX_DIR, "examples/common/imgui/*.h"),
-        path.join(BGFX_DIR, "examples/common/imgui/*.cpp"),
         --
         "contrib/json.hpp",
         "contrib/stb/**.h",
@@ -391,44 +351,54 @@ project "contrib"
     includedirs {
         "contrib",
         "contrib/ImGui",
-        path.join(SDL_DIR, "include"),
-        "contrib/tracy/public/tracy",
         "contrib/curl/include",
+        "contrib/libarchive_dep",
         "contrib/libxlsxwriter/include",
         "contrib/libxlsxwriter/third_party/*",
-        "contrib/libarchive_dep",
+        "contrib/sokol",
+        "contrib/sokol/util",
+        "contrib/tracy/public/tracy",
+        path.join(SDL_DIR, "include"),
     }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
         "USE_STATIC_MSVC_RUNTIME",
         "IOWIN32_USING_WINRT_API=0",
+        "SOKOL_IMPL",
     }
     files {
-        "contrib/tracy/public/TracyClient.cpp",
         "contrib/ImGui/*.cpp",
         "contrib/ImGui/*.h",
         --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
         --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
+        "contrib/sokol/util/sokol_imgui.h",
         --
-        path.join(BGFX_DIR, "examples/common/imgui/*.h"),
-        path.join(BGFX_DIR, "examples/common/imgui/*.cpp"),
-        --
+        "contrib/sokol/sokol_gfx.h",
+        "contrib/tracy/public/TracyClient.cpp",
         "contrib/json.hpp",
-        "contrib/stb/**",
         "contrib/libxlsxwriter/src/**",
         "contrib/libxlsxwriter/third_party/minizip/*.c",
         "contrib/libxlsxwriter/third_party/minizip/*.h",
         "contrib/libxlsxwriter/third_party/tmpfileplus/*.c",
         "contrib/libxlsxwriter/third_party/tmpfileplus/*.h",
-        "contrib/pugixml/src/*.hpp",
         "contrib/pugixml/src/*.cpp",
+        "contrib/pugixml/src/*.hpp",
+        "contrib/stb/**",
     }
 
     removefiles {
         "contrib/libxlsxwriter/third_party/minizip/minizip.c",
         "contrib/libxlsxwriter/third_party/minizip/miniunz.c"
     }
+
+    filter "system:Windows"
+        defines { "SOKOL_D3D11", }
+    filter "system:linux"
+        defines { "SOKOL_VULKAN", }
+	filter { "system:macosx" }
+        defines { "SOKOL_METAL", }
+    filter {}
 
 	filter { "options:not zlib-src=none" }
 		defines     { 'USE_ZLIB' }
@@ -742,110 +712,3 @@ project "SDL3-lib"
             }
 
     CommonFilters()
-
-
-
---------------------------
-----  BGFX PROJECTS   ----
---------------------------
-
-project "bgfx"
-	kind "StaticLib"
-	language "C++"
-	cppdialect "C++20"
-	exceptionhandling "Off"
-	rtti "Off"
-	defines "__STDC_FORMAT_MACROS"
-	files
-	{
-		path.join(BGFX_DIR, "include/bgfx/**.h"),
-		path.join(BGFX_DIR, "src/*.cpp"),
-		path.join(BGFX_DIR, "src/*.h"),
-	}
-	excludes
-	{
-		path.join(BGFX_DIR, "src/amalgamated.cpp"),
-	}
-	includedirs
-	{
-		path.join(BX_DIR, "include"),
-		path.join(BIMG_DIR, "include"),
-		path.join(BGFX_DIR, "include"),
-		path.join(BGFX_DIR, "3rdparty"),
-		path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
-		path.join(BGFX_DIR, "3rdparty/khronos"),
-		path.join(BGFX_DIR, "3rdparty/directx-headers/include/directx"),
-		path.join(BGFX_DIR, "3rdparty/dear-imgui"),
-	}
-	filter "action:vs*"
-		defines "_CRT_SECURE_NO_WARNINGS"
-		excludes
-		{
-			path.join(BGFX_DIR, "src/glcontext_glx.cpp"),
-			path.join(BGFX_DIR, "src/glcontext_egl.cpp")
-		}
-	filter "system:macosx"
-		files
-		{
-			path.join(BGFX_DIR, "src/*.mm"),
-		}
-    BgfxCommon()
-
-project "bimg"
-	kind "StaticLib"
-	language "C++"
-	cppdialect "C++20"
-	exceptionhandling "Off"
-	rtti "Off"
-	files
-	{
-		path.join(BIMG_DIR, "include/bimg/*.h"),
-		path.join(BIMG_DIR, "src/*.cpp"),
-		path.join(BIMG_DIR, "src/*.h"),
-		--path.join(BIMG_DIR, "3rdparty/astc-codec/source/decoder/*.cc")
-		path.join(BIMG_DIR, "3rdparty/astc-encoder/source/*.cpp"),
-		path.join(BIMG_DIR, "3rdparty/astc-encoder/source/*.h"),
-	}
-	includedirs
-	{
-		path.join(BX_DIR, "include"),
-		path.join(BIMG_DIR, "include"),
-		path.join(BIMG_DIR, "3rdparty"),
-		path.join(BIMG_DIR, "3rdparty/astc-encoder"),
-		path.join(BIMG_DIR, "3rdparty/astc-encoder/include"),
-		path.join(BIMG_DIR, "3rdparty/iqa/include"),
-		path.join(BIMG_DIR, "3rdparty/libavif/include"),
-		path.join(BIMG_DIR, "3rdparty/tinyexr"),
-		path.join(BIMG_DIR, "3rdparty/tinyexr/deps"),
-	}
-    BgfxCommon()
-
-project "bx"
-	kind "StaticLib"
-	language "C++"
-	cppdialect "C++20"
-	exceptionhandling "Off"
-	rtti "Off"
-	defines "__STDC_FORMAT_MACROS"
-	files
-	{
-		path.join(BX_DIR, "include/bx/*.h"),
-		path.join(BX_DIR, "include/bx/inline/*.inl"),
-		path.join(BX_DIR, "src/*.cpp")
-	}
-	excludes
-	{
-		path.join(BX_DIR, "src/amalgamated.cpp"),
-		path.join(BX_DIR, "src/crtnone.cpp")
-	}
-	includedirs
-	{
-		path.join(BX_DIR, "3rdparty"),
-		path.join(BX_DIR, "include")
-	}
-	filter "action:vs*"
-		defines "_CRT_SECURE_NO_WARNINGS"
-	filter "action:vs*" --not sure if this should be "toolset:msc" or "action:vs*"
-        buildoptions { "/Zc:__cplusplus" }
-
-    BgfxCommon()
