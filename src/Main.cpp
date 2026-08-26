@@ -106,20 +106,16 @@ i32 SysMain(i32 argc, char** argv)
         }
         embedded_images[icon_id - IDB_PNGFULL] = CreateArrayView(data, size);
     }
-    if (!RenderInit(CreateArrayView(embedded_images)))
+    if (!CashInit(CreateArrayView(embedded_images)))
     {
+        DebugPrint("Error: CashInit() failed");
         return 1;
-    }
-    if (!SysInit(gfx.window))
-    {
-        DebugPrint("Error: OSInit() failed");
     }
     Threading& threading = Threading::GetInstance();
     AppData app_data = {};
     DataCollectionInit(&app_data.data_collection_data);
     NetworkingInit(&app_data.network_data);
     CitectInit(&app_data.citect_data);
-    ImguiInit();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
     ThemesInit(g_theme_settings.color, g_theme_settings.style, ThemeColor_Quantum, ThemeStyle_SimpleRounding);
@@ -141,6 +137,12 @@ i32 SysMain(i32 argc, char** argv)
     g_data.fonts[FontIndex_Imgui] = io.Fonts->AddFontDefault();
     g_data.fonts[FontIndex_Monospace] = SysLoadFontForImgui(IDR_FONT2, 16.0f);
 
+    const double freq = double(SDL_GetPerformanceFrequency()); //HZ
+    const double start_time = SDL_GetPerformanceCounter() / freq;
+    double total_time = SDL_GetPerformanceCounter() / freq - start_time; //sec;
+    double previous_time = -1; //NOTE(CSH): This is to force our delta_time to be 1/60 so we force a physics update
+    double last_shader_update_time = total_time;
+
     // Main loop
 #ifdef __EMSCRIPTEN__
     // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
@@ -154,6 +156,17 @@ i32 SysMain(i32 argc, char** argv)
         {
             ZoneScopedN("Frame Update:");
             ++g_frame_index;
+            total_time = SDL_GetPerformanceCounter() / freq - start_time;
+            double delta_time_d = total_time - previous_time;// / 10;
+            float delta_time = (float)delta_time_d;
+            previous_time = total_time;
+            //TODO: Time stepping for simulation
+            //NOTE(CSH): This is to fix issues with long frame times.  Big issue when moving the window
+            if (delta_time > (1.0f / 60.0f))
+            {
+                delta_time_d = 1.0 / 60.0;
+                delta_time = (float)delta_time_d;
+            }
             SysProcessEvents();
 
 #if _DEBUG
@@ -161,17 +174,9 @@ i32 SysMain(i32 argc, char** argv)
                 g_running = false;
 #endif
 
-            ImguiNewFrame();
+            CashImguiNewFrame(delta_time_d);
             ImguiMain(app_data);
-
-            {
-                ZoneScopedN("ImGui Render");
-                {
-                    ZoneScopedN("ImGui Render");
-                    ImGui::Render();
-                }
-                RenderPresent();
-            }
+            CashRender();
         }
 
         FrameMark;
@@ -182,13 +187,11 @@ i32 SysMain(i32 argc, char** argv)
 
     // Cleanup
     //(Threading::GetInstance()).ForceQuit();
-    ImguiDestroy();
+    //ImguiDestroy();
     DataCollectionDestroy(&app_data.data_collection_data);
     NetworkingDestroy(&app_data.network_data);
     CitectDestroy(&app_data.citect_data);
-    RenderDestroy();
-    SysDestroy(gfx.window);
-    SDL_Quit();
+    CashDestroy();
 
     return 0;
 }
