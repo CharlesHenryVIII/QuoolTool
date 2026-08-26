@@ -31,6 +31,10 @@ function CommonFilters()
         system "linux"
         defines { "LINUX", }
     --
+    filter "system:macosx"
+        system "macosx"
+        defines { "MACOS", }
+    --
     filter "configurations:Debug"
         defines { "_DEBUG" , "TRACY_ENABLE", "NOMINMAX" }
         symbols  "Full"
@@ -132,6 +136,7 @@ project "QuoolTool"
         "LIBARCHIVE_STATIC",
         "IMGUI_DEFINE_MATH_OPERATORS",
         "CURL_STATICLIB",
+        "SOKOL_IMGUI_NO_SOKOL_APP",
     }
     files {
         "contrib/CashUtil/CashUtil.h",
@@ -140,7 +145,6 @@ project "QuoolTool"
         "contrib/ImGui/*.h",
         --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
-        --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
         "contrib/sokol/util/sokol_imgui.h",
         "contrib/sokol/sokol_gfx.h",
         --
@@ -175,6 +179,8 @@ project "QuoolTool"
             "shell32",
             "advapi32",
             "dxguid",
+            "d3d11",
+            "dxgi",
         }
         files {
             "contrib/CashUtil/include/Windows/**.cpp",
@@ -261,6 +267,7 @@ project "Packager"
         "LIBARCHIVE_STATIC",
         "IMGUI_DEFINE_MATH_OPERATORS",
         "CURL_STATICLIB",
+        "SOKOL_IMGUI_NO_SOKOL_APP",
     }
     files {
         "src/**",
@@ -269,10 +276,7 @@ project "Packager"
         "contrib/CashUtil/include/*.h",
         "packager/packager.cpp",
         "contrib/ImGui/*.h",
-        --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
-        --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
-        --
         "contrib/json.hpp",
         "contrib/stb/**.h",
         "contrib/libarchive/*.h",
@@ -320,6 +324,8 @@ project "Packager"
             "contrib/CashUtil/include/Linux/**.h",
         }
 
+    filter "system:macosx"
+
     CommonFilters()
 
 
@@ -355,8 +361,6 @@ project "contrib"
         "contrib/libarchive_dep",
         "contrib/libxlsxwriter/include",
         "contrib/libxlsxwriter/third_party/*",
-        "contrib/sokol",
-        "contrib/sokol/util",
         "contrib/tracy/public/tracy",
         path.join(SDL_DIR, "include"),
     }
@@ -364,17 +368,12 @@ project "contrib"
         "_CRT_SECURE_NO_WARNINGS",
         "USE_STATIC_MSVC_RUNTIME",
         "IOWIN32_USING_WINRT_API=0",
-        "SOKOL_IMPL",
     }
     files {
         "contrib/ImGui/*.cpp",
         "contrib/ImGui/*.h",
         --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
-        --"contrib/ImGui/backends/imgui_impl_sdlrenderer3.*",
-        "contrib/sokol/util/sokol_imgui.h",
-        --
-        "contrib/sokol/sokol_gfx.h",
         "contrib/tracy/public/TracyClient.cpp",
         "contrib/json.hpp",
         "contrib/libxlsxwriter/src/**",
@@ -391,14 +390,6 @@ project "contrib"
         "contrib/libxlsxwriter/third_party/minizip/minizip.c",
         "contrib/libxlsxwriter/third_party/minizip/miniunz.c"
     }
-
-    filter "system:Windows"
-        defines { "SOKOL_D3D11", }
-    filter "system:linux"
-        defines { "SOKOL_VULKAN", }
-	filter { "system:macosx" }
-        defines { "SOKOL_METAL", }
-    filter {}
 
 	filter { "options:not zlib-src=none" }
 		defines     { 'USE_ZLIB' }
