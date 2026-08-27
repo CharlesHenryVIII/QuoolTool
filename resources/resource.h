@@ -3,8 +3,8 @@
 // Used by Resource.rc
 //
 #define IDI_ICON1                       102
-#define IDR_FONT1                       103
-#define IDR_FONT2                       104
+#define IDR_FONT_ROBOTTO                103
+#define IDR_FONT_JETBRAINSMONO          104
 
 #define IDB_PNGFULL                     110
 #define IDB_PNG512                      111
