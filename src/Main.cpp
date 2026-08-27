@@ -106,7 +106,9 @@ i32 SysMain(i32 argc, char** argv)
         }
         embedded_images[icon_id - IDB_PNGFULL] = CreateArrayView(data, size);
     }
-    if (!CashInit(CreateArrayView(embedded_images)))
+    i32 console_font_size;
+    u8* jetbrainsmono_data = (u8*)SysGetDataFromResource(&console_font_size, IDR_FONT_JETBRAINSMONO);
+    if (!CashInit(CreateArrayView(embedded_images), s_logo, CreateArrayView(jetbrainsmono_data, console_font_size)))
     {
         DebugPrint("Error: CashInit() failed");
         return 1;
@@ -132,10 +134,10 @@ i32 SysMain(i32 argc, char** argv)
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
     // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
     style.FontSizeBase = 16.0f;
-    g_data.fonts[FontIndex_Default] = SysLoadFontForImgui(IDR_FONT1, 16.0f);
-    g_data.fonts[FontIndex_Small] = SysLoadFontForImgui(IDR_FONT1, 12.0f);
+    g_data.fonts[FontIndex_Default] = SysLoadFontForImgui(IDR_FONT_ROBOTTO, 16.0f);
+    g_data.fonts[FontIndex_Small] = SysLoadFontForImgui(IDR_FONT_ROBOTTO, 12.0f);
     g_data.fonts[FontIndex_Imgui] = io.Fonts->AddFontDefault();
-    g_data.fonts[FontIndex_Monospace] = SysLoadFontForImgui(IDR_FONT2, 16.0f);
+    g_data.fonts[FontIndex_Monospace] = SysLoadFontForImgui(IDR_FONT_JETBRAINSMONO, 16.0f);
 
     const double freq = double(SDL_GetPerformanceFrequency()); //HZ
     const double start_time = SDL_GetPerformanceCounter() / freq;
