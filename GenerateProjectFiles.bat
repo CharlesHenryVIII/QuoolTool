@@ -1,4 +1,9 @@
 @echo off
+
+@echo COMPILING SHADERS
+call CompileShaders.bat
+@echo COMPILING SHADERS DONE
+
 setlocal EnableExtensions EnableDelayedExpansion
 set VSWHERE="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 

@@ -142,6 +142,7 @@ project "QuoolTool"
         "contrib/CashUtil/CashUtil.h",
         "contrib/CashUtil/include/*.cpp",
         "contrib/CashUtil/include/*.h",
+        "contrib/CashUtil/include/Shaders/*.h",
         "contrib/ImGui/*.h",
         --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
@@ -274,6 +275,7 @@ project "Packager"
         "contrib/CashUtil/CashUtil.h",
         "contrib/CashUtil/include/*.cpp",
         "contrib/CashUtil/include/*.h",
+        "contrib/CashUtil/include/Shaders/*.h",
         "packager/packager.cpp",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
