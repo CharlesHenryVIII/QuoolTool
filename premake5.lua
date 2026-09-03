@@ -142,7 +142,7 @@ project "QuoolTool"
         "contrib/CashUtil/CashUtil.h",
         "contrib/CashUtil/include/*.cpp",
         "contrib/CashUtil/include/*.h",
-        "contrib/CashUtil/include/Shaders/*.h",
+        "contrib/CashUtil/include/Shaders/*",
         "contrib/ImGui/*.h",
         --
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
@@ -156,6 +156,9 @@ project "QuoolTool"
         "resources/**",
         "src/**",
     }
+    filter("files:**.glsl")
+        excludefrombuild ("On")
+
 
     filter { "system:Windows" }
         links {
@@ -275,7 +278,7 @@ project "Packager"
         "contrib/CashUtil/CashUtil.h",
         "contrib/CashUtil/include/*.cpp",
         "contrib/CashUtil/include/*.h",
-        "contrib/CashUtil/include/Shaders/*.h",
+        "contrib/CashUtil/include/Shaders/*",
         "packager/packager.cpp",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
@@ -285,6 +288,8 @@ project "Packager"
         "contrib/pugixml/src/*.hpp",
         "resources/**",
     }
+    filter("files:**.glsl")
+        excludefrombuild ("On")
 
     removefiles {
         "src/main.cpp",
