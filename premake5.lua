@@ -274,12 +274,13 @@ project "Packager"
         "SOKOL_IMGUI_NO_SOKOL_APP",
     }
     files {
-        "src/**",
+        "src/Version.*",
+        "src/Archive.*",
         "contrib/CashUtil/CashUtil.h",
         "contrib/CashUtil/include/*.cpp",
         "contrib/CashUtil/include/*.h",
         "contrib/CashUtil/include/Shaders/*",
-        "packager/packager.cpp",
+        "packager/**",
         "contrib/ImGui/*.h",
         "contrib/ImGui/backends/imgui_impl_sdl3.*",
         "contrib/json.hpp",
@@ -291,9 +292,9 @@ project "Packager"
     filter("files:**.glsl")
         excludefrombuild ("On")
 
-    removefiles {
-        "src/main.cpp",
-    }
+    --removefiles {
+        --"src/Main.cpp",
+    --}
 
     filter { "system:Windows" }
         links {
