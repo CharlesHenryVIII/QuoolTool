@@ -169,12 +169,25 @@ i32 SysMain(i32 argc, char** argv)
                 delta_time_d = 1.0 / 60.0;
                 delta_time = (float)delta_time_d;
             }
-            SysProcessEvents();
 
+            SDL_Event event;
+            while (SDL_PollEvent(&event))
+            {
+                SysProcessEvents(&event, &g_sysinfo.inputs);
+                //DebugPrint("Event: %i", event.type);
+                if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(gfx.window))
+                    g_running = true;
+            }
+
+            InputPriority ip = SysInputUpdate(delta_time, &g_sysinfo.inputs);
+            if (ip == InputPriority_None || ip == InputPriority_Imgui)
+            {
 #if _DEBUG
-            if (g_sysinfo.keys[SDLK_ESCAPE].downThisFrame)
-                g_running = false;
+                if (g_sysinfo.inputs.keys[SDLK_ESCAPE].down_this_frame)
+                    g_running = false;
 #endif
+            }
+
 
             CashImguiNewFrame(delta_time_d);
             ImguiMain(app_data);
