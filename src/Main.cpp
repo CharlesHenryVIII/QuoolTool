@@ -173,20 +173,19 @@ i32 SysMain(i32 argc, char** argv)
             SDL_Event event;
             while (SDL_PollEvent(&event))
             {
-                SysProcessEvents(&event, &g_sysinfo.inputs);
+                if (SysProcessEvents(delta_time, &event))
+                    continue;
                 //DebugPrint("Event: %i", event.type);
                 if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(gfx.window))
                     g_running = true;
+                {
+#if _DEBUG
+                    if (event.type == SDL_EVENT_KEY_DOWN && event.key.down && event.key.key == SDLK_ESCAPE)
+                        g_running = false;
+#endif
+                }
             }
 
-            InputPriority ip = SysInputUpdate(delta_time, &g_sysinfo.inputs);
-            if (ip == InputPriority_None || ip == InputPriority_Imgui)
-            {
-#if _DEBUG
-                if (g_sysinfo.inputs.keys[SDLK_ESCAPE].down_this_frame)
-                    g_running = false;
-#endif
-            }
 
 
             CashImguiNewFrame(delta_time_d);
