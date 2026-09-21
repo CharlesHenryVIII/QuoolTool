@@ -18,16 +18,15 @@
 #include <fstream>
 #include <iostream>
 
-static const std::string s_logo =
-R"(  ________  ___  ___  ________  ________  ___               _________  ________  ________  ___          \n)"
-R"( |\   __  \|\  \|\  \|\   __  \|\   __  \|\  \             |\___   ___\\   __  \|\   __  \|\  \         \n)"
-R"( \ \  \|\  \ \  \\\  \ \  \|\  \ \  \|\  \ \  \            \|___ \  \_\ \  \|\  \ \  \|\  \ \  \        \n)"
-R"(  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \                \ \  \ \ \  \\\  \ \  \\\  \ \  \       \n)"
-R"(   \ \  \\\  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \____            \ \  \ \ \  \\\  \ \  \\\  \ \  \____  \n)"
-R"(    \ \_____  \ \_______\ \_______\ \_______\ \_______\           \ \__\ \ \_______\ \_______\ \_______\\n)"
-R"(     \|___| \__\|_______|\|_______|\|_______|\|_______|            \|__|  \|_______|\|_______|\|_______|\n)"
-R"(           \|__|                                                                                        \n)"
-R"(\n)";
+static const char* s_logo[] = {
+R"(  ________  ___  ___  ________  ________  ___               _________  ________  ________  ___          )",
+R"( |\   __  \|\  \|\  \|\   __  \|\   __  \|\  \             |\___   ___\\   __  \|\   __  \|\  \         )",
+R"( \ \  \|\  \ \  \\\  \ \  \|\  \ \  \|\  \ \  \            \|___ \  \_\ \  \|\  \ \  \|\  \ \  \        )",
+R"(  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \                \ \  \ \ \  \\\  \ \  \\\  \ \  \       )",
+R"(   \ \  \\\  \ \  \\\  \ \  \\\  \ \  \\\  \ \  \____            \ \  \ \ \  \\\  \ \  \\\  \ \  \____  )",
+R"(    \ \_____  \ \_______\ \_______\ \_______\ \_______\           \ \__\ \ \_______\ \_______\ \_______\)",
+R"(     \|___| \__\|_______|\|_______|\|_______|\|_______|            \|__|  \|_______|\|_______|\|_______|)",
+R"(           \|__|                                                                                        )" };
 
 i32 SysMain(i32 argc, char** argv)
 {
@@ -108,7 +107,7 @@ i32 SysMain(i32 argc, char** argv)
     }
     i32 console_font_size;
     u8* jetbrainsmono_data = (u8*)SysGetDataFromResource(&console_font_size, IDR_FONT_JETBRAINSMONO);
-    if (!CashInit(CreateArrayView(embedded_images), s_logo, CreateArrayView(jetbrainsmono_data, console_font_size)))
+    if (!CashInit(CreateArrayView(embedded_images), CreateArrayView(s_logo), CreateArrayView(jetbrainsmono_data, console_font_size)))
     {
         DebugPrint("Error: CashInit() failed");
         return 1;
