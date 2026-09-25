@@ -111,6 +111,7 @@ project "QuoolTool"
         "contrib",
         "curl-lib",
         "SDL3-lib",
+        "FreeType",
     }
 
     libdirs {
@@ -123,6 +124,7 @@ project "QuoolTool"
         "contrib/ImGui",
         "contrib/bx/include",
         "contrib/curl/include",
+        "contrib/freetype/include",
         "contrib/libxlsxwriter/include",
         "contrib/pugixml/src",
         "contrib/sokol",
@@ -167,6 +169,7 @@ project "QuoolTool"
             "contrib",
             "curl-lib",
             "SDL3-lib",
+            "FreeType",
             "iphlpapi",
             "ws2_32",
             "wbemuuid",
@@ -239,6 +242,7 @@ project "Packager"
         "contrib",
         "curl-lib",
         "SDL3-lib",
+        "FreeType",
     }
 
     links {
@@ -256,15 +260,15 @@ project "Packager"
 
     includedirs {
         "contrib",
+        "contrib/CashUtil",
         "contrib/ImGui",
-        path.join(SDL_DIR, "include"),
-        "contrib/tracy/public/tracy",
         "contrib/curl/include",
+        "contrib/freetype/include",
         "contrib/libxlsxwriter/include",
         "contrib/pugixml/src",
-        "contrib/CashUtil",
+        "contrib/tracy/public/tracy",
         "resources",
-        --"src",
+        path.join(SDL_DIR, "include"),
     }
     defines {
         "_CRT_SECURE_NO_WARNINGS",
@@ -303,6 +307,7 @@ project "Packager"
             "contrib",
             "curl-lib",
             "SDL3-lib",
+            "FreeType",
             "iphlpapi",
             "ws2_32",
             "wbemuuid",
@@ -711,3 +716,80 @@ project "SDL3-lib"
             }
 
     CommonFilters()
+
+
+project "FreeType"
+    kind "StaticLib"
+    language "C"
+    targetname "FreeType_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+
+    includedirs { "contrib/freetype/include" }
+
+    defines {
+        "FT2_BUILD_LIBRARY",
+        "_CRT_SECURE_NO_WARNINGS",
+    }
+
+    files {
+        "contrib/freetype/src/autofit/autofit.c",
+        "contrib/freetype/src/base/ftbase.c",
+        "contrib/freetype/src/base/ftbbox.c",
+        "contrib/freetype/src/base/ftbdf.c",
+        "contrib/freetype/src/base/ftbitmap.c",
+        "contrib/freetype/src/base/ftcid.c",
+        "contrib/freetype/src/base/ftfstype.c",
+        "contrib/freetype/src/base/ftgasp.c",
+        "contrib/freetype/src/base/ftglyph.c",
+        "contrib/freetype/src/base/ftgxval.c",
+        "contrib/freetype/src/base/ftinit.c",
+        "contrib/freetype/src/base/ftmm.c",
+        "contrib/freetype/src/base/ftotval.c",
+        "contrib/freetype/src/base/ftpatent.c",
+        "contrib/freetype/src/base/ftpfr.c",
+        "contrib/freetype/src/base/ftstroke.c",
+        "contrib/freetype/src/base/ftsynth.c",
+        "contrib/freetype/src/base/fttype1.c",
+        "contrib/freetype/src/base/ftwinfnt.c",
+        "contrib/freetype/src/bdf/bdf.c",
+        "contrib/freetype/src/bzip2/ftbzip2.c",
+        "contrib/freetype/src/cache/ftcache.c",
+        "contrib/freetype/src/cff/cff.c",
+        "contrib/freetype/src/cid/type1cid.c",
+        "contrib/freetype/src/gzip/ftgzip.c",
+        "contrib/freetype/src/lzw/ftlzw.c",
+        "contrib/freetype/src/pcf/pcf.c",
+        "contrib/freetype/src/pfr/pfr.c",
+        "contrib/freetype/src/psaux/psaux.c",
+        "contrib/freetype/src/pshinter/pshinter.c",
+        "contrib/freetype/src/psnames/psnames.c",
+        "contrib/freetype/src/raster/raster.c",
+        "contrib/freetype/src/sdf/sdf.c",
+        "contrib/freetype/src/sfnt/sfnt.c",
+        "contrib/freetype/src/smooth/smooth.c",
+        "contrib/freetype/src/svg/svg.c",
+        "contrib/freetype/src/truetype/truetype.c",
+        "contrib/freetype/src/type1/type1.c",
+        "contrib/freetype/src/type42/type42.c",
+        "contrib/freetype/src/winfonts/winfnt.c"
+    }
+
+    -- FreeType uses specific system-interface files depending on the OS
+    filter { "system:Windows" }
+        files {
+            "contrib/freetype/builds/windows/ftsystem.c",
+            "contrib/freetype/builds/windows/ftdebug.c"
+        }
+
+    filter { "system:linux" }
+        files {
+            "contrib/freetype/builds/unix/ftsystem.c",
+            "contrib/freetype/src/base/ftdebug.c"
+        }
+
+    filter { "system:macosx" }
+        files {
+            "contrib/freetype/builds/unix/ftsystem.c",
+            "contrib/freetype/src/base/ftdebug.c"
+        }
+
+    filter {}
