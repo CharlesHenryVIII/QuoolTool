@@ -25,7 +25,7 @@ void Version::SetFromTag(const std::string& tag)
     size_t p_loc = full.find_first_of('.');
     if (p_loc == std::string::npos)
     {
-        DebugPrint("Error: Invalid tag for Version: %s", tag.c_str());
+        LOG(LogLevel_Error, "Error: Invalid tag for Version: %s", tag.c_str());
         FAIL;
         return;
     }

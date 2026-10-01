@@ -225,8 +225,8 @@ void CitectImGui(CitectData& cd)
                             if (found)
                             {
                                 found_path = aveva_folder_path / scada_folder;
-                                DebugPrint("aveva_folder_path: %s", aveva_folder_path.string().c_str());
-                                DebugPrint("scada_folder: %s", scada_folder.string().c_str());
+                                LOG(LogLevel_Info, "aveva_folder_path: %s", aveva_folder_path.string().c_str());
+                                LOG(LogLevel_Info, "scada_folder: %s", scada_folder.string().c_str());
                                 break;
                             }
                         }
@@ -239,7 +239,7 @@ void CitectImGui(CitectData& cd)
                 }
                 else
                 {
-                    DebugPrint("Failed to find aveva directories");
+                    LOG(LogLevel_Warning, "Failed to find aveva directories");
                 }
 
                 //3. search ProgramData for AVEVA folders

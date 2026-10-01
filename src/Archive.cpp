@@ -8,7 +8,7 @@ void ArchiveErrorCheck(archive* a, int e)
     if (e != ARCHIVE_OK)
     {
         const char* error_rr_string = archive_error_string(a);
-        DebugPrint("Archive Failure: %s", error_rr_string);
+        LOG(LogLevel_Error, "Archive Failure: %s", error_rr_string);
         FAIL;
     }
 }
@@ -23,14 +23,14 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
         switch (r)
         {
         case ENOENT:
-            DebugPrint("File %s not found.\n", full_path.string().c_str());
+            LOG(LogLevel_Error, "File %s not found.\n", full_path.string().c_str());
             break;
         case EINVAL:
-            DebugPrint("Invalid parameter to _stat.\n");
+            LOG(LogLevel_Error, "Invalid parameter to _stat.\n");
             break;
         default:
             //Should never be reached.
-            DebugPrint("Unexpected error in _stat.\n");
+            LOG(LogLevel_Error, "Unexpected error in _stat.\n");
         }
         FAIL;
         return;
@@ -57,7 +57,7 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
             std::ifstream file(full_path, std::ios::binary | std::ios::ate);
             if (!file)
             {
-                DebugPrint("Error opening file: %s", full_path.string().c_str());
+                LOG(LogLevel_Error, "Error opening file: %s", full_path.string().c_str());
                 FAIL;
                 return;
             }

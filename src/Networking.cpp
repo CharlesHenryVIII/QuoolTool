@@ -71,7 +71,7 @@ static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, voi
     CURLcode result = fun;\
     if (result != CURLE_OK)\
     {\
-        DebugPrint("Error: \"%s\" failed at %s(%i) CURLcode: %i ", #fun, __FILENAME__, __LINE__, result);\
+        LOG(LogLevel_Error, "Error: \"%s\" failed at %s(%i) CURLcode: %i ", #fun, __FILENAME__, __LINE__, result);\
     }\
 } REQUIRE_SEMICOLON
 
@@ -121,7 +121,7 @@ void DownloadUpdateJob::RunJob()
         std::fstream file(zip_filename, std::ios_base::out | std::ios_base::binary);
         if (!file.good())
         {
-            DebugPrint("Failed to open file for write: %s", zip_filename.c_str());
+            LOG(LogLevel_Error, "Failed to open file for write: %s", zip_filename.c_str());
             FAIL;
             g_download_state = AsyncStatus_FetchedFailed;
             return;
@@ -133,7 +133,7 @@ void DownloadUpdateJob::RunJob()
     }
     else
     {
-        DebugPrint("Failed to get file from github");
+        LOG(LogLevel_Error, "Failed to get file from github");
         FAIL;
         g_download_state = AsyncStatus_FetchedFailed;
         return;
@@ -150,8 +150,8 @@ void DownloadUpdateJob::RunJob()
             fs::remove(zip_filename, ec);
             if (ec)
             {
-                DebugPrint("Error: failed to remove file: \"%s\"", zip_filename.c_str());
-                DebugPrint("\"remove\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
+                LOG(LogLevel_Error, "Error: failed to remove file: \"%s\"", zip_filename.c_str());
+                LOG(LogLevel_Error, "\"remove\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
                 FAIL;
                 g_download_state = AsyncStatus_FetchedFailed;
                 return;
@@ -197,9 +197,9 @@ void GetOnlineVersionJob::RunJob()
     Json json = Json::parse(response);
     if (!JsonSafeGet(tag, &json, "tag_name"))
     {
-        DebugPrint("Error: failed to get tag_name, url: %s", s_network.url.c_str());
-        DebugPrint("    json response vvvvvv");
-        DebugPrint("%s", response.c_str());
+        LOG(LogLevel_Error, "Error: failed to get tag_name, url: %s", s_network.url.c_str());
+        LOG(LogLevel_Error, "    json response vvvvvv");
+        LOG(LogLevel_Error, "%s", response.c_str());
         g_version_state = AsyncStatus_FetchedFailed;
         return;
     }
@@ -239,17 +239,17 @@ void UpdateNetworkAdaptersInfo(NetworkData* nd)
     {
         const SysNetworkAdapterInfo& a = nd->adapters.data[i];
         MainAdapterInfo c;
-        if (a.ipv4_ips.size() > 1)
-        {
-            DebugPrint("Warning: Network adapter '%s' has multiple IPv4 addresses:", c.config.name.c_str());
-            for (const auto& ip : a.ipv4_ips)
-            {
-                DebugPrint("    %s", ip.ip.ToString().c_str());
-            }
-            DebugPrint("    Selecting: '%s'", a.ipv4_ips.back().ip.ToString().c_str());
-        }
         SysConvertWideCharToMultiByte(c.config.name, a.friendly_name);
         SysConvertWideCharToMultiByte(c.desc, a.description);
+        if (a.ipv4_ips.size() > 1)
+        {
+            LOG(LogLevel_Info, "Warning: Network adapter '%s' has multiple IPv4 addresses:", c.config.name.c_str());
+            for (const auto& ip : a.ipv4_ips)
+            {
+                LOG(LogLevel_Info, "    %s", ip.ip.ToString().c_str());
+            }
+            LOG(LogLevel_Info, "    Selecting: '%s'", a.ipv4_ips.back().ip.ToString().c_str());
+        }
         c.guid = a.name;
         c.config.ip = a.ipv4_ips.size() > 0 ? a.ipv4_ips.back() : SysIP4AndSubnet();
         c.config.gateway = a.ipv4_gateways.size() > 0 ? a.ipv4_gateways.front() : SysIP4();
@@ -280,7 +280,11 @@ void NetworkingInit(NetworkData** nd)
 #if _DEBUG
     double end = SysGetTime();
     float total_time = float((end - start) * 1000);
+#if 0
+    LOG(LogLevel_Internal, "Time to get response: %fms", total_time);
+#else
     DebugPrint("Time to get response: %fms", total_time);
+#endif
     i32 test = 1;
 #endif
 }
@@ -464,7 +468,7 @@ void NetworkImgui(NetworkData& data)
 
             if (set_adapter_index < 0 || set_adapter_index >= s_modified_adapters.size())
             {
-                DebugPrint("Invalid adapter index: %i", set_adapter_index);
+                LOG(LogLevel_Error, "Invalid adapter index: %i", set_adapter_index);
                 return;
             }
             const MainAdapterInfo& adapter = s_modified_adapters[set_adapter_index];
@@ -478,7 +482,7 @@ void NetworkImgui(NetworkData& data)
             }
             if (config_selection < 0 || config_selection >= s_modified_adapters.size())
             {
-                DebugPrint("Invalid config index: %i", config_selection);
+                LOG(LogLevel_Error, "Invalid config index: %i", config_selection);
                 return;
             }
             const SysNetAdapterConfig& config = g_network_settings.configs[config_selection];

@@ -38,7 +38,7 @@ struct ScriptJob : Job
         if (args.empty())
         {
             //FAIL;
-            DebugPrint("ScriptJob Created with no args");
+            LOG(LogLevel_Warning, "ScriptJob Created with no args");
             //return;
         }
         else
@@ -319,7 +319,7 @@ pugi::xml_document GetXmlDocFromFile(const Path& path, StringEncoding encoding)
     pugi::xml_parse_result result;
     if (!fs::exists(path))
     {
-        DebugPrint("Failed to find file: %s", ToString(path).c_str());
+        LOG(LogLevel_Error, "Failed to find file: %s", ToString(path).c_str());
         FAIL;
         return doc;
     }
@@ -357,9 +357,9 @@ pugi::xml_document GetXmlDocFromFile(const Path& path, StringEncoding encoding)
 
     if (!result)
     {
-        DebugPrint("Error XML [%s] parsed with errors", ToString(path).c_str());
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (ToString(path).c_str() + result.offset));
+        LOG(LogLevel_Error, "Error XML [%s] parsed with errors", ToString(path).c_str());
+        LOG(LogLevel_Error, "Error description: %s", result.description());
+        LOG(LogLevel_Error, "Error offset: %i (error at [...%i]\n", result.offset, (ToString(path).c_str() + result.offset));
         FAIL;
         return {};
     }
@@ -862,7 +862,7 @@ void ScriptSystemInfoXML(const ScriptData& data)
 
     if (!sysinfo_pairs.size())
     {
-        DebugPrint("No data for System Info... Skipping");
+        LOG(LogLevel_Warning, "No data for System Info... Skipping");
         return;
     }
 
@@ -1139,12 +1139,12 @@ void ConvertFolderToXLSX(const Path& path)
     }
     if (!valid)
     {
-        DebugPrint("Error: Failed to convert folder to XLSX, couldn't get proper type.txt");
+        LOG(LogLevel_Error, "Error: Failed to convert folder to XLSX, couldn't get proper type.txt");
         return;
     }
     if (!computer_name.size())
     {
-        DebugPrint("Error: Failed to get computer name from quooltoolinfo.xml");
+        LOG(LogLevel_Error, "Error: Failed to get computer name from quooltoolinfo.xml");
         computer_name = "SystemInfo";
     }
 
@@ -1180,7 +1180,7 @@ void ConvertFolderToXLSX(const Path& path)
             ScriptNetworkXML(sd);
         }
         else
-            DebugPrint("Missing network files: %s and/or %s", ToString(file_1).c_str(), ToString(file_2).c_str());
+            LOG(LogLevel_Error, "Missing network files: %s and/or %s", ToString(file_1).c_str(), ToString(file_2).c_str());
     }
 
     {
@@ -1196,7 +1196,7 @@ void ConvertFolderToXLSX(const Path& path)
             ScriptDisksXML(sd);
         }
         else
-            DebugPrint("Missing disk files: %s and/or %s", ToString(file_1).c_str(), ToString(file_2).c_str());
+            LOG(LogLevel_Error, "Missing disk files: %s and/or %s", ToString(file_1).c_str(), ToString(file_2).c_str());
     }
 
     {
@@ -1212,7 +1212,7 @@ void ConvertFolderToXLSX(const Path& path)
             ScriptProgramsXML(sd);
         }
         else
-            DebugPrint("Missing file: %s", ToString(file).c_str());
+            LOG(LogLevel_Error, "Missing file: %s", ToString(file).c_str());
     }
 
     {
@@ -1234,7 +1234,7 @@ void ConvertFolderToXLSX(const Path& path)
             ScriptNetstat(sd);
         }
         else
-            DebugPrint("Warning: Couldn't locate/load netstat.txt: %s", ToString(file).c_str());
+            LOG(LogLevel_Error, "Warning: Couldn't locate/load netstat.txt: %s", ToString(file).c_str());
     }
 
     workbook_close(s_workbook.data);
@@ -1378,7 +1378,7 @@ void GetOutputFolder(Path& out, const DataCollectionData& td)
 
 void ImguiLog(const std::string& s)
 {
-    DebugPrint(s.c_str());
+    LOG(LogLevel_Info, s.c_str());
     s_log += s + "\n";
 }
 void ImguiLog(const std::wstring& ws)

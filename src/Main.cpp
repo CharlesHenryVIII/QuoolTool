@@ -99,17 +99,15 @@ i32 SysMain(i32 argc, char** argv)
         const u8* data = (u8*)SysGetDataFromResource(&size, icon_id);
         if (!data)
         {
-            DebugPrint("Error: failed to get data from resource: %i", icon_id);
+            LOG(LogLevel_Error, "Error: failed to get data from resource: %i", icon_id);
             FAIL;
             continue;
         }
         embedded_images[icon_id - IDB_PNGFULL] = CreateArrayView(data, size);
     }
-    i32 console_font_size;
-    u8* jetbrainsmono_data = (u8*)SysGetDataFromResource(&console_font_size, IDR_FONT_JETBRAINSMONO);
-    if (!CashInit(CreateArrayView(embedded_images), CreateArrayView(s_logo), CreateArrayView(jetbrainsmono_data, console_font_size)))
+    if (!CashInit(CreateArrayView(embedded_images), CreateArrayView(s_logo)))
     {
-        DebugPrint("Error: CashInit() failed");
+        LOG(LogLevel_Error, "Error: CashInit() failed");
         return 1;
     }
     Threading& threading = Threading::GetInstance();
@@ -137,6 +135,7 @@ i32 SysMain(i32 argc, char** argv)
     g_data.fonts[FontIndex_Small] = SysLoadFontForImgui(IDR_FONT_ROBOTTO, 12.0f);
     g_data.fonts[FontIndex_Imgui] = io.Fonts->AddFontDefault();
     g_data.fonts[FontIndex_Monospace] = SysLoadFontForImgui(IDR_FONT_JETBRAINSMONO, 16.0f);
+    io.Fonts->GetGlyphRangesJapanese();
 
     const double freq = double(SDL_GetPerformanceFrequency()); //HZ
     const double start_time = SDL_GetPerformanceCounter() / freq;

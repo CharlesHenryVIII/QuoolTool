@@ -167,9 +167,9 @@ pugi::xml_document GetXmlDocFromFile2(const char* filename)
     pugi::xml_parse_result result = doc.load_file(filename);
     if (!result)
     {
-        DebugPrint("Error XML [%s] parsed with errors", filename);
-        DebugPrint("Error description: %s", result.description());
-        DebugPrint("Error offset: %i (error at [...%i]\n", result.offset, (filename + result.offset));
+        LOG(LogLevel_Error, "Error XML [%s] parsed with errors", filename);
+        LOG(LogLevel_Error, "Error description: %s", result.description());
+        LOG(LogLevel_Error, "Error offset: %i (error at [...%i]\n", result.offset, (filename + result.offset));
         FAIL;
         return {};
     }
@@ -289,7 +289,7 @@ void ImguiMain(AppData& data)
 
                 if (ImGui::MenuItem("Github Releases"))
                     if (!SDL_OpenURL("https://github.com/CharlesHenryVIII/QuoolTool/releases"))
-                        DebugPrint("Failed to open URL: %s", SDL_GetError());
+                        LOG(LogLevel_Error, "Failed to open URL: %s", SDL_GetError());
 #if _DEBUG
                 if (ImGui::MenuItem("imgui demo"))
                     s_show_demo_window = !s_show_demo_window;
