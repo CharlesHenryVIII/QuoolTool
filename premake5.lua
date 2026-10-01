@@ -67,7 +67,7 @@ workspace "QuoolTool"
     platforms { "x64" }
     --platforms { "x64", "Win32" }
     staticruntime "on"
-    runtime "Debug"
+    --runtime "Debug"
     startproject "QuoolTool"
     --toolset "v141_xp"
     multiprocessorcompile "On"
