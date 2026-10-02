@@ -174,20 +174,16 @@ i32 SysMain(i32 argc, char** argv)
                 if (SysProcessEvents(delta_time, &event))
                     continue;
                 //DebugPrint("Event: %i", event.type);
-                if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(gfx.window))
-                    g_running = true;
-                {
 #if _DEBUG
-                    if (event.type == SDL_EVENT_KEY_DOWN && event.key.down && event.key.key == SDLK_ESCAPE)
-                        g_running = false;
+                if (event.type == SDL_EVENT_KEY_DOWN && event.key.down && event.key.key == SDLK_ESCAPE)
+                    g_running = false;
 #endif
-                }
             }
-
-
-
-            CashImguiNewFrame(delta_time_d);
-            ImguiMain(app_data);
+            CashRenderUpdate(delta_time_d);
+            {
+                //main code goes here
+                ImguiMain(app_data);
+            }
             CashRender();
         }
 
