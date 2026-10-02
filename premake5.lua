@@ -75,6 +75,7 @@ workspace "QuoolTool"
     usefullpaths "On"
     enablepch "Off"
     targetdir "build/"
+    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     filter "system:Windows"
         require("vstudio")
@@ -92,7 +93,6 @@ project "QuoolTool"
     language "C++"
     cppdialect "C++20"
     targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
     filter { "toolset:msc" }
         fatalwarnings { "All" }
     filter { "toolset:clang" }
@@ -220,135 +220,12 @@ project "QuoolTool"
     CommonFilters()
 
 
-project "Packager"
-    kind "ConsoleApp"
-    language "C++"
-    cppdialect "C++20"
-    targetdir "build/Packager"
-    targetname "QuoolToolPackager_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-    objdir "build/Packager/obj/%{cfg.platform}/%{cfg.buildcfg}"
-
-    --targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-    --objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
-
-    --usestandardpreprocessor 'On'
-    --characterset "ASCII"
-
-    --Flags
-    fatalwarnings { "All" }
-
-    dependson {
-        "libarchive",
-        "contrib",
-        "curl-lib",
-        "SDL3-lib",
-        "FreeType",
-    }
-
-    links {
-        "libarchive",
-        "contrib",
-        "curl-lib",
-        "SDL3-lib",
-        "iphlpapi",
-        "ws2_32",
-    }
-
-    libdirs {
-        "Packager",
-    }
-
-    includedirs {
-        "contrib",
-        "contrib/CashUtil",
-        "contrib/ImGui",
-        "contrib/curl/include",
-        "contrib/freetype/include",
-        "contrib/libxlsxwriter/include",
-        "contrib/pugixml/src",
-        "contrib/tracy/public/tracy",
-        "resources",
-        path.join(SDL_DIR, "include"),
-    }
-    defines {
-        "_CRT_SECURE_NO_WARNINGS",
-        "LIBARCHIVE_STATIC",
-        "IMGUI_DEFINE_MATH_OPERATORS",
-        "CURL_STATICLIB",
-        "SOKOL_IMGUI_NO_SOKOL_APP",
-    }
-    files {
-        "src/Version.*",
-        "src/Archive.*",
-        "contrib/CashUtil/CashUtil.h",
-        "contrib/CashUtil/include/*.cpp",
-        "contrib/CashUtil/include/*.h",
-        "contrib/CashUtil/include/Shaders/*",
-        "packager/**",
-        "contrib/ImGui/*.h",
-        "contrib/ImGui/backends/imgui_impl_sdl3.*",
-        "contrib/json.hpp",
-        "contrib/stb/**.h",
-        "contrib/libarchive/*.h",
-        "contrib/pugixml/src/*.hpp",
-        "resources/**",
-    }
-    filter("files:**.glsl")
-        excludefrombuild ("On")
-
-    --removefiles {
-        --"src/Main.cpp",
-    --}
-
-    filter { "system:Windows" }
-        links {
-            "OpenGL32",
-            "libarchive",
-            "contrib",
-            "curl-lib",
-            "SDL3-lib",
-            "FreeType",
-            "iphlpapi",
-            "ws2_32",
-            "wbemuuid",
-            "setupapi",
-            "winmm",
-            "user32",
-            "imm32",
-            "version",
-            "ole32",
-            "oleaut32",
-            "shell32",
-            "advapi32",
-            "dxguid",
-        }
-        files {
-            "contrib/CashUtil/include/Windows/**.cpp",
-            "contrib/CashUtil/include/Windows/**.h",
-            "resources/**",
-        }
-
-    filter { "system:linux" }
-        links {
-            "GL",
-        }
-        files {
-            "contrib/CashUtil/include/Linux/**.cpp",
-            "contrib/CashUtil/include/Linux/**.h",
-        }
-
-    filter "system:macosx"
-
-    CommonFilters()
-
-
 project "contrib"
     kind "StaticLib"
     language "C++"
     --cdialect "C99"
     targetname "contrib_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     --targetname "libarchive"
-    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     fatalwarnings { "All" }
 
@@ -419,7 +296,6 @@ project "libarchive"
     --cdialect "C99"
     targetname "libarchive_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
     --targetname "libarchive"
-    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     --fatalwarnings { "None" }
 
@@ -492,7 +368,6 @@ project "curl-lib"
     language "C"
     --cdialect "C99"
     targetname "curl_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     --fatalwarnings { "All" }
     warnings "Off";
@@ -571,7 +446,6 @@ project "SDL3-lib"
     language "C"
 
     targetname "SDL3_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-    objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
 
     warnings "Off"
 
