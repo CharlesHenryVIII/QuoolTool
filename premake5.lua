@@ -20,6 +20,7 @@ local windows_defines = {
 }
 
 local SDL_DIR  = "contrib/SDL3"
+local FILTER_DIR = "make"
 
 function CommonFilters()
     filter "system:Windows"
@@ -76,6 +77,7 @@ workspace "QuoolTool"
     enablepch "Off"
     targetdir "build/"
     objdir "build/obj/%{cfg.platform}/%{cfg.buildcfg}"
+    location "."
 
     filter "system:Windows"
         require("vstudio")
@@ -93,6 +95,7 @@ project "QuoolTool"
     language "C++"
     cppdialect "C++20"
     targetname "QuoolTool_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    location(FILTER_DIR)
     filter { "toolset:msc" }
         fatalwarnings { "All" }
     filter { "toolset:clang" }
@@ -225,6 +228,7 @@ project "contrib"
     language "C++"
     --cdialect "C99"
     targetname "contrib_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    location(FILTER_DIR)
     --targetname "libarchive"
 
     fatalwarnings { "All" }
@@ -295,6 +299,7 @@ project "libarchive"
     language "C"
     --cdialect "C99"
     targetname "libarchive_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    location(FILTER_DIR)
     --targetname "libarchive"
 
     --fatalwarnings { "None" }
@@ -368,6 +373,7 @@ project "curl-lib"
     language "C"
     --cdialect "C99"
     targetname "curl_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
+    location(FILTER_DIR)
 
     --fatalwarnings { "All" }
     warnings "Off";
@@ -444,9 +450,8 @@ project "curl-lib"
 project "SDL3-lib"
     kind "StaticLib"
     language "C"
-
+    location(FILTER_DIR)
     targetname "SDL3_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-
     warnings "Off"
 
     includedirs {
@@ -596,7 +601,7 @@ project "FreeType"
     kind "StaticLib"
     language "C"
     targetname "FreeType_%{cfg.system}_%{cfg.platform}_%{cfg.buildcfg}"
-
+    location(FILTER_DIR)
     includedirs { "contrib/freetype/include" }
 
     defines {
