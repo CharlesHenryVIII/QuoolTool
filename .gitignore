@@ -4,6 +4,7 @@ Build/
 .vim/
 .vs/
 .cache/
+dev/
 #x64/
 #Contrib/imgui-master/backends/
 #Contrib/imgui-master/docs/

@@ -243,12 +243,12 @@ void UpdateNetworkAdaptersInfo(NetworkData* nd)
         SysConvertWideCharToMultiByte(c.desc, a.description);
         if (a.ipv4_ips.size() > 1)
         {
-            LOG(LogLevel_Info, "Warning: Network adapter '%s' has multiple IPv4 addresses:", c.config.name.c_str());
+            LOG(LogLevel_Warning, "Network adapter '%s' has multiple IPv4 addresses:", c.config.name.c_str());
             for (const auto& ip : a.ipv4_ips)
             {
-                LOG(LogLevel_Info, "    %s", ip.ip.ToString().c_str());
+                LOG(LogLevel_Warning, "    %s", ip.ip.ToString().c_str());
             }
-            LOG(LogLevel_Info, "    Selecting: '%s'", a.ipv4_ips.back().ip.ToString().c_str());
+            LOG(LogLevel_Warning, "    Selecting: '%s'", a.ipv4_ips.back().ip.ToString().c_str());
         }
         c.guid = a.name;
         c.config.ip = a.ipv4_ips.size() > 0 ? a.ipv4_ips.back() : SysIP4AndSubnet();

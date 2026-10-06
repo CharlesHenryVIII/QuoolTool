@@ -171,13 +171,13 @@ i32 SysMain(i32 argc, char** argv)
             SDL_Event event;
             while (SDL_PollEvent(&event))
             {
-                if (SysProcessEvents(delta_time, &event))
-                    continue;
-                //DebugPrint("Event: %i", event.type);
 #if _DEBUG
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.down && event.key.key == SDLK_ESCAPE)
                     g_running = false;
 #endif
+                if (SysProcessEvents(delta_time, &event))
+                    continue;
+                //DebugPrint("Event: %i", event.type);
             }
             CashRenderUpdate(delta_time_d);
             {
@@ -195,7 +195,6 @@ i32 SysMain(i32 argc, char** argv)
 
     // Cleanup
     //(Threading::GetInstance()).ForceQuit();
-    //ImguiDestroy();
     DataCollectionDestroy(&app_data.data_collection_data);
     NetworkingDestroy(&app_data.network_data);
     CitectDestroy(&app_data.citect_data);

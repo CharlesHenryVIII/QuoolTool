@@ -20,7 +20,7 @@ local windows_defines = {
 }
 
 local SDL_DIR  = "contrib/SDL3"
-local FILTER_DIR = "make"
+local FILTER_DIR = "dev"
 
 function CommonFilters()
     filter "system:Windows"
