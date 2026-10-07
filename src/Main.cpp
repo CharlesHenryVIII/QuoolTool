@@ -137,12 +137,6 @@ i32 SysMain(i32 argc, char** argv)
     g_data.fonts[FontIndex_Monospace] = SysLoadFontForImgui(IDR_FONT_JETBRAINSMONO, 16.0f);
     io.Fonts->GetGlyphRangesJapanese();
 
-    const double freq = double(SDL_GetPerformanceFrequency()); //HZ
-    const double start_time = SDL_GetPerformanceCounter() / freq;
-    double total_time = SDL_GetPerformanceCounter() / freq - start_time; //sec;
-    double previous_time = -1; //NOTE(CSH): This is to force our delta_time to be 1/60 so we force a physics update
-    double last_shader_update_time = total_time;
-
     // Main loop
 #ifdef __EMSCRIPTEN__
     // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
@@ -155,18 +149,10 @@ i32 SysMain(i32 argc, char** argv)
     {
         {
             ZoneScopedN("Frame Update:");
-            ++g_frame_index;
-            total_time = SDL_GetPerformanceCounter() / freq - start_time;
-            double delta_time_d = total_time - previous_time;// / 10;
-            float delta_time = (float)delta_time_d;
-            previous_time = total_time;
-            //TODO: Time stepping for simulation
-            //NOTE(CSH): This is to fix issues with long frame times.  Big issue when moving the window
-            if (delta_time > (1.0f / 60.0f))
-            {
-                delta_time_d = 1.0 / 60.0;
-                delta_time = (float)delta_time_d;
-            }
+            double delta_time_d, total_time_d;
+            CashFrameInit(delta_time_d, total_time_d);
+            const float delta_time = (float)delta_time_d;
+            const float total_time = (float)total_time_d;
 
             SDL_Event event;
             while (SDL_PollEvent(&event))
