@@ -153,6 +153,7 @@ i32 SysMain(i32 argc, char** argv)
             CashFrameInit(delta_time_d, total_time_d);
             const float delta_time = (float)delta_time_d;
             const float total_time = (float)total_time_d;
+            ArenaClear(&g_arena);
 
             SDL_Event event;
             while (SDL_PollEvent(&event))

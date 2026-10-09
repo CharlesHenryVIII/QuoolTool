@@ -30,7 +30,7 @@ struct ScriptJob : Job
     ScriptFunction func;
     ScriptData data;
     
-    void RunJob() override
+    void RunJob(Arena& arena) override
     {
         ZoneScopedN("ScriptJob");
 
@@ -60,7 +60,7 @@ struct WorkbookJob : Job
     AsyncData<lxw_workbook*>* workbook;
     Atomic<ScriptState>* state;
 
-    void RunJob() override
+    void RunJob(Arena& arena) override
     {
         ZoneScopedN("Workbook Job");
         if (workbook)

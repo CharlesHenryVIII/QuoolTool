@@ -19,6 +19,7 @@
 #include <iostream>
 
 bool s_show_demo_window = false;
+Arena g_arena = ArenaAlloc();
 
 void ImguiText(const std::wstring& ws)
 {
@@ -212,7 +213,7 @@ void ImguiMain(AppData& data)
                 const bool new_version = g_online_version.IsValid() && g_online_version > g_version;
                 if (new_version)
                 {
-                    ImGui::TextColored(ImVec4(1.0f, 0.1f, 0.1f, 1.0f), "Version: %s", g_version.AsString().c_str());
+                    ImGui::TextColored(ImVec4(1.0f, 0.1f, 0.1f, 1.0f), "Version: %s", g_version.AsString(&g_arena));
                     if (g_download_state == AsyncStatus_Fetching)
                     {
                         if (g_download_update_progress >= 0.0f)
@@ -228,8 +229,8 @@ void ImguiMain(AppData& data)
                     {
                         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.1f, 1.0f), "New Version Available!");
                         ImGui::BeginDisabled(g_download_state != AsyncStatus_Empty);
-                        const std::string bs = ToString("Download Version %s", g_online_version.AsString().c_str());
-                        if (ImGui::Button(bs.c_str()))
+                        const char* bs = ArenaPush(&g_arena, "Download Version %s", g_online_version.AsString(&g_arena));
+                        if (ImGui::Button(bs))
                         {
                             DownloadUpdateJob* job = new DownloadUpdateJob();
                             threading.SubmitJob(job);
@@ -240,7 +241,7 @@ void ImguiMain(AppData& data)
                 else
                 {
 
-                    ImGui::Text("Version: %s", g_version.AsString().c_str());
+                    ImGui::Text("Version: %s", g_version.AsString(&g_arena));
                     if (g_online_version.IsValid())
                     {
                         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Already at latest version");

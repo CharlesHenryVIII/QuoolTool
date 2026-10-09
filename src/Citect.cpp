@@ -43,13 +43,13 @@ void CitectCreateZip(CitectData& cs)
     cs.progress = u64(-1);
 }
 
-void RunCitectCreateZipJob::RunJob()
+void RunCitectCreateZipJob::RunJob(Arena& arena)
 {
     CitectData& cs = *m_citect_data;
     CitectCreateZip(cs);
 }
 
-void RunCitectFullBackupJob::RunJob()
+void RunCitectFullBackupJob::RunJob(Arena& arena)
 {
     CitectData& cs = *m_citect_data;
     CitectCreateZip(cs);

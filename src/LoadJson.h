@@ -8,8 +8,8 @@ Json& j = *(Json*)json_obj
 
 #define READWRITE_JSON_H(name)\
 struct name;\
-void Write ## name(const name* s, const std::wstring& filename);\
-bool Read  ## name(      name* s, const std::wstring& filename)
+void Write ## name(const name* s, const char* filename);\
+bool Read  ## name(      name* s, const char* filename)
 
 //READWRITE_JSON_H(Settings);
 READWRITE_JSON_H(EnvironmentVariables);

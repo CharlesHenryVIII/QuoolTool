@@ -90,7 +90,7 @@ void from_json(const Json& j, SysNetAdapterConfig& adapter)
 
 
 template <typename T>
-void WriteJson(const T* s, const std::wstring& filename)
+void WriteJson(const T* s, const char* filename)
 {
     VALIDATE(s);
 	Json data = *s;
@@ -102,7 +102,7 @@ void WriteJson(const T* s, const std::wstring& filename)
 }
 
 template <typename T>
-bool LoadJson(T* s, const std::wstring& filename)
+bool LoadJson(T* s, const char* filename)
 {
     VALIDATE_V(s, false);
 	std::ifstream file(filename); // TODO : Update to file system
@@ -143,12 +143,12 @@ bool ReadJson(T* s, const Json& j)
 
 #define READWRITE_JSON_CPP(name)\
 struct name;\
-void Write ## name(const name* s, const std::wstring& filename) { WriteJson(s, filename); }\
-bool Read  ## name(      name* s, const std::wstring& filename)  { return LoadJson(s, filename); }
+void Write ## name(const name* s, const char* filename) { WriteJson(s, filename); }\
+bool Read  ## name(      name* s, const char* filename)  { return LoadJson(s, filename); }
 
 READWRITE_JSON_CPP(EnvironmentVariables);
 
-const wchar_t* s_settings_filename = L"settings.json";
+const char* s_settings_filename = "settings.json";
 const char* s_network_name = "Network";
 const char* s_theme_name = "Themes";
 #define JSON_WRITE_COMMON(__name) j[s_ ## __name ## _name] = g_ ## __name ## _settings

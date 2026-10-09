@@ -13,10 +13,10 @@
 using Json = nlohmann::json;
 
 struct NetworkInfo {
-    const std::string url = "https://api.github.com/repos/CharlesHenryVIII/QuoolTool/releases/latest";
-    const std::wstring env_filename = L".env";
+    const char* url = "https://api.github.com/repos/CharlesHenryVIII/QuoolTool/releases/latest";
+    const char* env_filename = ".env";
     EnvironmentVariables env;
-    std::string download_url;
+    std::string download_url;//how do I replace this with an arena?
     size_t download_size;
 };
 NetworkInfo s_network;
@@ -26,36 +26,55 @@ Atomic<AsyncStatus> g_download_state;
 Atomic<float> g_download_update_progress = 0;
 NetworkSettings g_network_settings;
 
-std::string GetUrlFromVersion(Version v)
+const char* GetUrlFromVersion(Arena* arena, Version v)
 {
-    std::string r = ToString("https://github.com/CharlesHenryVIII/QuoolTool/releases/download/%s/QuoolTool_windows_x64_Release.zip", v.AsTagString().c_str());
-                            //https://github.com/CharlesHenryVIII/QuoolTool/releases/download/v1.1/QuoolTool_windows_x64_Release.zip
+    const char* r = ArenaPush(arena, "https://github.com/CharlesHenryVIII/QuoolTool/releases/download/%s/QuoolTool_windows_x64_Release.zip", v.AsTagString(&g_arena));
+                                   //https://github.com/CharlesHenryVIII/QuoolTool/releases/download/v1.1/QuoolTool_windows_x64_Release.zip
     return r;
 }
 
-template<typename T>
 struct ResponseData {
-    T data;
+    DynamicArray<char> data = {};
     Atomic<float>* progress = nullptr;
     Atomic<size_t> completed = 0;
-    size_t total;
+    Atomic<size_t> total = 0;
 };
 
-static size_t WriteCallbackString(void* contents, size_t size, size_t nmemb, std::string* out)
+struct WriteCallbackData {
+    Arena* arena = {};
+    DynamicArray<char> string;
+    //char* string = {};
+    //u64 len = {};
+};
+static size_t WriteCallbackString(char* contents, size_t size, size_t nmemb, void* user_data)
 {
     ASSERT(size == 1);
-    out->append((char*)contents, size * nmemb);
+    std::string test = "blah ";
+    test.append("another one");
+
+    DynamicArray<char>* s = (DynamicArray<char>*)user_data;
+    s->Append(contents, size * nmemb);
+    //char c = {};
+    //s->Push(c); //for null terminator
+    //const u64 new_size = size * nmemb + s->cap;
+    //const u64 str_len = ;
+    //s->Append(contents, str_len);
+    //char* out_new = (char*)ArenaPush(u->arena, new_size);
+    //u->len = new_size;
+    //ArrayView mem_view = CreateArrayView(out_new, len + size * nmemb);
+    //mem_view.CopyFrom();
+    //arena
+    //out->append((char*)contents, size * nmemb);
+    //out->
     return size * nmemb;
 }
 static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, void* data)
 {
-    ResponseData<std::vector<char>>* user_data = (ResponseData<std::vector<char>>*)data;
+    ResponseData* user_data = (ResponseData*)data;
     ASSERT(size == 1);
     VALIDATE_V(user_data, 0);
-    for (size_t i = 0; i < nmemb; i++)
-    {
-        user_data->data.push_back(((u8*)contents)[i]);
-    }
+    const u64 bytes = size * nmemb;
+    user_data->data.Append((char*)contents, bytes);
     if (user_data->progress)
     {
         user_data->completed += nmemb;
@@ -75,7 +94,7 @@ static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, voi
     }\
 } REQUIRE_SEMICOLON
 
-void DownloadUpdateJob::RunJob()
+void DownloadUpdateJob::RunJob(Arena& arena)
 {
     ZoneScopedN("NetworkingJob: DownloadUpdateJob");
     g_download_state = AsyncStatus_Fetching;
@@ -97,11 +116,11 @@ void DownloadUpdateJob::RunJob()
     headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
 
-    ResponseData<std::vector<char>> response = {
+    ResponseData response = {
         .progress = &g_download_update_progress,
         .total = s_network.download_size };
-    std::string url = s_network.download_url;
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
+    response.data.arena = &arena;
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, s_network.download_url.c_str()));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackBinary));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
@@ -115,20 +134,20 @@ void DownloadUpdateJob::RunJob()
     }
     curl_easy_cleanup(curl);
     g_download_update_progress = -1.0f;
-    std::string zip_filename = ToString("QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
-    if (response.data.size() > Megabytes(1))
+    const char* zip_filename = ArenaPush(&arena, "QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
+    if (response.data.GetBytesUsed() > Megabytes(1))
     {
-        std::fstream file(zip_filename, std::ios_base::out | std::ios_base::binary);
+        std::fstream file(zip_filename, std::fstream::out | std::fstream::binary);
         if (!file.good())
         {
-            LOG(LogLevel_Error, "Failed to open file for write: %s", zip_filename.c_str());
+            LOG(LogLevel_Error, "Failed to open file for write: %s", zip_filename);
             FAIL;
             g_download_state = AsyncStatus_FetchedFailed;
             return;
         }
         else
         {
-            file.write((char*)response.data.data(), response.data.size());
+            file.write(response.data.data, response.data.used + 1);
         }
     }
     else
@@ -150,7 +169,7 @@ void DownloadUpdateJob::RunJob()
             fs::remove(zip_filename, ec);
             if (ec)
             {
-                LOG(LogLevel_Error, "Error: failed to remove file: \"%s\"", zip_filename.c_str());
+                LOG(LogLevel_Error, "Error: failed to remove file: \"%s\"", zip_filename);
                 LOG(LogLevel_Error, "\"remove\" failure: \"%d\", \"%s\"", ec.value(), ec.message().c_str());
                 FAIL;
                 g_download_state = AsyncStatus_FetchedFailed;
@@ -162,7 +181,7 @@ void DownloadUpdateJob::RunJob()
     g_download_state = AsyncStatus_FetchedSuccess;
 }
 
-void GetOnlineVersionJob::RunJob()
+void GetOnlineVersionJob::RunJob(Arena& arena)
 {
     ZoneScopedN("NetworkingJob: GetOnlineVersionJob");
     g_version_state = AsyncStatus_Fetching;
@@ -178,8 +197,9 @@ void GetOnlineVersionJob::RunJob()
         CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
     }
 
-    std::string response;
-    CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, s_network.url.c_str()));
+    DynamicArray<char> response;
+    response.arena = &arena;
+    CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, s_network.url));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackString));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
@@ -194,17 +214,17 @@ void GetOnlineVersionJob::RunJob()
     curl_easy_cleanup(curl);
 
     std::string tag;
-    Json json = Json::parse(response);
+	Json json = Json::parse(response.First(), response.Last());
     if (!JsonSafeGet(tag, &json, "tag_name"))
     {
-        LOG(LogLevel_Error, "Error: failed to get tag_name, url: %s", s_network.url.c_str());
+        LOG(LogLevel_Error, "Error: failed to get tag_name, url: %s", s_network.url);
         LOG(LogLevel_Error, "    json response vvvvvv");
-        LOG(LogLevel_Error, "%s", response.c_str());
+        LOG(LogLevel_Error, "%s", response.data);
         g_version_state = AsyncStatus_FetchedFailed;
         return;
     }
 
-    g_online_version.SetFromTag(tag);
+    g_online_version.SetFromTag(tag.c_str());
     if (json.contains("assets") &&
         json["assets"].is_array() &&
         json["assets"].size() &&

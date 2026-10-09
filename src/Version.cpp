@@ -1,16 +1,17 @@
 #include "Version.h"
+#include "CashUtil.h"
 
 Version g_version = { .major = 1, .minor = 9 };
 
-std::string Version::AsTagString() const
+const char* Version::AsTagString(Arena* arena) const
 {
-    std::string r = ToString("v%i.%i", major, minor);
+    const char* r = ArenaPush(arena, "v%i.%i", major, minor);
     return r;
 }
 
-std::string Version::AsString() const
+const char* Version::AsString(Arena* arena) const
 {
-    std::string r = ToString("%i.%i", major, minor);
+    const char* r = ArenaPush(arena, "%i.%i", major, minor);
     return r;
 }
 
@@ -19,20 +20,13 @@ bool Version::IsValid() const
     return major != 0;
 }
 
-void Version::SetFromTag(const std::string& tag)
+void Version::SetFromTag(const char* tag)
 {
-    std::string full = tag.substr(1, tag.size());
-    size_t p_loc = full.find_first_of('.');
-    if (p_loc == std::string::npos)
-    {
-        LOG(LogLevel_Error, "Error: Invalid tag for Version: %s", tag.c_str());
-        FAIL;
-        return;
-    }
-
-    const std::string mjs = full.substr(0, p_loc);
-    const std::string mms = full.substr(p_loc + 1, full.size());
-    major = atoi(mjs.c_str());
-    minor = atoi(mms.c_str());
+	const char* start = (tag + 1);
+	const char* p = StringContains(tag, '.');
+	VALIDATE_M(p, LogLevel_Error, "Error: Invalid tag for Version: %s", tag);
+	p++;
+	major = strtol(start, nullptr, 10);
+	minor = strtol(p, nullptr, 10);
 }
 

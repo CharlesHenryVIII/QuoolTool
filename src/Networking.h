@@ -25,12 +25,12 @@ struct EnvironmentVariables
 
 struct DownloadUpdateJob : Job
 {
-    virtual void RunJob() override;
+    virtual void RunJob(Arena& arena) override;
 };
 
 struct GetOnlineVersionJob : Job
 {
-    virtual void RunJob() override;
+    virtual void RunJob(Arena& arena) override;
 };
 
 void NetworkingInit(NetworkData** network_data);
