@@ -325,26 +325,12 @@ pugi::xml_document GetXmlDocFromFile(const Path& path, StringEncoding encoding)
     }
     if (encoding != StringEncoding_UTF8)
     {
-#if 1
         std::string raw;
-        FileReadAll(raw, path);
+        FileRead(path.string().c_str(), raw);
         std::wstring ws;
         SysConvertMultibyteToWideChar(ws, raw, StringEncoding_OEM);
         std::string s;
         SysConvertWideCharToMultiByte(s, ws, StringEncoding_UTF8);
-#else
-        std::ifstream file(path, std::ios::binary | std::ios::ate);
-        VALIDATE_V(file.good() && file.is_open(), doc);
-        const std::streamsize size = file.tellg();
-        file.seekg(0, std::ios::beg);
-
-        std::vector<char> buffer(size);
-        file.read(buffer.data(), size);
-        std::wstring ws;
-        SysConvertMultibyteToWideChar(ws, buffer.data(), StringEncoding_OEM);
-        std::string s;
-        SysConvertWideCharToMultiByte(s, ws, StringEncoding_UTF8);
-#endif
 
         result = doc.load_string(s.c_str());
     }
@@ -1218,7 +1204,7 @@ void ConvertFolderToXLSX(const Path& path)
     {
         const Path file = path / L"netstat.txt";
         std::string raw;
-        FileReadAll(raw, file);
+        FileRead(path.string().c_str(), raw);
         if (raw.size())
         {
             std::wstring ws;

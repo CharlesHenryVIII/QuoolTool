@@ -54,20 +54,9 @@ void AddEntryToZip(archive* a, const std::filesystem::path& full_path, const std
         ArchiveErrorCheck(a, error);
 
         {
-            std::ifstream file(full_path, std::ios::binary | std::ios::ate);
-            if (!file)
-            {
-                LOG(LogLevel_Error, "Error opening file: %s", full_path.string().c_str());
-                FAIL;
-                return;
-            }
-            const size_t file_size = (size_t)file.tellg();
-            if (file_size > file_buffer.size())
-                file_buffer.resize(file_size * 2);
-            file.seekg(0, std::ios::beg);
-            file.read((char*)file_buffer.data(), file_size);
-
-            error = (int)archive_write_data(a, file_buffer.data(), file_size);
+            const u64 fs = FileGetSize(full_path.string().c_str());
+            VALIDATE_M(fs == 0, LogLevel_Error, "Error opening file: %s", full_path.string().c_str());
+            error = (int)archive_write_data(a, file_buffer.data(), fs);
             if (error < 0)
                 ArchiveErrorCheck(a, error);
             ++progress;

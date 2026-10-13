@@ -5,9 +5,6 @@
 
 #include "json.hpp"
 
-#include <fstream>
-#include <iostream>
-
 using Json = nlohmann::json;
 
 #define TO_JSON_COMMON_MEMBER(_name, _struct) j[#_name] = _struct._name
@@ -90,27 +87,26 @@ void from_json(const Json& j, SysNetAdapterConfig& adapter)
 
 
 template <typename T>
-void WriteJson(const T* s, const char* filename)
+void WriteJson(const T* a, const char* filename)
 {
-    VALIDATE(s);
-	Json data = *s;
-    const Path path = filename;
-	std::ofstream file(path); //TODO(CSH): Update to file system
-    VALIDATE(file.good());
-    VALIDATE(file.is_open());
-    file << data.dump(4);
+    VALIDATE_M(filename, LogLevel_Warning, "Invalid filename to WriteJson()");
+    VALIDATE_M(a, LogLevel_Warning, "Invalid input to WriteJson(): %s", filename);
+	Json data = *a;
+    const std::string s = data.dump(4);
+    VALIDATE_M(FileWrite(filename, s), LogLevel_Warning, "Failed to write json: %s", filename);
 }
 
 template <typename T>
 bool LoadJson(T* s, const char* filename)
 {
-    VALIDATE_V(s, false);
-	std::ifstream file(filename); // TODO : Update to file system
-    VALIDATE_V(file.good(), false);
+    VALIDATE_MV(filename, false, LogLevel_Warning, "Invalid filename for LoadJson()");
+    VALIDATE_MV(s, false, LogLevel_Warning, "Invalid input to LoadJson: %s", filename);
+
+    std::vector<u8> fd;
+    VALIDATE_MV(FileRead(filename, fd), false, LogLevel_Warning, "Failed to read file: %s", filename);
 	try
 	{
-		Json data;
-		data = Json::parse(file, nullptr, true);
+		Json data = Json::parse((char*)fd.data(), (char*)(fd.data() + fd.size()), nullptr, true);
 		*s = data.template get<T>();
         return true;
 	}
@@ -118,7 +114,6 @@ bool LoadJson(T* s, const char* filename)
 	{
         FAIL;
 		*s = T();
-		file.close();
         T t = T();
 		WriteJson(&t, filename);
 	}
@@ -165,23 +160,18 @@ void WriteSettings()
     JSON_WRITE_COMMON(network);
     JSON_WRITE_COMMON(theme);
 
-    const Path path = s_settings_filename;
-	std::ofstream file(path); //TODO(CSH): Update to file system
-    VALIDATE(file.good());
-    VALIDATE(file.is_open());
-    file << j.dump(4);
+    const std::string s = j.dump(4);
+    VALIDATE_M(s.size(), LogLevel_Warning, "json-ified settings empty");
+    VALIDATE_M(FileWrite(s_settings_filename, s), LogLevel_Warning, "Failed to save settings: %s", s_settings_filename);
 }
 bool ReadSettings()
 {
-    const Path path = s_settings_filename;
-	std::ifstream file(path); //TODO(CSH): Update to file system
-    if (!file.good())
-    {
+    std::vector<u8> fd;
+    if (!FileRead(s_settings_filename, fd))
         return false;
-    }
     Json j;
     try {
-        j = Json::parse(file, nullptr, true);
+        j = Json::parse((char*)fd.data(), (char*)(fd.data() + fd.size()), nullptr, true);
     }
     catch (...)
     {
