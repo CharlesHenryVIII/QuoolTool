@@ -1431,7 +1431,10 @@ void DataCollectionImGui(DataCollectionData& td)
             Defer{ td.lock.unlock(); };
             ImGui::BeginDisabled(!locked);
             ImGui::BeginGroup();
-            ImguiPath("Output Folder", "Please select the folder to output data to", td.output_path);
+            std::function<void(void)> func = []() {
+                WriteSettings();
+                };
+            ImguiFilePath("Output Folder", "Please select the folder to output data to", &td.output_path, SysFileNavigationFlags_OnlyFolders, func);
             ImGui::EndGroup();
             ImGui::EndDisabled();
         }

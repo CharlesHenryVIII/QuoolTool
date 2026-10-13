@@ -43,8 +43,6 @@ struct ResponseData {
 struct WriteCallbackData {
     Arena* arena = {};
     DynamicArray<char> string;
-    //char* string = {};
-    //u64 len = {};
 };
 static size_t WriteCallbackString(char* contents, size_t size, size_t nmemb, void* user_data)
 {
@@ -54,18 +52,6 @@ static size_t WriteCallbackString(char* contents, size_t size, size_t nmemb, voi
 
     DynamicArray<char>* s = (DynamicArray<char>*)user_data;
     s->Append(contents, size * nmemb);
-    //char c = {};
-    //s->Push(c); //for null terminator
-    //const u64 new_size = size * nmemb + s->cap;
-    //const u64 str_len = ;
-    //s->Append(contents, str_len);
-    //char* out_new = (char*)ArenaPush(u->arena, new_size);
-    //u->len = new_size;
-    //ArrayView mem_view = CreateArrayView(out_new, len + size * nmemb);
-    //mem_view.CopyFrom();
-    //arena
-    //out->append((char*)contents, size * nmemb);
-    //out->
     return size * nmemb;
 }
 static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, void* data)

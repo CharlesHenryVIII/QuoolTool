@@ -8,8 +8,8 @@ extern Arena g_arena;
 
 void ImguiMain(AppData& data);
 void ImguiTextCentered(const std::string& text, const Color* color = nullptr);
-bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& out_path, const bool add_final_slash);
-bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path);
+bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path, const float text_length = 0.0f);
+bool ImguiFilePath(const std::string& name, const std::string& hint, Path* out_path, SysFileNavigationFlags flags, std::function<void(void)> on_complete = {});
 void ImguiText(const std::wstring& ws);
 void ImguiCenterWrappedText(const char* text, float start_position, float wrap_width);
 void ImguiAlignForWidth(float width, float alignment = 0.5f);

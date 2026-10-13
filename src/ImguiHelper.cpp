@@ -10,7 +10,6 @@
 
 #include "SDL3/SDL.h"
 #include "ImGui/backends/imgui_impl_sdl3.h"
-//#include "ImGui/backends/imgui_impl_sdlrenderer3.h"
 
 #include <stdio.h>
 #include <string>
@@ -120,45 +119,43 @@ void HelpMarker(const std::string& desc)
     }
 }
 
-bool ImguiPath(const std::string& name, const std::string& hint, std::wstring& out_path, const bool add_final_slash)
+bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path, const float text_length)
 {
     ImGui::PushID(name.c_str());
     ImGui::Text("%s", name.c_str());
     ImGui::SameLine();
     HelpMarker(hint.c_str());
     ImGui::SameLine();
-    //ImGui::PushItemWidth(-FLT_MIN);
+    if (text_length != 0.0f)
+        ImGui::SetNextItemWidth(text_length);
     bool modified = InputTextDynamicSize("##" + hint, out_path);
-    //ImGui::PopItemWidth();
-    CleanPathString(out_path, add_final_slash);
-    //TODO:
-    //ImGui::SameLine();
-    //if (ImGui::Button("..."))
-    {
-        //not setup
-    }
     ImGui::PopID();
     return modified;
 }
 
-bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path)
+bool ImguiFilePath(const std::string& name, const std::string& hint, Path* out_path, SysFileNavigationFlags flags, std::function<void(void)> on_complete)
 {
+    VALIDATE_V(out_path, false);
+    ImGuiStyle& style = ImGui::GetStyle();
     ImGui::PushID(name.c_str());
-    ImGui::Text("%s", name.c_str());
+    const char* button_text = "...";
+    const char* button_text_for_size = "_..._";
+
+    const float button_width = ImGui::CalcTextSize(button_text_for_size).x + (style.FramePadding.x * 2.0f);
+    const float space_to_reserve = button_width + style.ItemSpacing.x;
+    bool r = ImguiPath(name, hint, *out_path, -space_to_reserve);
+
     ImGui::SameLine();
-    HelpMarker(hint.c_str());
-    ImGui::SameLine();
-    //ImGui::PushItemWidth(-FLT_MIN);
-    bool modified = InputTextDynamicSize("##" + hint, out_path);
-    //ImGui::PopItemWidth();
-    //TODO:
-    //ImGui::SameLine();
-    //if (ImGui::Button("..."))
+    if (ImGui::Button(button_text, { button_width, 0 }))
     {
-        //not setup
+        SysOpenSystemNavigation(out_path,
+            out_path->empty() ? nullptr : out_path,
+            {},
+            on_complete,
+            flags);
     }
     ImGui::PopID();
-    return modified;
+    return r;
 }
 
 #include "pugixml.hpp"

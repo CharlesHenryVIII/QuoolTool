@@ -118,7 +118,6 @@ i32 SysMain(i32 argc, char** argv)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
     ThemesInit(g_theme_settings.color, g_theme_settings.style, ThemeColor_Quantum, ThemeStyle_SimpleRounding);
-    //ConsoleInit(s_logo);
 
 
 

@@ -182,15 +182,16 @@ void CitectImGui(CitectData& cd)
             Defer{ cd.lock.unlock(); };
             ImGui::BeginDisabled(!locked);
             ImGui::BeginGroup();
-            ImguiPath("Backup Folder", "Please select removable media folder to backup to", cd.backup_path);
-            ImguiPath("Program Folder", "%PROGRAMDATA%/AVEVA/Citect SCADA 2018 R2", cd.program_files_path);
-            ImguiPath("Project Folder", "%PROGRAMDATA%/AVEVA Plant SCADA/User/<project>", cd.project_path);
-            ImguiPath("Program Files (x86)", "%PROGRAMDATA%/AVEVA/Citect SCADA", cd.program_files_86);
+            std::function<void(void)> func = []() {
+                WriteSettings();
+                };
+            ImguiFilePath("Backup Folder", "Please select removable media folder to backup to", &cd.backup_path,        SysFileNavigationFlags_OnlyFolders, func);
+            ImguiFilePath("Program Folder", "%PROGRAMDATA%/AVEVA/Citect SCADA 2018 R2",         &cd.program_files_path, SysFileNavigationFlags_OnlyFolders, func);
+            ImguiFilePath("Project Folder", "%PROGRAMDATA%/AVEVA Plant SCADA/User/<project>",   &cd.project_path,       SysFileNavigationFlags_OnlyFolders, func);
+            ImguiFilePath("Program Files (x86)", "%PROGRAMDATA%/AVEVA/Citect SCADA",            &cd.program_files_86,   SysFileNavigationFlags_OnlyFolders, func);
             ImGui::EndGroup();
 
-            ImVec2 size = ImGui::GetItemRectSize();
-            ImGui::SameLine();
-            if (ImGui::Button("Auto Search Paths", ImVec2(150, size.y)))
+            if (ImGui::Button("Auto Search Paths", ImVec2(200, 40)))
             {
                 std::wstring program_data;
                 SysExpandEnvironemntVariable(program_data, L"%PROGRAMDATA%");
