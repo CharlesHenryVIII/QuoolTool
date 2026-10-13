@@ -15,23 +15,23 @@ void CitectCreateZip(CitectData& cs)
     //1. Backup project as Backup.ctz
     std::vector<ScannedFile> filenames;
     {
-        SysScanDirectoryForFileNames(cs.project_path.wstring(), filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
+        SysScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags(ScanDirectoryFlags_IncludeDirs | ScanDirectoryFlags_Recursive));
         cs.total = filenames.size();
     }
     filenames.clear();
-    SysScanDirectoryForFileNames(cs.project_path.wstring(), filenames, ScanDirectoryFlags_IncludeDirs);
+    SysScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
      
 
     std::vector<std::filesystem::path> ini_files;
     if (fs::exists(cs.program_files_path))
     {
-        std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / L"Config";
+        std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / "Config";
         std::vector<ScannedFile> config_files;
-        SysScanDirectoryForFileNames(config_path.wstring(), config_files, ScanDirectoryFlags_None);
+        SysScanDirectoryForFileNames(config_path, config_files, ScanDirectoryFlags_None);
 
         for (auto f : config_files)
         {
-            if (f.name.find_last_of(L".ini") != std::wstring::npos)
+            if (f.name.find_last_of(".ini") != std::wstring::npos)
             {
                 ini_files.push_back(config_path / f.name);
             }
@@ -136,8 +136,8 @@ bool GetScadaDir(std::filesystem::path& out, ArrayView<ScannedFile> files)
 {
     for (auto file : files)
     {
-        if (StringContains(file.name, L"AVEVA Plant SCADA", StringCase_Insensitive) ||
-            StringContains(file.name, L"Citect SCADA", StringCase_Insensitive))
+        if (StringContains(file.name, "AVEVA Plant SCADA", StringCase_Insensitive) ||
+            StringContains(file.name, "Citect SCADA", StringCase_Insensitive))
         {
             out = std::filesystem::path(file.name);
             return true;
@@ -215,10 +215,10 @@ void CitectImGui(CitectData& cd)
                         if (!pd_folder.dir)
                             continue;
 
-                        if (StringContains(pd_folder.name, L"AVEVA", StringCase_Insensitive) ||
-                            StringContains(pd_folder.name, L"Citect", StringCase_Insensitive))
+                        if (StringContains(pd_folder.name, "AVEVA", StringCase_Insensitive) ||
+                            StringContains(pd_folder.name, "Citect", StringCase_Insensitive))
                         {
-                            const std::filesystem::path aveva_folder_path = (program_data_path / pd_folder.name).wstring();
+                            const std::filesystem::path aveva_folder_path = program_data_path / pd_folder.name;
                             std::vector<ScannedFile> aveva_folder_files;
                             SysScanDirectoryForFileNames(aveva_folder_path, aveva_folder_files, ScanDirectoryFlags_IncludeDirs);
                             std::filesystem::path scada_folder;
@@ -226,8 +226,8 @@ void CitectImGui(CitectData& cd)
                             if (found)
                             {
                                 found_path = aveva_folder_path / scada_folder;
-                                LOG(LogLevel_Info, "aveva_folder_path: %s", aveva_folder_path.string().c_str());
-                                LOG(LogLevel_Info, "scada_folder: %s", scada_folder.string().c_str());
+                                LOG(LogLevel_Info, "aveva_folder_path: %s", ToString(aveva_folder_path).c_str());
+                                LOG(LogLevel_Info, "scada_folder: %s", ToString(scada_folder).c_str());
                                 break;
                             }
                         }
