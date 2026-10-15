@@ -15,13 +15,13 @@ struct CitectData {
 struct RunCitectFullBackupJob : Job
 {
     CitectData* m_citect_data;
-    virtual void RunJob(Arena& arena) override;
+    virtual void RunJob() override;
 };
 
 struct RunCitectCreateZipJob : Job
 {
     CitectData* m_citect_data;
-    virtual void RunJob(Arena& arena) override;
+    virtual void RunJob() override;
 };
 
 void CitectInit(CitectData** citect_data);

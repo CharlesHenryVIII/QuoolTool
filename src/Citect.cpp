@@ -43,13 +43,13 @@ void CitectCreateZip(CitectData& cs)
     cs.progress = u64(-1);
 }
 
-void RunCitectCreateZipJob::RunJob(Arena& arena)
+void RunCitectCreateZipJob::RunJob()
 {
     CitectData& cs = *m_citect_data;
     CitectCreateZip(cs);
 }
 
-void RunCitectFullBackupJob::RunJob(Arena& arena)
+void RunCitectFullBackupJob::RunJob()
 {
     CitectData& cs = *m_citect_data;
     CitectCreateZip(cs);
@@ -136,8 +136,8 @@ bool GetScadaDir(std::filesystem::path& out, ArrayView<ScannedFile> files)
 {
     for (auto file : files)
     {
-        if (StringContains(file.name, "AVEVA Plant SCADA", StringCase_Insensitive) ||
-            StringContains(file.name, "Citect SCADA", StringCase_Insensitive))
+        if (StringFindFirst(file.name, "AVEVA Plant SCADA", StringCase_Insensitive) ||
+            StringFindFirst(file.name, "Citect SCADA", StringCase_Insensitive))
         {
             out = std::filesystem::path(file.name);
             return true;
@@ -193,12 +193,12 @@ void CitectImGui(CitectData& cd)
 
             if (ImGui::Button("Auto Search Paths", ImVec2(200, 40)))
             {
-                std::wstring program_data;
-                SysExpandEnvironemntVariable(program_data, L"%PROGRAMDATA%");
-                const std::filesystem::path program_data_path = program_data;
+                std::string program_data;
+                SysExpandEnvironemntVariable(program_data, "%PROGRAMDATA%");
+                const Path program_data_path = program_data;
                 std::vector<ScannedFile> program_data_folders;
                 SysScanDirectoryForFileNames(program_data_path, program_data_folders, ScanDirectoryFlags_IncludeDirs);
-                std::filesystem::path found_path;
+                Path found_path;
 
                 //1. search for final scada dir first in ProgramData
                 bool found = GetScadaDir(found_path, CreateArrayView(program_data_folders));
@@ -215,13 +215,13 @@ void CitectImGui(CitectData& cd)
                         if (!pd_folder.dir)
                             continue;
 
-                        if (StringContains(pd_folder.name, "AVEVA", StringCase_Insensitive) ||
-                            StringContains(pd_folder.name, "Citect", StringCase_Insensitive))
+                        if (StringFindFirst(pd_folder.name, "AVEVA", StringCase_Insensitive) ||
+                            StringFindFirst(pd_folder.name, "Citect", StringCase_Insensitive))
                         {
-                            const std::filesystem::path aveva_folder_path = program_data_path / pd_folder.name;
+                            const Path aveva_folder_path = program_data_path / pd_folder.name;
                             std::vector<ScannedFile> aveva_folder_files;
                             SysScanDirectoryForFileNames(aveva_folder_path, aveva_folder_files, ScanDirectoryFlags_IncludeDirs);
-                            std::filesystem::path scada_folder;
+                            Path scada_folder;
                             found = GetScadaDir(scada_folder, CreateArrayView(aveva_folder_files));
                             if (found)
                             {
@@ -235,8 +235,8 @@ void CitectImGui(CitectData& cd)
                 }
                 if (found)
                 {
-                    cd.program_files_path = found_path.wstring();
-                    cd.project_path = cd.program_files_path / L"User" / L"UNKNOWN";
+                    cd.program_files_path = ToString(found_path);
+                    cd.project_path = cd.program_files_path / "User" / "UNKNOWN";
                 }
                 else
                 {
@@ -246,8 +246,8 @@ void CitectImGui(CitectData& cd)
                 //3. search ProgramData for AVEVA folders
                 //C:/Program Files (x86)/AVEVA Plant SCADA/
 
-                std::wstring program_files_86;
-                SysExpandEnvironemntVariable(program_files_86, L"%programfiles(x86)%");
+                std::string program_files_86;
+                SysExpandEnvironemntVariable(program_files_86, "%programfiles(x86)%");
                 Path pfx = program_files_86;
             }
 

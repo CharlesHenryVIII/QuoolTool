@@ -18,7 +18,6 @@
 #include <iostream>
 
 bool s_show_demo_window = false;
-Arena g_arena = ArenaAlloc();
 
 void ImguiText(const std::wstring& ws)
 {

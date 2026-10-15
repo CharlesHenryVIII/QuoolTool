@@ -150,3 +150,53 @@ bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, st
 
     return true;
 }
+
+bool UnzipArchive(const char* zip_path, const char* output_dir, DynamicArray<const char*>& filenames)
+{
+    struct archive* a = archive_read_new();
+    archive_read_support_format_zip(a);
+    archive_read_support_filter_all(a);
+
+    int error = ARCHIVE_OK;
+    archive_read_open_filename(a, zip_path, 10240);
+    ArchiveErrorCheck(a, error);
+    Defer{
+    archive_read_close(a);
+    archive_read_free(a);
+    };
+
+    struct archive* ext = archive_write_disk_new();
+    archive_write_disk_set_options(ext,
+        ARCHIVE_EXTRACT_TIME |
+        ARCHIVE_EXTRACT_PERM |
+        ARCHIVE_EXTRACT_ACL |
+        ARCHIVE_EXTRACT_FFLAGS);
+    Defer{
+    archive_write_close(ext);
+    archive_write_free(ext);
+    };
+
+    struct archive_entry* entry;
+    while (archive_read_next_header(a, &entry) == ARCHIVE_OK)
+    {
+        const char* relative_path = archive_entry_pathname(entry);
+        const char* full_path = relative_path;
+        if (output_dir && strlen(output_dir))
+            full_path = ArenaPush(&g_arena, "%s/%s", output_dir, relative_path);
+        archive_entry_set_pathname(entry, full_path);
+        filenames.Push(full_path);
+
+        archive_write_header(ext, entry);
+
+        const void* buff;
+        size_t size;
+        la_int64_t offset;
+
+        while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK)
+            archive_write_data_block(ext, buff, size, offset);
+
+        archive_write_finish_entry(ext);
+    }
+
+    return true;
+}

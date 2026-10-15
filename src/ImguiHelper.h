@@ -4,8 +4,6 @@
 #include "imgui.h"
 #include "Settings.h"
 
-extern Arena g_arena;
-
 void ImguiMain(AppData& data);
 void ImguiTextCentered(const std::string& text, const Color* color = nullptr);
 bool ImguiPath(const std::string& name, const std::string& hint, Path& out_path, const float text_length = 0.0f);

@@ -23,7 +23,7 @@ bool Version::IsValid() const
 void Version::SetFromTag(const char* tag)
 {
 	const char* start = (tag + 1);
-	const char* p = StringContains(tag, '.');
+	const char* p = StringFindFirst(tag, '.');
 	VALIDATE_M(p, LogLevel_Error, "Error: Invalid tag for Version: %s", tag);
 	p++;
 	major = strtol(start, nullptr, 10);

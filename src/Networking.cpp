@@ -34,7 +34,7 @@ const char* GetUrlFromVersion(Arena* arena, Version v)
 }
 
 struct ResponseData {
-    DynamicArray<char> data = {};
+    DynamicArray<char> data{ &g_arena };
     Atomic<float>* progress = nullptr;
     Atomic<size_t> completed = 0;
     Atomic<size_t> total = 0;
@@ -80,7 +80,7 @@ static size_t WriteCallbackBinary(void* contents, size_t size, size_t nmemb, voi
     }\
 } REQUIRE_SEMICOLON
 
-void DownloadUpdateJob::RunJob(Arena& arena)
+void DownloadUpdateJob::RunJob()
 {
     ZoneScopedN("NetworkingJob: DownloadUpdateJob");
     g_download_state = AsyncStatus_Fetching;
@@ -95,8 +95,8 @@ void DownloadUpdateJob::RunJob(Arena& arena)
     struct curl_slist* headers = nullptr;
     if (s_network.env.github_api_key.size() > 10)
     {
-        const std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
-        headers = curl_slist_append(headers, auth.c_str());
+        const char* auth = ArenaPush(&g_arena, "Authorization: Bearer %s", s_network.env.github_api_key.c_str());
+        headers = curl_slist_append(headers, auth);
     }
     headers = curl_slist_append(headers, "Accept: application/octet-stream");
     headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
@@ -105,7 +105,7 @@ void DownloadUpdateJob::RunJob(Arena& arena)
     ResponseData response = {
         .progress = &g_download_update_progress,
         .total = s_network.download_size };
-    response.data.arena = &arena;
+    response.data.arena = &g_arena;
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, s_network.download_url.c_str()));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackBinary));
@@ -120,20 +120,15 @@ void DownloadUpdateJob::RunJob(Arena& arena)
     }
     curl_easy_cleanup(curl);
     g_download_update_progress = -1.0f;
-    const char* zip_filename = ArenaPush(&arena, "QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
+    const char* zip_filename = ArenaPush(&g_arena, "QuoolTool_v%i_%i.zip", g_online_version.major, g_online_version.minor);
     if (response.data.GetBytesUsed() > Megabytes(1))
     {
-        std::fstream file(zip_filename, std::fstream::out | std::fstream::binary);
-        if (!file.good())
+        if (!FileWrite(zip_filename, CreateArrayView(response.data)))
         {
             LOG(LogLevel_Error, "Failed to open file for write: %s", zip_filename);
             FAIL;
             g_download_state = AsyncStatus_FetchedFailed;
             return;
-        }
-        else
-        {
-            file.write(response.data.data, response.data.used + 1);
         }
     }
     else
@@ -144,11 +139,11 @@ void DownloadUpdateJob::RunJob(Arena& arena)
         return;
     }
 
-    std::vector<std::string> filenames;
-    UnzipArchive(zip_filename, "", filenames);
-    for (const auto& f : filenames)
+    DynamicArray<const char*> filenames(&g_arena);
+    UnzipArchive(zip_filename, nullptr, filenames);
+    for (u64 i = 0; i < filenames.used; i++)
     {
-        if (f.find("QuoolTool") != std::string::npos)
+        if (StringFindFirst(filenames.data[i], "QuoolTool") != nullptr)
         {
             Path fe = zip_filename;
             std::error_code ec;
@@ -167,7 +162,7 @@ void DownloadUpdateJob::RunJob(Arena& arena)
     g_download_state = AsyncStatus_FetchedSuccess;
 }
 
-void GetOnlineVersionJob::RunJob(Arena& arena)
+void GetOnlineVersionJob::RunJob()
 {
     ZoneScopedN("NetworkingJob: GetOnlineVersionJob");
     g_version_state = AsyncStatus_Fetching;
@@ -176,15 +171,15 @@ void GetOnlineVersionJob::RunJob(Arena& arena)
     struct curl_slist* headers = nullptr;
     if (s_network.env.github_api_key.size() > 10)
     {
-        std::string auth = "Authorization: Bearer " + s_network.env.github_api_key;
+        const char* auth = ArenaPush(&g_arena, "Authorization: Bearer %s", s_network.env.github_api_key.c_str()) ;
         headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
-        headers = curl_slist_append(headers, auth.c_str());
+        headers = curl_slist_append(headers, auth);
         headers = curl_slist_append(headers, "X-GitHub-Api-Version: 2022-11-28");
         CURLCHECK(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers));
     }
 
-    DynamicArray<char> response;
-    response.arena = &arena;
+    DynamicArray<char> response(&g_arena);
+    response.arena = &g_arena;
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_URL, s_network.url));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_USERAGENT, "QuoolToolUpdater"));
     CURLCHECK(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallbackString));
