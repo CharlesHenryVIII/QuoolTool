@@ -99,11 +99,11 @@ void WriteJson(const T* a, const char* filename)
 template <typename T>
 bool LoadJson(T* s, const char* filename)
 {
-    VALIDATE_MV(filename, false, LogLevel_Warning, "Invalid filename for LoadJson()");
-    VALIDATE_MV(s, false, LogLevel_Warning, "Invalid input to LoadJson: %s", filename);
+    VALIDATE_VM(filename, false, LogLevel_Warning, "Invalid filename for LoadJson()");
+    VALIDATE_VM(s, false, LogLevel_Warning, "Invalid input to LoadJson: %s", filename);
 
     std::vector<u8> fd;
-    VALIDATE_MV(FileRead(filename, fd), false, LogLevel_Warning, "Failed to read file: %s", filename);
+    VALIDATE_VM(FileRead(filename, fd), false, LogLevel_Warning, "Failed to read file: %s", filename);
 	try
 	{
 		Json data = Json::parse((char*)fd.data(), (char*)(fd.data() + fd.size()), nullptr, true);

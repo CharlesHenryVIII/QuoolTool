@@ -22,16 +22,16 @@ void CitectCreateZip(CitectData& cs)
     SysScanDirectoryForFileNames(cs.project_path, filenames, ScanDirectoryFlags_IncludeDirs);
      
 
-    std::vector<std::filesystem::path> ini_files;
+    std::vector<Path> ini_files;
     if (fs::exists(cs.program_files_path))
     {
-        std::filesystem::path config_path = std::filesystem::path(cs.program_files_path) / "Config";
+        Path config_path = Path(cs.program_files_path) / "Config";
         std::vector<ScannedFile> config_files;
         SysScanDirectoryForFileNames(config_path, config_files, ScanDirectoryFlags_None);
 
         for (auto f : config_files)
         {
-            if (f.name.find_last_of(".ini") != std::wstring::npos)
+            if (f.name.find_last_of(".ini") != std::string::npos)
             {
                 ini_files.push_back(config_path / f.name);
             }
