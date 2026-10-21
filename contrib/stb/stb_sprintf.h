@@ -46,7 +46,7 @@ that are super handy (commas in thousands, callbacks at buffer full,
 for example). Finally, the format strings for MSVC and GCC differ
 for 64-bit integers (among other small things), so this lets you use
 the same format strings in cross platform code.
-
+ 
 It uses the standard single file trick of being both the header file
 and the source itself. If you just include it normally, you just get
 the header file function definitions. To get the code, you include

@@ -1,6 +1,7 @@
 #pragma once
 #include "CashUtil/CashUtil.h"
 #define IMGUI_ENABLE_FREETYPE
+#define IMGUI_USE_STB_SPRINTF
 #include "imgui.h"
 #include "Settings.h"
 
