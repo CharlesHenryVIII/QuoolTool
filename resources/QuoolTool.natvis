@@ -176,5 +176,35 @@
     <DisplayString> (/{mask[0],b} {mask[1],b}) </DisplayString>
   </Type>
 
+    <Type Name="InlineString&lt;*&gt;">
+    <!-- used == 0: data may be uninitialized, so don't read it -->
+    <DisplayString Condition="used == 0">[0/{$T1}] &quot;&quot;</DisplayString>
+    <DisplayString>[{used}/{$T1}] {data,s8}</DisplayString>
+    <StringView Condition="used != 0">data,s8</StringView>
+
+    <Expand>
+      <Item Name="[used]">used</Item>
+      <Item Name="[capacity]">$T1</Item>
+      <Item Name="[length]" Condition="used != 0 &amp;&amp; data[used - 1] == 0">used - 1</Item>
+      <Item Name="[length]" Condition="used != 0 &amp;&amp; data[used - 1] != 0">used</Item>
+      <ArrayItems Condition="used != 0">
+        <Size>used</Size>
+        <ValuePointer>data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="StaticArray&lt;*,*&gt;">
+    <DisplayString>[{used}/{$T2}]</DisplayString>
+    <Expand>
+      <Item Name="[used]">used</Item>
+      <Item Name="[capacity]">$T2</Item>
+      <ArrayItems>
+        <Size>used</Size>
+        <ValuePointer>data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
 </AutoVisualizer>
 

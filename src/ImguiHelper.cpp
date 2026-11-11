@@ -7,6 +7,7 @@
 #include "DataCollection.h"
 #include "Version.h"
 #include "Networking.h"
+#include "ModiconTagging.h"
 
 #include "SDL3/SDL.h"
 #include "ImGui/backends/imgui_impl_sdl3.h"
@@ -303,6 +304,11 @@ void ImguiMain(AppData& data)
             if (ImGui::BeginTabItem("Data Collection"))
             {
                 DataCollectionImGui(*data.data_collection_data);
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Modicon Tag Addressing"))
+            {
+                ModiconImGui(*data.modicon_tag_data);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Network"))

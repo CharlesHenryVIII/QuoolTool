@@ -200,3 +200,42 @@ bool UnzipArchive(const char* zip_path, const char* output_dir, DynamicArray<con
 
     return true;
 }
+
+pugi::xml_document GetXmlDocFromFile(const Path& path, StringEncoding encoding)
+{
+    pugi::xml_document doc;
+    pugi::xml_parse_result result;
+    if (!fs::exists(path))
+    {
+        LOG(LogLevel_Error, "Failed to find file: %s", ToString(path).c_str());
+        FAIL;
+        return doc;
+    }
+    if (encoding != StringEncoding_UTF8)
+    {
+        std::string raw;
+        FileRead(path.string().c_str(), raw);
+        std::wstring ws;
+        SysConvertMultibyteToWideChar(ws, raw, StringEncoding_OEM);
+        std::string s;
+        SysConvertWideCharToMultiByte(s, ws, StringEncoding_UTF8);
+
+        result = doc.load_string(s.c_str());
+    }
+    else
+    {
+        const std::string filename = ToString(path);
+        const char* f = filename.c_str();
+        result = doc.load_file(f);
+    }
+
+    if (!result)
+    {
+        LOG(LogLevel_Error, "Error XML [%s] parsed with errors", ToString(path).c_str());
+        LOG(LogLevel_Error, "Error description: %s", result.description());
+        LOG(LogLevel_Error, "Error offset: %i (error at [...%i]\n", result.offset, (ToString(path).c_str() + result.offset));
+        FAIL;
+        return {};
+    }
+    return doc;
+}

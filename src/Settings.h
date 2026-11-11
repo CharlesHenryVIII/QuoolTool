@@ -12,10 +12,12 @@ enum FontIndex : u32 {
 struct DataCollectionData;
 struct CitectData;
 struct NetworkData;
+struct ModiconData;
 struct AppData {
     DataCollectionData* data_collection_data = nullptr;
     CitectData* citect_data = nullptr;
     NetworkData* network_data = nullptr;
+    ModiconData* modicon_tag_data = nullptr;
 };
 
 struct ImFont;

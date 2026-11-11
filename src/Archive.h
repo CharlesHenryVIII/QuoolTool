@@ -1,5 +1,9 @@
 #include "CashUtil/CashUtil.h"
+//TODO(CSH): Do not expose file
+#include "pugixml.hpp"
 
 void CreateZip(const Path& zip_path, const Path& source_folder, ArrayView<ScannedFile> files_to_backup, ArrayView<Path> files_to_add_to_root, Atomic<u64>& progress/*, ArrayView<std::wstring> ext_to_exclude*/);
 bool UnzipArchive(const char* zip_path, const char* output_dir, DynamicArray<const char*>& filenames);
 bool UnzipArchive(const std::string& zip_path, const std::string& output_dir, std::vector<std::string>& filenames);
+
+pugi::xml_document GetXmlDocFromFile(const Path& path, StringEncoding encoding);

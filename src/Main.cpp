@@ -11,6 +11,7 @@
 #include "Networking.h"
 #include "DataCollection.h"
 #include "stb/stb_image.h"
+#include "ModiconTagging.h"
 
 #include <stdio.h>
 #include <string>
@@ -112,9 +113,11 @@ i32 SysMain(i32 argc, char** argv)
     }
     Threading& threading = Threading::GetInstance();
     AppData app_data = {};
+
     DataCollectionInit(&app_data.data_collection_data);
     NetworkingInit(&app_data.network_data);
     CitectInit(&app_data.citect_data);
+    ModiconInit(&app_data.modicon_tag_data);
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGuiStyle& style = ImGui::GetStyle();
     ThemesInit(g_theme_settings.color, g_theme_settings.style, ThemeColor_Quantum, ThemeStyle_SimpleRounding);
