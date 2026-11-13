@@ -246,6 +246,7 @@ void ModiconImGui(ModiconData& data)
         {
             if (s_parse.xml.state == AsyncStatus_FetchedSuccess && !s_parse.xml.data.empty())
             {
+                ZoneScopedN("Update Modbus Addresses");
                 //s_parse.xml.Start();
                 //Defer{ s_parse.xml.End(!s_parse.xml.data.empty()); };
                 //pugi::xml_document doc(s_parse.xml.data);
@@ -301,7 +302,7 @@ void ModiconImGui(ModiconData& data)
                     }
                     ASSERT(i < s_parse.tags.used);
                     
-                    Sprintf(buffer.data, buffer.GetCount(), "%%%s%i", modbus_prefix, address);
+                    Sprintf(buffer, "%%%s%i", modbus_prefix, address);
 
                     pugi::xml_attribute add_attr = var.attribute(xmltitle_address);
                     if (add_attr.empty())
@@ -312,7 +313,10 @@ void ModiconImGui(ModiconData& data)
                     buffer.Clear();
                 }
 
-                VERIFY(s_parse.xml.data.save_file(ToString(data.file).c_str(), "\t"));
+                {
+                    ZoneScopedN("Write Modbus Changes");
+                    VERIFY(s_parse.xml.data.save_file(ToString(data.file).c_str(), "\t"));
+                }
             }
             else
             {
