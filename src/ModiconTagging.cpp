@@ -70,20 +70,57 @@ ModbusType GetModbusType(TagType type)
     }
 }
 
+bool ModbusTagTypesIgnored(TagType type)
+{
+    bool ignore_tag = false;
+    switch (type)
+    {
+    case TagType_BOOL: [[fallthrough]];
+    case TagType_DATE: [[fallthrough]];
+    case TagType_DT: [[fallthrough]];
+    case TagType_Count: ignore_tag = true; break;
+    default: break;
+    }
+    return ignore_tag;
+}
+
+//NOTE(CSH): Some types will be an array formatted like this:
+// ARRAY[1..10] OF INT
 TagType GetModbusType(const char* s)
 {
     TagType r = TagType_BOOL;
     i32 i = 0;
+
     for (; i < TagType_Count; i++)
-    {
         if (StringCompare(StringCase_Sensitive, s, g_TagTypeNames[i]))
-        {
-            r = TagType(i);
-            break;
-        }
+            return TagType(i);
+
+    const char* a_name = "ARRAY";
+    const char* is_array = StringFindFirst(s, a_name);
+    if (is_array)
+    {
+        const char* past_array = is_array + strlen(a_name);
+        const char* type_s = StringFindLast(past_array, ' ') + 1; //"+ 1" gets us past the '['
+        return GetModbusType(type_s);
     }
     VALIDATE_VM(i != TagType_Count, r, LogLevel_Error, "Failed to get Modbus Type from: '%s'", s);
     return r;
+}
+
+u32 GetModbusArrayCount(const char* s)
+{
+    const char* is_array = StringFindFirst(s, "ARRAY");
+    if (!is_array)
+    {
+        return 1;
+    }
+
+    is_array += strlen("ARRAY[");
+    const i32 start = StringToInt(is_array);
+    is_array += NumberLengthInString(is_array) + strlen("..");
+    const i32 end = StringToInt(is_array);
+    const i32 r = end - start + 1;
+    return (u32)r;
 }
 
 i32 GetModbusSize(TagType type)
@@ -122,6 +159,7 @@ struct TagData {
     InlineString<64> name = {};
     TagType type = {};
     u32 address = {};
+    u32 array_count = {};
 };
 
 static struct ParseData {
@@ -129,7 +167,6 @@ static struct ParseData {
     i32 type_counts[TagType_Count] = {};
     StaticArray<TagData, Megabytes(1)> tags = {};
 } s_parse;
-
 
 struct ParseXMLJob : Job
 {
@@ -159,12 +196,24 @@ struct ParseXMLJob : Job
                 FAIL;
                 continue;
             }
-            const TagType type = GetModbusType(type_attr.as_string());
+            const char* name_s = name_attr.as_string();
+            const char* type_s = type_attr.as_string();
+            const TagType type = GetModbusType(type_s);
+
+            bool ignore_tag = ModbusTagTypesIgnored(type);
+            if (ignore_tag)
+            {
+                LOG(LogLevel_Info, "Ignoring tag '%s' due to unsupported Modbus type: '%s'", name_s, type_s);
+                continue;
+            }
+
+            const u32 array_count = GetModbusArrayCount(type_attr.as_string());
             s_parse.type_counts[type]++;
             s_parse.tags.Add({
                 .name = name_attr.as_string(),
                 .type = type,
                 .address = 0,
+                .array_count = array_count,
                 });
         }
 
@@ -269,7 +318,7 @@ void ModiconImGui(ModiconData& data)
 
                         i32& index = address_indices[modbus_type];
                         t.address = index;
-                        index += size;
+                        index += (size * t.array_count);
                     }
                 }
 
@@ -286,7 +335,11 @@ void ModiconImGui(ModiconData& data)
                         continue;
                     }
                     const TagType tag_type = GetModbusType(type_attr.as_string());
-                    ModbusType modbus_type = GetModbusType(tag_type);
+
+                    if (ModbusTagTypesIgnored(tag_type))
+                        continue;
+
+                    const ModbusType modbus_type = GetModbusType(tag_type);
                     const char* modbus_prefix = g_modbus_prefixes[modbus_type];
 
                     u32 address = 0;

@@ -595,7 +595,7 @@ void ScriptNetworkXML(const ScriptData& data)
             set.guid = set.guid.substr(set.guid.size() - 36 - 1, 36);
         }
         set.EnabledDHCP = GetBoolFromString(interface.child_value("EnableDHCP"));
-        set.DefaultGatewayMetric = atoi(interface.child_value("DefaultGatewayMetric"));
+        set.DefaultGatewayMetric = StringToInt(interface.child_value("DefaultGatewayMetric"));
         set.IPAddress = interface.child_value("IPAddress");
         set.SubnetMask = interface.child_value("SubnetMask");
         set.DefaultGateway = interface.child_value("DefaultGateway");
